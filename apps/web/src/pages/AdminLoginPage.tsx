@@ -6,8 +6,8 @@ import { Alert, Button, Card, CardContent, CardHeader, Input } from "../componen
 export default function AdminLoginPage() {
   const { adminLogin } = useAuth();
   const nav = useNavigate();
-  const [email, setEmail] = useState("admin@example.com");
-  const [password, setPassword] = useState("Admin123!");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -43,8 +43,7 @@ export default function AdminLoginPage() {
             >
               Entra come admin
             </Button>
-            <div className="text-xs text-slate-500">Demo: admin@example.com / Admin123!</div>
-          </div>
+</div>
         </CardContent>
       </Card>
     </div>

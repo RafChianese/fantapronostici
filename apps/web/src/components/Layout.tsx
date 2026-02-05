@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { Button, Spinner } from "./ui";
@@ -96,6 +96,21 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const nav = useNavigate();
 
   const [switchingLeague, setSwitchingLeague] = useState(false);
+
+  const [tourStep, setTourStep] = useState<number>(() => {
+    // One-time guided tour on first access (per device)
+    try {
+      return localStorage.getItem("tm_tour_done") === "1" ? -1 : 0;
+    } catch {
+      return -1;
+    }
+  });
+
+  useEffect(() => {
+    // If user logs out, don't show tour.
+    if (!user) setTourStep(-1);
+  }, [user]);
+
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -130,7 +145,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-slate-50 to-slate-100">
       {/* Top bar */}
       <header className="sticky top-0 z-20 border-b border-slate-100 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
@@ -360,6 +375,68 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </nav>
       ) : null}
-    </div>
+    
+      {/* One-time guided tour */}
+      {tourStep >= 0 ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg rounded-3xl bg-white p-5 shadow-xl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-lg font-semibold">Mini guida</div>
+                <div className="mt-1 text-sm text-slate-600">
+                  {tourStep === 0
+                    ? "Qui trovi il menu e puoi cambiare lega o uscire."
+                    : tourStep === 1
+                    ? "In basso hai le sezioni principali: Classifica, Pronostici e Leghe."
+                    : "Apri una giornata, inserisci i pronostici e controlla lo stato delle partite."}
+                </div>
+              </div>
+              <button
+                type="button"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700"
+                onClick={() => {
+                  try { localStorage.setItem("tm_tour_done", "1"); } catch {}
+                  setTourStep(-1);
+                }}
+                aria-label="Chiudi guida"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mt-4 flex items-center justify-between gap-3">
+              <button
+                type="button"
+                className="text-sm font-medium text-slate-600 hover:underline"
+                onClick={() => {
+                  try { localStorage.setItem("tm_tour_done", "1"); } catch {}
+                  setTourStep(-1);
+                }}
+              >
+                Salta
+              </button>
+
+              <div className="flex items-center gap-2">
+                <div className="text-xs text-slate-500">{tourStep + 1}/3</div>
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center rounded-xl bg-[#2EC4B6] px-4 py-2 text-sm font-medium text-white"
+                  onClick={() => {
+                    if (tourStep >= 2) {
+                      try { localStorage.setItem("tm_tour_done", "1"); } catch {}
+                      setTourStep(-1);
+                    } else {
+                      setTourStep((v) => v + 1);
+                    }
+                  }}
+                >
+                  {tourStep >= 2 ? "Fine" : "Avanti"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+</div>
   );
 }

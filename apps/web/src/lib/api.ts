@@ -106,11 +106,12 @@ export const api = {
   // public (league-scoped)
   matches: () => request(`/api/matches`),
   // leaderboard(sort?, leagueCode?)
-  leaderboard: (a?: string, b?: "points" | "name") => {
+  leaderboard: (a?: string, b?: string) => {
     const params = new URLSearchParams();
     // Backward compatible: if first argument looks like a sort value, treat it as such.
-    const sort = a === "points" || a === "name" ? (a as any) : (b as any);
-    const leagueCode = a && a !== "points" && a !== "name" ? a : undefined;
+    const knownSorts = new Set(["points","name","points_desc","points_asc","exact_desc","exact_asc","outcome_desc","outcome_asc","sumgoals_desc","sumgoals_asc"]); 
+    const sort = a && knownSorts.has(a) ? a : b;
+    const leagueCode = a && !knownSorts.has(a) ? a : undefined;
     if (leagueCode) params.set("leagueCode", leagueCode);
     if (sort) params.set("sort", sort);
     const q = params.toString() ? `?${params.toString()}` : "";

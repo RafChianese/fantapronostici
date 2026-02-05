@@ -20,9 +20,9 @@ export function Countdown({ lockUntilIso, nowIso, labelOpen, labelClosed }: { lo
   const s = seconds % 60;
 
   return (
-    <div className="flex flex-col gap-1">
-      <div className="text-xs text-slate-600">{closed ? (labelClosed ?? "Pronostici bloccati") : (labelOpen ?? "Modifiche aperte")}</div>
-      <div className="font-mono text-sm">
+    <div className="flex w-full flex-col gap-1">
+      <div className="text-sm font-medium text-slate-700 sm:text-xs sm:font-normal sm:text-slate-600">{closed ? (labelClosed ?? "Pronostici bloccati") : (labelOpen ?? "Modifiche aperte")}</div>
+      <div className="font-mono text-lg leading-none sm:text-sm">
         {d > 0 ? `${d}d ` : ""}{pad(h)}:{pad(m)}:{pad(s)}
       </div>
     </div>

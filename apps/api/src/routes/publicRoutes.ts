@@ -64,7 +64,15 @@ publicRouter.get("/leaderboard", async (req, res) => {
   const league = await resolveLeague(req);
   if (!league) return res.status(400).json({ message: "Missing leagueId or leagueCode" });
 
-  const sort = String(req.query.sort || "points"); // points | name
+  const sortRaw = String(req.query.sort || "points");
+
+  // Supported:
+  // - points_desc (default), points_asc
+  // - exact_desc / exact_asc
+  // - outcome_desc / outcome_asc
+  // - sumgoals_desc / sumgoals_asc
+  // Backward compatible: points | name
+  const sort = sortRaw === "points" ? "points_desc" : sortRaw;
 
   // Ensure league settings + rules exist (tie-breakers + scoring mode)
   await ensureLeagueConfig(league.id);
@@ -123,30 +131,63 @@ publicRouter.get("/leaderboard", async (req, res) => {
     matchdayWins: rules.enableMatchdayAwards ? awardByUser.get(m.user.id) ?? 0 : 0,
   }));
 
-  if (sort === "name") rows = rows.sort((a, b) => a.displayName.localeCompare(b.displayName));
-
-  else {
+  // Sorting
+  if (sort === "name") {
+    // kept for backward compatibility
+    rows = rows.sort((a, b) => a.displayName.localeCompare(b.displayName));
+  } else {
     const tie1 = settings?.tieBreak1 ?? "EXACT";
     const tie2 = settings?.tieBreak2 ?? "OUTCOME";
     const tie3 = settings?.tieBreak3 ?? "SUM_GOALS";
 
-    const getVal = (row: any, c: string) => {
+    const getTieVal = (row: any, c: string) => {
       if (c === "EXACT") return row.exactHits;
       if (c === "OUTCOME") return row.outcomeHits;
       return row.sumGoalsHits;
     };
 
-    rows = rows.sort((a, b) => {
-      if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
-      const d1 = getVal(b, tie1) - getVal(a, tie1);
+    const byName = (a: any, b: any) => a.displayName.localeCompare(b.displayName);
+
+    const cmpPoints = (dir: "asc" | "desc") => (a: any, b: any) => {
+      const s = dir === "asc" ? 1 : -1;
+      if (a.totalPoints !== b.totalPoints) return (a.totalPoints - b.totalPoints) * s;
+      const d1 = (getTieVal(a, tie1) - getTieVal(b, tie1)) * s;
       if (d1 !== 0) return d1;
-      const d2 = getVal(b, tie2) - getVal(a, tie2);
+      const d2 = (getTieVal(a, tie2) - getTieVal(b, tie2)) * s;
       if (d2 !== 0) return d2;
-      const d3 = getVal(b, tie3) - getVal(a, tie3);
+      const d3 = (getTieVal(a, tie3) - getTieVal(b, tie3)) * s;
       if (d3 !== 0) return d3;
-      // final stable tie-breaker
-      return a.displayName.localeCompare(b.displayName);
-    });
+      return byName(a, b);
+    };
+
+    const cmpMetric = (key: "exactHits" | "outcomeHits" | "sumGoalsHits", dir: "asc" | "desc") => (a: any, b: any) => {
+      const s = dir === "asc" ? 1 : -1;
+      if (a[key] !== b[key]) return (a[key] - b[key]) * s;
+      // secondary: points (same direction for coherence)
+      if (a.totalPoints !== b.totalPoints) return (a.totalPoints - b.totalPoints) * s;
+      return byName(a, b);
+    };
+
+    const sorter =
+      sort === "points_asc"
+        ? cmpPoints("asc")
+        : sort === "points_desc"
+        ? cmpPoints("desc")
+        : sort === "exact_asc"
+        ? cmpMetric("exactHits", "asc")
+        : sort === "exact_desc"
+        ? cmpMetric("exactHits", "desc")
+        : sort === "outcome_asc"
+        ? cmpMetric("outcomeHits", "asc")
+        : sort === "outcome_desc"
+        ? cmpMetric("outcomeHits", "desc")
+        : sort === "sumgoals_asc"
+        ? cmpMetric("sumGoalsHits", "asc")
+        : sort === "sumgoals_desc"
+        ? cmpMetric("sumGoalsHits", "desc")
+        : cmpPoints("desc"); // default
+
+    rows = rows.sort(sorter);
   }
 
   res.json({

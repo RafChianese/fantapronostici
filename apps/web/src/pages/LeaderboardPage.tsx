@@ -17,7 +17,10 @@ type Row = {
 
 export default function LeaderboardPage() {
   const { activeLeagueId } = useAuth();
-  const [sort, setSort] = useState<"points" | "name">("points");
+  const [sortKey, setSortKey] = useState<"points" | "exact" | "outcome" | "sumgoals">("points");
+  const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
+
+  const sortParam = `${sortKey}_${sortDir}`;
   const [rows, setRows] = useState<Row[]>([]);
   const [leagueName, setLeagueName] = useState<string>("");
   const [features, setFeatures] = useState<{ underOver25: boolean; matchdayAwards: boolean }>({ underOver25: false, matchdayAwards: false });
@@ -26,7 +29,7 @@ export default function LeaderboardPage() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    api.leaderboard(sort)
+    api.leaderboard(sortParam)
       .then((r) => {
         if (cancelled) return;
         setRows(r.leaderboard || []);
@@ -35,7 +38,7 @@ export default function LeaderboardPage() {
       })
       .finally(() => !cancelled && setLoading(false));
     return () => { cancelled = true; };
-  }, [sort, activeLeagueId]);
+  }, [sortKey, sortDir, activeLeagueId]);
 
   return (
     <Card>
@@ -43,9 +46,43 @@ export default function LeaderboardPage() {
         title="Classifica generale"
         subtitle={leagueName ? `Lega: ${leagueName}` : "Seleziona una lega per vedere la classifica."}
         right={
-          <div className="flex items-center gap-2">
-            <Button variant={sort === "points" ? "primary" : "secondary"} onClick={() => setSort("points")}>Punti</Button>
-            <Button variant={sort === "name" ? "primary" : "secondary"} onClick={() => setSort("name")}>Nome</Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant={sortKey === "points" ? "primary" : "secondary"}
+              onClick={() => {
+                if (sortKey === "points") setSortDir((d) => (d === "desc" ? "asc" : "desc"));
+                else { setSortKey("points"); setSortDir("desc"); }
+              }}
+            >
+              Punti {sortKey === "points" ? (sortDir === "desc" ? "▼" : "▲") : ""}
+            </Button>
+            <Button
+              variant={sortKey === "exact" ? "primary" : "secondary"}
+              onClick={() => {
+                if (sortKey === "exact") setSortDir((d) => (d === "desc" ? "asc" : "desc"));
+                else { setSortKey("exact"); setSortDir("desc"); }
+              }}
+            >
+              Esatti {sortKey === "exact" ? (sortDir === "desc" ? "▼" : "▲") : ""}
+            </Button>
+            <Button
+              variant={sortKey === "outcome" ? "primary" : "secondary"}
+              onClick={() => {
+                if (sortKey === "outcome") setSortDir((d) => (d === "desc" ? "asc" : "desc"));
+                else { setSortKey("outcome"); setSortDir("desc"); }
+              }}
+            >
+              Pronostici {sortKey === "outcome" ? (sortDir === "desc" ? "▼" : "▲") : ""}
+            </Button>
+            <Button
+              variant={sortKey === "sumgoals" ? "primary" : "secondary"}
+              onClick={() => {
+                if (sortKey === "sumgoals") setSortDir((d) => (d === "desc" ? "asc" : "desc"));
+                else { setSortKey("sumgoals"); setSortDir("desc"); }
+              }}
+            >
+              Somma gol {sortKey === "sumgoals" ? (sortDir === "desc" ? "▼" : "▲") : ""}
+            </Button>
           </div>
         }
       />

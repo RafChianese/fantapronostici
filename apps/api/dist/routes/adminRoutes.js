@@ -60,7 +60,11 @@ adminRouter.patch("/members/:id", async (req, res) => {
     }
     const updated = await prisma.leagueMember.update({
         where: { id: member.id },
-        data: { ...(status ? { status } : {}), ...(role ? { role } : {}) },
+        data: {
+        ...(status ? { status } : {}),
+        ...(role ? { role } : {}),
+        ...(!status && role === "ADMIN" ? { status: "APPROVED" } : {})
+      },
     });
     // If membership changes, leaderboard may change
     await recalcAllScoresForLeague(leagueId);

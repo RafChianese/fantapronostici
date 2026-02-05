@@ -10,8 +10,8 @@ function isValidEmail(v: string) {
 export default function LoginPage() {
   const { login } = useAuth();
   const nav = useNavigate();
-  const [email, setEmail] = useState("mario@example.com");
-  const [password, setPassword] = useState("Demo123!");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -48,8 +48,7 @@ export default function LoginPage() {
             >
               Entra
             </Button>
-            <div className="text-xs text-slate-500">Demo: mario@example.com / Demo123!</div>
-          </div>
+</div>
           <div className="text-sm text-slate-600">
             Se non hai ancora le credenziali, <Link className="font-medium text-[#2EC4B6] hover:underline" to="/register">Registrati</Link>.
           </div>

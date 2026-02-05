@@ -159,8 +159,8 @@ if (!config || !config.lock) {
           subtitle="Inserisci un pronostico (risultato esatto). Puoi modificare finché la finestra è aperta."
           right={
             config?.lock ? (
-              <div className="flex items-center gap-3">
-                <div className={`rounded-2xl border px-3 py-2 ${isLocked ? "border-rose-200 bg-rose-50" : "border-emerald-200 bg-emerald-50"}`}>
+              <div className="w-full flex items-stretch gap-3 sm:items-center sm:justify-end">
+                <div className={`w-full rounded-2xl border px-4 py-3 ${isLocked ? "border-rose-200 bg-rose-50" : "border-emerald-200 bg-emerald-50"}`}>
                   <Countdown
                     lockUntilIso={config?.lock?.lockUntil ? new Date(config?.lock?.lockUntil).toISOString() : new Date().toISOString()}
                     nowIso={new Date().toISOString()}
@@ -187,25 +187,74 @@ if (!config || !config.lock) {
 
       {byMatchday.map(([matchday, ms]) => {
         const allFinished = ms.length > 0 && ms.every((x) => x.status === "FINISHED");
+        const anyInProgress = ms.some((x) => x.status === "IN_PROGRESS");
+        const allNotStarted = ms.length > 0 && ms.every((x) => x.status === "NOT_STARTED");
+        const matchdayStatus: Match["status"] = allFinished ? "FINISHED" : anyInProgress ? "IN_PROGRESS" : allNotStarted ? "NOT_STARTED" : "IN_PROGRESS";
+
         const isCollapsed = (collapsed[matchday] ?? allFinished) === true;
+
+        const statusPill =
+          matchdayStatus === "FINISHED" ? (
+            <span className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-100 px-3 py-2 text-sm font-semibold text-emerald-800">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M20 6L9 17l-5-5" />
+              </svg>
+              Terminata
+            </span>
+          ) : matchdayStatus === "IN_PROGRESS" ? (
+            <span className="inline-flex items-center gap-2 rounded-xl border border-sky-200 bg-sky-100 px-3 py-2 text-sm font-semibold text-sky-800">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M10 8l6 4-6 4V8z" />
+              </svg>
+              In corso
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-100 px-3 py-2 text-sm font-semibold text-amber-800">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 6v6l4 2" />
+              </svg>
+              Non iniziata
+            </span>
+          );
+
+        const cardClass =
+          matchdayStatus === "FINISHED"
+            ? "bg-emerald-50 border-emerald-200"
+            : matchdayStatus === "IN_PROGRESS"
+            ? "bg-sky-50 border-sky-200"
+            : "bg-amber-50 border-amber-200";
+
         return (
-          <Card key={matchday}>
+          <Card key={matchday} className={cardClass}>
             <CardHeader
               title={`Giornata ${matchday}`}
-              subtitle={`${ms.length} partite${allFinished ? " · Terminata" : ""}`}
+              subtitle={`${ms.length} partite`}
               right={
-                <Button
-                  variant="ghost"
-                  onClick={() => setCollapsed((prev) => ({ ...prev, [matchday]: !isCollapsed }))}
-                >
-                  {isCollapsed ? "Espandi" : "Comprimi"}
-                </Button>
+                <div className="flex items-center gap-2">
+                  {statusPill}
+                  <Button
+                    variant="ghost"
+                    onClick={() => setCollapsed((prev) => ({ ...prev, [matchday]: !isCollapsed }))}
+                  >
+                    {isCollapsed ? "Espandi" : "Comprimi"}
+                  </Button>
+                </div>
               }
             />
             {isCollapsed ? (
               <CardContent>
-                <div className="text-sm text-slate-600">
-                  Giornata terminata: contenuto compresso. Premi <span className="font-medium">Espandi</span> per vedere i dettagli.
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    {matchdayStatus === "FINISHED" ? (
+                      <span className="text-emerald-800 font-semibold text-base">Tutte le partite sono terminate.</span>
+                    ) : matchdayStatus === "IN_PROGRESS" ? (
+                      <span className="text-sky-800 font-semibold text-base">Partite in corso.</span>
+                    ) : (
+                      <span className="text-amber-800 font-semibold text-base">Partite non ancora iniziate.</span>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             ) : (
