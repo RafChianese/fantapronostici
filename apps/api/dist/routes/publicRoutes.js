@@ -1,0 +1,215 @@
+import { Router } from "express";
+import { prisma } from "../lib/prisma.js";
+import { verifyToken } from "../lib/auth.js";
+import { getMonetizationConfig } from "../lib/monetization.js";
+import { getLockInfo } from "../lib/lock.js";
+import { ensureLeagueConfig } from "../services/ensureLeagueConfig.js";
+export const publicRouter = Router();
+async function resolveLeague(req) {
+    const leagueId = req.query.leagueId || (typeof req.headers["x-league-id"] === "string" ? req.headers["x-league-id"] : undefined);
+    const leagueCode = req.query.leagueCode || undefined;
+    if (leagueId) {
+        const league = await prisma.league.findUnique({ where: { id: leagueId } });
+        return league;
+    }
+    if (leagueCode) {
+        const league = await prisma.league.findUnique({ where: { code: leagueCode.toUpperCase() } });
+        return league;
+    }
+    return null;
+}
+publicRouter.get("/leagues/resolve", async (req, res) => {
+    const league = await resolveLeague(req);
+    if (!league)
+        return res.status(404).json({ message: "Lega non trovata" });
+    return res.json({ league });
+});
+publicRouter.get("/matches", async (_req, res) => {
+    // Safety fix (dev DBs): if all matches have matchday=1 (historical seed) but there are more than 4,
+    // auto-assign matchdays in blocks of 4 matches ordered by kickoffAt.
+    // This keeps the UI grouping correct and also persists the correction in DB.
+    const existing = await prisma.match.findMany({ orderBy: { kickoffAt: "asc" } });
+    const unique = new Set(existing.map((m) => m.matchday ?? 1));
+    if (existing.length > 4 && unique.size === 1 && Array.from(unique)[0] === 1) {
+        // Assign 1..N based on index // 4
+        await prisma.$transaction(existing.map((m, idx) => prisma.match.update({ where: { id: m.id }, data: { matchday: Math.floor(idx / 4) + 1 } })));
+    }
+    const matches = await prisma.match.findMany({ orderBy: [{ matchday: "asc" }, { kickoffAt: "asc" }] });
+    res.json({ matches });
+});
+publicRouter.get("/lock", async (req, res) => {
+    const league = await resolveLeague(req);
+    if (!league)
+        return res.status(400).json({ message: "Missing leagueId or leagueCode" });
+    await ensureLeagueConfig(league.id);
+    const rules = await prisma.rule.findUnique({ where: { leagueId: league.id } });
+    const info = await getLockInfo(league.id);
+    res.json({
+        lock: { lockUntil: info.lockUntil, isForceLocked: info.isForceLocked, lockedByTime: info.lockedByTime, isLocked: info.isLocked },
+        features: { underOver25: !!rules?.enableUnderOver25, matchdayAwards: !!rules?.enableMatchdayAwards },
+    });
+});
+publicRouter.get("/leaderboard", async (req, res) => {
+    const league = await resolveLeague(req);
+    if (!league)
+        return res.status(400).json({ message: "Missing leagueId or leagueCode" });
+    const sort = String(req.query.sort || "points"); // points | name
+    // Ensure league settings + rules exist (tie-breakers + scoring mode)
+    await ensureLeagueConfig(league.id);
+    const [settings, rules] = await Promise.all([
+        prisma.setting.findUnique({ where: { leagueId: league.id } }),
+        prisma.rule.findUnique({ where: { leagueId: league.id } }),
+    ]);
+    if (!rules)
+        return res.status(500).json({ message: "Missing rules for league" });
+    // Points breakdown is normalized in DB (non-counting categories are zeroed).
+    // Therefore hit counters can be computed directly from positive per-category points.
+    // Aggregate predictions per user to compute totals + hit counts.
+    const preds = await prisma.prediction.findMany({
+        where: { leagueId: league.id },
+        select: { userId: true, totalPoints: true, pointsExact: true, pointsOutcome: true, pointsSumGoals: true, pointsUnderOver: true },
+    });
+    const agg = new Map();
+    for (const p of preds) {
+        const a = agg.get(p.userId) || { totalPoints: 0, exactHits: 0, outcomeHits: 0, sumGoalsHits: 0, underOverHits: 0 };
+        a.totalPoints += p.totalPoints ?? 0;
+        if ((p.pointsExact ?? 0) > 0)
+            a.exactHits += 1;
+        if ((p.pointsOutcome ?? 0) > 0)
+            a.outcomeHits += 1;
+        if ((p.pointsSumGoals ?? 0) > 0)
+            a.sumGoalsHits += 1;
+        if (rules.enableUnderOver25 && (p.pointsUnderOver ?? 0) > 0)
+            a.underOverHits += 1;
+        agg.set(p.userId, a);
+    }
+    const awardCounts = rules.enableMatchdayAwards
+        ? await prisma.matchdayAward.groupBy({
+            by: ["userId"],
+            where: { leagueId: league.id },
+            _count: { userId: true },
+        })
+        : [];
+    const awardByUser = new Map(awardCounts.map((r) => [r.userId, r._count.userId]));
+    const members = await prisma.leagueMember.findMany({
+        where: { leagueId: league.id, status: "APPROVED" },
+        include: { user: true },
+    });
+    let rows = members.map((m) => ({
+        userId: m.user.id,
+        displayName: m.user.displayName,
+        totalPoints: agg.get(m.user.id)?.totalPoints ?? 0,
+        exactHits: agg.get(m.user.id)?.exactHits ?? 0,
+        outcomeHits: agg.get(m.user.id)?.outcomeHits ?? 0,
+        sumGoalsHits: agg.get(m.user.id)?.sumGoalsHits ?? 0,
+        underOverHits: rules.enableUnderOver25 ? agg.get(m.user.id)?.underOverHits ?? 0 : 0,
+        matchdayWins: rules.enableMatchdayAwards ? awardByUser.get(m.user.id) ?? 0 : 0,
+    }));
+    if (sort === "name")
+        rows = rows.sort((a, b) => a.displayName.localeCompare(b.displayName));
+    else {
+        const tie1 = settings?.tieBreak1 ?? "EXACT";
+        const tie2 = settings?.tieBreak2 ?? "OUTCOME";
+        const tie3 = settings?.tieBreak3 ?? "SUM_GOALS";
+        const getVal = (row, c) => {
+            if (c === "EXACT")
+                return row.exactHits;
+            if (c === "OUTCOME")
+                return row.outcomeHits;
+            return row.sumGoalsHits;
+        };
+        rows = rows.sort((a, b) => {
+            if (b.totalPoints !== a.totalPoints)
+                return b.totalPoints - a.totalPoints;
+            const d1 = getVal(b, tie1) - getVal(a, tie1);
+            if (d1 !== 0)
+                return d1;
+            const d2 = getVal(b, tie2) - getVal(a, tie2);
+            if (d2 !== 0)
+                return d2;
+            const d3 = getVal(b, tie3) - getVal(a, tie3);
+            if (d3 !== 0)
+                return d3;
+            // final stable tie-breaker
+            return a.displayName.localeCompare(b.displayName);
+        });
+    }
+    res.json({
+        league: { id: league.id, name: league.name, code: league.code },
+        features: { underOver25: !!rules.enableUnderOver25, matchdayAwards: !!rules.enableMatchdayAwards },
+        tieBreakers: { tieBreak1: settings?.tieBreak1 ?? "EXACT", tieBreak2: settings?.tieBreak2 ?? "OUTCOME", tieBreak3: settings?.tieBreak3 ?? "SUM_GOALS" },
+        leaderboard: rows,
+    });
+});
+publicRouter.get("/users/:id/summary", async (req, res) => {
+    const league = await resolveLeague(req);
+    if (!league)
+        return res.status(400).json({ message: "Missing leagueId or leagueCode" });
+    await ensureLeagueConfig(league.id);
+    const rules = await prisma.rule.findUnique({ where: { leagueId: league.id } });
+    const userId = req.params.id;
+    // Viewing other users' predictions is gated behind a short "rewarded ad" window.
+    // We require authentication here so we can verify unlock state.
+    const authHeader = typeof req.headers.authorization === "string" ? req.headers.authorization : "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length) : "";
+    if (!token)
+        return res.status(401).json({ message: "Non autenticato" });
+    let viewerId;
+    try {
+        viewerId = verifyToken(token).sub;
+    }
+    catch {
+        return res.status(401).json({ message: "Token non valido" });
+    }
+    const isSelf = viewerId === userId;
+    if (!isSelf) {
+        const cfg = await getMonetizationConfig();
+        // If ads are disabled globally, allow viewing without unlock.
+        if (cfg.adsEnabled) {
+            const row = await prisma.adUnlock.findUnique({ where: { userId: viewerId } });
+            const now = new Date();
+            const ok = !!row && row.expiresAt.getTime() > now.getTime();
+            if (!ok) {
+                return res.status(403).json({
+                    code: "AD_REQUIRED",
+                    message: "Guarda una pubblicità per visualizzare i pronostici degli altri utenti",
+                    unlockMinutes: cfg.unlockMinutes,
+                    demoAdsEnabled: cfg.demoAdsEnabled,
+                });
+            }
+        }
+    }
+    const member = await prisma.leagueMember.findUnique({ where: { leagueId_userId: { leagueId: league.id, userId } }, include: { user: true } });
+    if (!member || member.status !== "APPROVED")
+        return res.status(404).json({ message: "User not in league" });
+    const matches = await prisma.match.findMany({ orderBy: { kickoffAt: "asc" } });
+    const preds = await prisma.prediction.findMany({ where: { leagueId: league.id, userId } });
+    const predByMatch = new Map(preds.map((p) => [p.matchId, p]));
+    const detail = matches.map((m) => {
+        const p = predByMatch.get(m.id);
+        const real = m.status === "FINISHED" && m.homeScore !== null && m.awayScore !== null ? { home: m.homeScore, away: m.awayScore } : null;
+        return {
+            match: m,
+            prediction: p ? { homeGoals: p.homeGoals, awayGoals: p.awayGoals } : null,
+            real,
+            points: p
+                ? { exact: p.pointsExact, outcome: p.pointsOutcome, sumGoals: p.pointsSumGoals, underOver: p.pointsUnderOver, total: p.totalPoints }
+                : { exact: 0, outcome: 0, sumGoals: 0, underOver: 0, total: 0 },
+        };
+    });
+    const totals = detail.reduce((acc, d) => {
+        acc.exact += d.points.exact;
+        acc.outcome += d.points.outcome;
+        acc.sumGoals += d.points.sumGoals;
+        acc.underOver += d.points.underOver;
+        acc.total += d.points.total;
+        return acc;
+    }, { exact: 0, outcome: 0, sumGoals: 0, underOver: 0, total: 0 });
+    res.json({
+        league: { id: league.id, code: league.code, name: league.name },
+        features: { underOver25: !!rules?.enableUnderOver25, matchdayAwards: !!rules?.enableMatchdayAwards },
+        user: { id: member.user.id, displayName: member.user.displayName, email: member.user.email },
+        detail,
+        totals,
+    });
+});

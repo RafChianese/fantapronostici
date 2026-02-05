@@ -1,0 +1,269 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum GlobalRole {
+  USER
+  SUPER_ADMIN
+}
+
+enum LeagueRole {
+  MEMBER
+  ADMIN
+}
+
+enum MembershipStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum MatchStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  FINISHED
+}
+
+enum MatchSource {
+  SEED
+  API_FOOTBALL
+  FOOTBALL_DATA
+  MANUAL
+}
+
+enum ScoringMode {
+  CUMULATIVE
+  BEST_ONLY
+  MIXED
+}
+
+enum RankingCriterion {
+  EXACT
+  OUTCOME
+  SUM_GOALS
+}
+
+model User {
+  id           String       @id @default(cuid())
+  email        String       @unique
+  displayName  String       @unique
+  passwordHash String
+  globalRole   GlobalRole   @default(USER)
+  isActive     Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  memberships  LeagueMember[]
+  predictions  Prediction[]
+
+  // Awards (best matchday score)
+  matchdayAwards MatchdayAward[]
+
+  // Rewarded-ad gating (global across all leagues)
+  adUnlock     AdUnlock?
+  adUnlockLogs AdUnlockLog[]
+
+  // Password reset
+  passwordResetTokens PasswordResetToken[]
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model League {
+  id          String        @id @default(cuid())
+  name        String        @unique
+  code        String        @unique // short join code
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  members     LeagueMember[]
+  rules       Rule?
+  settings    Setting?
+  predictions Prediction[]
+
+  // Awards (best matchday score)
+  matchdayAwards MatchdayAward[]
+}
+
+model LeagueMember {
+  id        String           @id @default(cuid())
+  leagueId  String
+  userId    String
+  role      LeagueRole       @default(MEMBER)
+  status    MembershipStatus @default(PENDING)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([leagueId, userId])
+  @@index([userId])
+  @@index([leagueId])
+}
+
+model Match {
+  id          String        @id @default(cuid())
+  externalId  String?       @unique
+  group       String
+  matchday    Int           @default(1)
+  homeTeam    String
+  awayTeam    String
+  kickoffAt   DateTime
+  status      MatchStatus   @default(NOT_STARTED)
+  homeScore   Int?
+  awayScore   Int?
+  // API-Football v3
+  apiFootballFixtureId Int?    @unique
+  apiLeagueId          Int?
+  apiSeason            Int?
+  apiRound             String?
+
+  // football-data.org v4
+  footballDataMatchId        Int?    @unique
+  footballDataCompetitionCode String?
+  footballDataSeason         Int?
+
+  source      MatchSource   @default(SEED)
+  updatedAt   DateTime      @updatedAt
+
+  predictions Prediction[]
+}
+
+model Prediction {
+  id             String   @id @default(cuid())
+  userId         String
+  leagueId       String
+  matchId        String
+  homeGoals      Int
+  awayGoals      Int
+  pointsExact    Int      @default(0)
+  pointsOutcome  Int      @default(0)
+  pointsSumGoals Int      @default(0)
+  pointsUnderOver Int     @default(0)
+  totalPoints    Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  match  Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, leagueId, matchId])
+  @@index([matchId])
+  @@index([userId])
+  @@index([leagueId])
+}
+
+model Rule {
+  id                     String     @id @default(cuid())
+  leagueId               String     @unique
+  pointsExact            Int        @default(4)
+  pointsOutcome          Int        @default(2)
+  pointsSumGoals         Int        @default(1)
+  enableUnderOver25      Boolean    @default(false)
+  pointsUnderOver25      Int        @default(1)
+  enableMatchdayAwards   Boolean    @default(false)
+  scoringMode            ScoringMode @default(CUMULATIVE)
+  allowOutcomeWithExact  Boolean    @default(true)
+  allowSumGoalsWithExact Boolean    @default(true)
+  allowSumGoalsWithOutcome Boolean  @default(true)
+  updatedAt              DateTime   @updatedAt
+
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+}
+
+model MatchdayAward {
+  id        String   @id @default(cuid())
+  leagueId  String
+  matchday  Int
+  userId    String
+  createdAt DateTime @default(now())
+
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([leagueId, matchday, userId])
+  @@index([leagueId, matchday])
+  @@index([userId])
+}
+
+model Setting {
+  id            String   @id @default(cuid())
+  leagueId      String   @unique
+  lockUntil     DateTime
+  isForceLocked Boolean  @default(false)
+  // Tie-breakers used when total points are equal in the leaderboard.
+  // The primary criterion is always total points.
+  tieBreak1     RankingCriterion @default(EXACT)
+  tieBreak2     RankingCriterion @default(OUTCOME)
+  tieBreak3     RankingCriterion @default(SUM_GOALS)
+  updatedAt     DateTime @updatedAt
+
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+}
+
+// Global settings managed only by Super Admin.
+// Used for monetization and other global toggles.
+model SuperSetting {
+  id             String   @id @default(cuid())
+  adsEnabled     Boolean  @default(false)
+  demoAdsEnabled Boolean  @default(true)
+  unlockMinutes  Int      @default(5)
+
+  // External football provider configuration (global)
+  // provider: FOOTBALL_DATA | API_FOOTBALL
+  provider            String  @default("FOOTBALL_DATA")
+  apiFootballLeagueId Int?
+  apiFootballSeason   Int?
+  apiFootballTimezone String? @default("Europe/Rome")
+
+  footballDataCompetitionCode String?
+  footballDataSeason          Int?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// Reward unlock window after watching an ad (client-side simulated by default).
+// Used to gate access to view other users' predictions for a short time.
+model AdUnlock {
+  id        String   @id @default(cuid())
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId])
+  @@index([userId])
+}
+
+// Audit log for rewarded-ad unlocks.
+model AdUnlockLog {
+  id        String   @id @default(cuid())
+  userId    String
+  createdAt DateTime @default(now())
+  minutes   Int
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+}

@@ -1,0 +1,25 @@
+{
+  "name": "fanta-pronostici-monorepo",
+  "private": true,
+  "prisma": {
+    "schema": "prisma/schema.prisma",
+    "seed": "node prisma/seed.js"
+  },
+  "workspaces": [
+    "apps/api",
+    "apps/web"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c auto \"npm --workspace apps/api run dev\" \"npm --workspace apps/web run dev\"",
+    "build": "npm --workspace apps/api run build && npm --workspace apps/web run build",
+    "start": "npm run build && npm --workspace apps/api run start",
+    "db:migrate": "npm --workspace apps/api run db:migrate",
+    "db:seed": "npm --workspace apps/api run db:seed",
+    "db:studio": "npm --workspace apps/api run db:studio",
+    "postinstall": "npm --workspace apps/api run prisma:generate"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "@types/node": "^20.14.10"
+  }
+}

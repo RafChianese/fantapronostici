@@ -1,0 +1,26 @@
+import dotenv from "dotenv";
+import { z } from "zod";
+dotenv.config();
+const EnvSchema = z.object({
+    PORT: z.coerce.number().default(5000),
+    NODE_ENV: z.string().default("development"),
+    // Comma-separated allowlist of browser origins.
+    // Defaults include local dev (Vite) + Capacitor WebView.
+    WEB_ORIGIN: z.string().default("http://localhost:5173,https://localhost"),
+    JWT_SECRET: z.string().min(10),
+    JWT_EXPIRES_IN: z.string().default("7d"),
+    DATABASE_URL: z.string().min(1),
+    // football-data.org v4
+    FOOTBALL_DATA_API_KEY: z.string().optional().default(""),
+    SYNC_EVERY_MINUTES: z.coerce.number().int().positive().default(5),
+    // API-FOOTBALL (api-football.com) v3
+    API_FOOTBALL_KEY: z.string().optional().default(""),
+    API_FOOTBALL_BASE_URL: z.string().optional().default("https://v3.football.api-sports.io"),
+    API_FOOTBALL_TIMEOUT_MS: z.coerce.number().int().positive().default(15000),
+    API_FOOTBALL_CACHE_TTL_MS: z.coerce.number().int().positive().default(10 * 60 * 1000),
+    // Email (SendGrid)
+    SENDGRID_API_KEY: z.string().optional().default(""),
+    EMAIL_FROM: z.string().optional().default(""),
+    EMAIL_REPLY_TO: z.string().optional().default(""),
+});
+export const env = EnvSchema.parse(process.env);

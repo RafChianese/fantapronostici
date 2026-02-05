@@ -1,0 +1,16 @@
+version: "3.9"
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: totomondiale_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: totomondiale
+      POSTGRES_PASSWORD: totomondiale
+      POSTGRES_DB: totomondiale
+    ports:
+      - "5433:5432"
+    volumes:
+      - totomondiale_pgdata:/var/lib/postgresql/data
+volumes:
+  totomondiale_pgdata:
