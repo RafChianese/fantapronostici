@@ -125,6 +125,8 @@ export async function runSyncOnce() {
     const awayName = (m.awayTeam?.shortName || m.awayTeam?.name || "").trim() || "Away";
     const homeLogo = m.homeTeam?.crest ?? null;
     const awayLogo = m.awayTeam?.crest ?? null;
+    console.log(`HomeLogo---->`, homeLogo);
+    console.log(`HomeName---->`, homeName);
 
     const existing = await prisma.match.findFirst({ where: { source: "FOOTBALL_DATA", footballDataMatchId: m.id } });
     if (existing) {
