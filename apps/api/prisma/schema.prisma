@@ -126,6 +126,8 @@ model Match {
   matchday    Int           @default(1)
   homeTeam    String
   awayTeam    String
+  homeLogo    String?
+  awayLogo    String?
   kickoffAt   DateTime
   status      MatchStatus   @default(NOT_STARTED)
   homeScore   Int?

@@ -31,8 +31,8 @@ export type ApiFootballFixtureRow = {
     round?: string;
   };
   teams: {
-    home: { id: number; name: string };
-    away: { id: number; name: string };
+    home: { id: number; name: string; logo?: string };
+    away: { id: number; name: string; logo?: string };
   };
   goals: { home: number | null; away: number | null };
 };
