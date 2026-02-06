@@ -18,8 +18,9 @@ export type FootballDataMatch = {
   matchday?: number | null;
   stage?: string;
   group?: string;
-  homeTeam: { name: string };
-  awayTeam: { name: string };
+  // football-data v4 includes crest + shortName in team objects
+  homeTeam: { name: string; shortName?: string; crest?: string };
+  awayTeam: { name: string; shortName?: string; crest?: string };
   score: { fullTime: { home: number | null; away: number | null } };
 };
 

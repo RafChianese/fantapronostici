@@ -136,6 +136,10 @@ footballDataAdminRouter.post("/football-data/import-fixtures", requireAuth, requ
   ]);
 
   for (const m of matches) {
+    const homeName = (m.homeTeam?.shortName || m.homeTeam?.name || "").trim() || "Home";
+    const awayName = (m.awayTeam?.shortName || m.awayTeam?.name || "").trim() || "Away";
+    const homeLogo = m.homeTeam?.crest ?? null;
+    const awayLogo = m.awayTeam?.crest ?? null;
     await prisma.match.create({
       data: {
         externalId: `fd:${m.id}`,
@@ -144,8 +148,10 @@ footballDataAdminRouter.post("/football-data/import-fixtures", requireAuth, requ
         footballDataSeason: cfg.season ?? null,
         group: (cfg.competitionCode || "COMP").slice(0, 20),
         matchday: Number(m.matchday || 1),
-        homeTeam: m.homeTeam?.name,
-        awayTeam: m.awayTeam?.name,
+        homeTeam: homeName,
+        awayTeam: awayName,
+        homeLogo,
+        awayLogo,
         kickoffAt: new Date(m.utcDate),
         status: mapFootballDataStatus(m.status) as any,
         homeScore: m.score?.fullTime?.home,

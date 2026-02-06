@@ -53,8 +53,10 @@ export async function runSyncOnce() {
             matchday,
             homeTeam: row.teams.home.name,
             awayTeam: row.teams.away.name,
-            homeLogo: (row as any).teams?.home?.crest ?? null,
-            awayLogo: (row as any).teams?.away?.crest ?? null,
+            homeLogo: (row as any).teams?.home?.logo ?? null,
+            awayLogo: (row as any).teams?.away?.logo ?? null,
+            homeLogo: (row as any).teams?.home?.logo ?? null,
+            awayLogo: (row as any).teams?.away?.logo ?? null,
             kickoffAt,
             status,
             homeScore,
@@ -75,8 +77,10 @@ export async function runSyncOnce() {
             matchday,
             homeTeam: row.teams.home.name,
             awayTeam: row.teams.away.name,
-            homeLogo: (row as any).teams?.home?.crest ?? null,
-            awayLogo: (row as any).teams?.away?.crest ?? null,
+            homeLogo: (row as any).teams?.home?.logo ?? null,
+            awayLogo: (row as any).teams?.away?.logo ?? null,
+            homeLogo: (row as any).teams?.home?.logo ?? null,
+            awayLogo: (row as any).teams?.away?.logo ?? null,
             kickoffAt,
             status,
             homeScore,
@@ -115,14 +119,23 @@ export async function runSyncOnce() {
     const homeScore = m.score?.fullTime?.home ?? null;
     const awayScore = m.score?.fullTime?.away ?? null;
 
+    // football-data v4 provides `shortName` and `crest` for teams.
+    // We persist shortName as the display name for a more compact UI.
+    const homeName = (m.homeTeam?.shortName || m.homeTeam?.name || "").trim() || "Home";
+    const awayName = (m.awayTeam?.shortName || m.awayTeam?.name || "").trim() || "Away";
+    const homeLogo = m.homeTeam?.crest ?? null;
+    const awayLogo = m.awayTeam?.crest ?? null;
+
     const existing = await prisma.match.findFirst({ where: { source: "FOOTBALL_DATA", footballDataMatchId: m.id } });
     if (existing) {
       const updated = await prisma.match.update({
         where: { id: existing.id },
         data: {
           matchday,
-          homeTeam: m.homeTeam.name,
-          awayTeam: m.awayTeam.name,
+          homeTeam: homeName,
+          awayTeam: awayName,
+          homeLogo,
+          awayLogo,
           kickoffAt,
           status,
           homeScore,
@@ -138,8 +151,10 @@ export async function runSyncOnce() {
           externalId: `fd:${m.id}`,
           group: competitionCode.slice(0, 20),
           matchday,
-          homeTeam: m.homeTeam.name,
-          awayTeam: m.awayTeam.name,
+          homeTeam: homeName,
+          awayTeam: awayName,
+          homeLogo,
+          awayLogo,
           kickoffAt,
           status,
           homeScore,
