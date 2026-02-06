@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
-import { Alert, Badge, Button, Card, CardContent, CardHeader, Input, Spinner } from "../components/ui";
+import { useLoading } from "../lib/loading";
+import { Alert, Badge, Button, Card, CardContent, CardHeader, Input } from "../components/ui";
 import { Countdown } from "../components/Countdown";
 
 type Match = {
@@ -47,6 +48,7 @@ function buildBreakdown(p: PredictionState, underOverEnabled: boolean) {
 
 export default function DashboardPage() {
   const { activeLeagueId } = useAuth();
+  const { show, hide } = useLoading();
   const [matches, setMatches] = useState<Match[]>([]);
   const [preds, setPreds] = useState<Record<string, PredictionState>>({});
   const [config, setConfig] = useState<any>(null);
@@ -74,6 +76,7 @@ export default function DashboardPage() {
     let cancelled = false;
     (async () => {
       try {
+        show();
         setLoading(true);
         const [m, p, c] = await Promise.all([api.matches(), api.myPredictions(), api.publicConfig()]);
         if (cancelled) return;
@@ -86,6 +89,7 @@ export default function DashboardPage() {
         setToast({ tone: "danger", msg: e.message });
       } finally {
         if (!cancelled) setLoading(false);
+        hide();
       }
     })();
     return () => { cancelled = true; };
@@ -131,21 +135,16 @@ export default function DashboardPage() {
 
   const dirtyCount = useMemo(() => 0, [preds]); // simple UI: we always allow saving
 
-  if (loading) {
-    return <div className="flex items-center gap-2 text-sm text-slate-600"><Spinner /> Caricamento…</div>;
-  }
+  if (loading) return null;
 
 
-if (!config || !config.lock) {
-  return (
-    <div className="space-y-4">
-      {toast ? <Alert tone={toast.tone}>{toast.msg}</Alert> : null}
-      <div className="flex items-center gap-2 text-sm text-slate-600">
-        <Spinner /> Caricamento configurazione lega…
+  if (!config || !config.lock) {
+    return (
+      <div className="space-y-4">
+        {toast ? <Alert tone={toast.tone}>{toast.msg}</Alert> : null}
       </div>
-    </div>
-  );
-}
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -159,8 +158,8 @@ if (!config || !config.lock) {
           subtitle="Inserisci un pronostico (risultato esatto). Puoi modificare finché la finestra è aperta."
           right={
             config?.lock ? (
-              <div className="w-full flex items-stretch gap-3 sm:items-center sm:justify-end">
-                <div className={`w-full rounded-2xl border px-4 py-3 ${isLocked ? "border-rose-200 bg-rose-50" : "border-emerald-200 bg-emerald-50"}`}>
+              <div className="flex items-center gap-3">
+                <div className={`rounded-2xl border px-3 py-2 ${isLocked ? "border-rose-200 bg-rose-50" : "border-emerald-200 bg-emerald-50"}`}>
                   <Countdown
                     lockUntilIso={config?.lock?.lockUntil ? new Date(config?.lock?.lockUntil).toISOString() : new Date().toISOString()}
                     nowIso={new Date().toISOString()}

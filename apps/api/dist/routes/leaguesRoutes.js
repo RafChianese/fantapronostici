@@ -35,22 +35,35 @@ leaguesRouter.get("/mine", requireAuth, async (req, res) => {
 leaguesRouter.post("/", requireAuth, async (req, res) => {
     const { name } = CreateLeagueSchema.parse(req.body);
     const code = await uniqueCode();
-    const league = await prisma.league.create({
-        data: {
-            name,
-            code,
-            rules: { create: {} },
-            settings: { create: { lockUntil: new Date(Date.now() + 7 * 24 * 3600 * 1000) } },
-            members: {
-                create: {
-                    userId: req.user.id,
-                    role: "ADMIN",
-                    status: "APPROVED",
+    let league;
+    try {
+        league = await prisma.league.create({
+            data: {
+                name,
+                code,
+                rules: { create: {} },
+                settings: { create: { lockUntil: new Date(Date.now() + 7 * 24 * 3600 * 1000) } },
+                members: {
+                    create: {
+                        userId: req.user.id,
+                        role: "ADMIN",
+                        status: "APPROVED",
+                    },
                 },
             },
-        },
-        include: { members: true, rules: true, settings: true },
-    });
+            include: { members: true, rules: true, settings: true },
+        });
+    }
+    catch (e) {
+        if (e?.code === "P2002") {
+            const target = Array.isArray(e?.meta?.target) ? e.meta.target.join(",") : String(e?.meta?.target || "");
+            if (target.includes("name"))
+                return res.status(400).json({ message: "Esiste già una lega con questo nome" });
+            if (target.includes("code"))
+                return res.status(400).json({ message: "Errore: codice lega duplicato. Riprova." });
+        }
+        throw e;
+    }
     await ensureLeagueConfig(league.id);
     return res.status(201).json({ league });
 });

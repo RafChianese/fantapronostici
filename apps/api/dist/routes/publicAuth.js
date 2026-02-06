@@ -33,8 +33,27 @@ authRouter.post("/register", async (req, res) => {
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing)
         return res.status(400).json({ message: "Email già registrata" });
+    // Enforce unique display name so league member display names can't collide.
+    const existingName = await prisma.user.findUnique({ where: { displayName } });
+    if (existingName)
+        return res.status(400).json({ message: "Nome visualizzato già in uso" });
     const passwordHash = await bcrypt.hash(password, 10);
-    const user = await prisma.user.create({ data: { email, displayName, passwordHash, globalRole: "USER", isActive: true } });
+    let user;
+    try {
+        user = await prisma.user.create({ data: { email, displayName, passwordHash, globalRole: "USER", isActive: true } });
+    }
+    catch (e) {
+        // Prisma unique constraint (race condition safe)
+        if (e?.code === "P2002") {
+            const target = Array.isArray(e?.meta?.target) ? e.meta.target.join(",") : String(e?.meta?.target || "");
+            if (target.includes("email"))
+                return res.status(400).json({ message: "Email già registrata" });
+            if (target.includes("displayName"))
+                return res.status(400).json({ message: "Nome visualizzato già in uso" });
+            return res.status(400).json({ message: "Dati già presenti" });
+        }
+        throw e;
+    }
     const token = signToken({ sub: user.id });
     return res.status(201).json({ token, user: { id: user.id, email: user.email, displayName: user.displayName, globalRole: user.globalRole } });
 });

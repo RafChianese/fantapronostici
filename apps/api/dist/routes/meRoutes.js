@@ -26,11 +26,22 @@ const UpdateProfileSchema = z.object({
 });
 meRouter.put("/profile", async (req, res) => {
     const { displayName } = UpdateProfileSchema.parse(req.body);
-    const user = await prisma.user.update({
-        where: { id: req.user.id },
-        data: { displayName },
-        select: { id: true, email: true, displayName: true, globalRole: true, isActive: true, createdAt: true },
-    });
+    let user;
+    try {
+        user = await prisma.user.update({
+            where: { id: req.user.id },
+            data: { displayName },
+            select: { id: true, email: true, displayName: true, globalRole: true, isActive: true, createdAt: true },
+        });
+    }
+    catch (e) {
+        if (e?.code === "P2002") {
+            const target = Array.isArray(e?.meta?.target) ? e.meta.target.join(",") : String(e?.meta?.target || "");
+            if (target.includes("displayName"))
+                return res.status(400).json({ message: "Nome visualizzato già in uso" });
+        }
+        throw e;
+    }
     res.json({ user });
 });
 meRouter.get("/lock", async (req, res) => {

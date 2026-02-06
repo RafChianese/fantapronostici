@@ -272,12 +272,7 @@ superRouter.patch("/leagues/:leagueId/members/:memberId", async (req: AuthedRequ
 
   const updated = await prisma.leagueMember.update({
     where: { id: member.id },
-    data: {
-      ...(status ? { status } : {}),
-      ...(role ? { role } : {}),
-      // If someone is promoted to ADMIN, ensure they are also APPROVED.
-      ...(!status && role === "ADMIN" ? { status: "APPROVED" } : {}),
-    },
+    data: { ...(status ? { status } : {}), ...(role ? { role } : {}) },
   });
   res.json({ member: updated });
 });

@@ -47,12 +47,12 @@ export function Card({ children, className = "" }: { children: React.ReactNode; 
 
 export function CardHeader({ title, subtitle, right }: { title: string; subtitle?: string; right?: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-3 border-b border-slate-100 p-5 sm:flex-row sm:items-start sm:justify-between">
+    <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-5">
       <div>
         <div className="text-lg font-semibold">{title}</div>
         {subtitle ? <div className="mt-1 text-sm text-slate-600">{subtitle}</div> : null}
       </div>
-      {right ? <div className="w-full sm:w-auto sm:flex sm:justify-end">{right}</div> : null}
+      {right}
     </div>
   );
 }

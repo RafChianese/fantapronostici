@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../lib/api";
-import { Badge, Button, Card, CardContent, CardHeader, Spinner } from "../components/ui";
+import { useLoading } from "../lib/loading";
+import { Badge, Button, Card, CardContent, CardHeader } from "../components/ui";
 import { useAuth } from "../lib/auth";
 
 type Row = {
@@ -17,6 +18,7 @@ type Row = {
 
 export default function LeaderboardPage() {
   const { activeLeagueId } = useAuth();
+  const { show, hide } = useLoading();
   const [sortKey, setSortKey] = useState<"points" | "exact" | "outcome" | "sumgoals">("points");
   const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
 
@@ -28,6 +30,7 @@ export default function LeaderboardPage() {
 
   useEffect(() => {
     let cancelled = false;
+    show();
     setLoading(true);
     api.leaderboard(sortParam)
       .then((r) => {
@@ -36,7 +39,10 @@ export default function LeaderboardPage() {
         setLeagueName(r?.league?.name ? String(r.league.name) : "");
         setFeatures({ underOver25: !!r?.features?.underOver25, matchdayAwards: !!r?.features?.matchdayAwards });
       })
-      .finally(() => !cancelled && setLoading(false));
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+        hide();
+      });
     return () => { cancelled = true; };
   }, [sortKey, sortDir, activeLeagueId]);
 
@@ -87,9 +93,7 @@ export default function LeaderboardPage() {
         }
       />
       <CardContent>
-        {loading ? (
-          <div className="flex items-center gap-2 text-sm text-slate-600"><Spinner /> Caricamento…</div>
-        ) : (
+        {loading ? null : (
           <div className="divide-y divide-slate-100">
             {rows.map((r, idx) => (
               <div key={r.userId} className="py-3">

@@ -248,11 +248,7 @@ superRouter.patch("/leagues/:leagueId/members/:memberId", async (req, res) => {
         return res.status(404).json({ message: "Not found" });
     const updated = await prisma.leagueMember.update({
         where: { id: member.id },
-        data: {
-        ...(status ? { status } : {}),
-        ...(role ? { role } : {}),
-        ...(!status && role === "ADMIN" ? { status: "APPROVED" } : {})
-      },
+        data: { ...(status ? { status } : {}), ...(role ? { role } : {}) },
     });
     res.json({ member: updated });
 });

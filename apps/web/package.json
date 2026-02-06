@@ -1,7 +1,7 @@
 {
   "name": "@totomondiale/web",
   "private": true,
-  "version": "6.6.9",
+  "version": "6.6.8",
   "type": "module",
   "scripts": {
     "dev": "vite",

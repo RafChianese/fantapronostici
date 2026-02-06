@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../lib/api";
-import { Badge, Card, CardContent, CardHeader, Spinner } from "../components/ui";
+import { useLoading } from "../lib/loading";
+import { Badge, Card, CardContent, CardHeader } from "../components/ui";
 import { useAuth } from "../lib/auth";
 import { showNativeRewardedAd } from "../lib/nativeAds";
 
 export default function UserSummaryPage() {
   const { id } = useParams();
   const { activeLeagueId } = useAuth();
+  const { show, hide } = useLoading();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -19,6 +21,7 @@ export default function UserSummaryPage() {
   const [demoAdsEnabled, setDemoAdsEnabled] = useState(true);
 
   const refetch = () => {
+    show();
     setLoading(true);
     setError(null);
     setAdRequired(false);
@@ -37,7 +40,10 @@ export default function UserSummaryPage() {
           setError(e?.message || "Errore nel caricamento del dettaglio");
         }
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        hide();
+      });
   };
 
   useEffect(() => {
@@ -140,7 +146,7 @@ export default function UserSummaryPage() {
     };
   }, [showAd, demoAdsEnabled]);
 
-  if (loading) return <div className="flex items-center gap-2 text-sm text-slate-600"><Spinner /> Caricamento…</div>;
+  if (loading) return null;
 
   if (adRequired) {
     return (

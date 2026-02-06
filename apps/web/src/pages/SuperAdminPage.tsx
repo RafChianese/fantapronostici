@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../lib/api";
-import { Alert, Button, Card, CardContent, CardHeader, Spinner, Badge, Input } from "../components/ui";
+import { useLoading } from "../lib/loading";
+import { Alert, Button, Card, CardContent, CardHeader, Badge, Input } from "../components/ui";
 
 export default function SuperAdminPage() {
+  const { show, hide } = useLoading();
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [leagues, setLeagues] = useState<any[]>([]);
@@ -14,6 +16,7 @@ export default function SuperAdminPage() {
   const [footballData, setFootballData] = useState<any | null>(null);
 
   async function load() {
+    show();
     setLoading(true);
     setErr("");
     try {
@@ -31,6 +34,7 @@ export default function SuperAdminPage() {
       setErr(e?.message || "Errore");
     } finally {
       setLoading(false);
+      hide();
     }
   }
 
@@ -49,9 +53,7 @@ export default function SuperAdminPage() {
         <CardHeader title="Monetizzazione (Rewarded Ads)" subtitle="Configurazione globale: solo SuperAdmin" />
         <CardContent>
           {err ? <Alert tone="danger">{err}</Alert> : null}
-          {!monetization ? (
-            <div className="text-sm text-slate-600">Caricamento configurazione...</div>
-          ) : (
+          {!monetization ? null : (
             <MonetizationPanel
               config={monetization}
               stats={stats}
@@ -74,13 +76,21 @@ export default function SuperAdminPage() {
       <Card className="md:col-span-2">
         <CardHeader title="football-data.org" subtitle="Workflow: seleziona competizione → importa partite → calcola giornata" />
         <CardContent>
-          {!footballData ? <div className="text-sm text-slate-600">Caricamento...</div> : <FootballDataPanel selected={footballData} onChanged={async () => { const r = await api.adminFootballDataSelected(); setFootballData(r.selected); }} />}
+          {!footballData ? null : (
+            <FootballDataPanel
+              selected={footballData}
+              onChanged={async () => {
+                const r = await api.adminFootballDataSelected();
+                setFootballData(r.selected);
+              }}
+            />
+          )}
         </CardContent>
       </Card>
 
       <Card className="md:col-span-2">
         <CardHeader title="Calcola giornata" subtitle="Sincronizza risultati reali da football-data.org e ricalcola punteggi/badge" />
-        <CardContent>{!footballData ? <div className="text-sm text-slate-600">Caricamento...</div> : <FootballDataSyncPanel />}</CardContent>
+        <CardContent>{!footballData ? null : <FootballDataSyncPanel />}</CardContent>
       </Card>
       <Card>
         <CardHeader title="Dashboard Superadmin - Leghe" subtitle="Gestisci leghe e admin" />

@@ -1,6 +1,8 @@
 import React from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./lib/auth";
+import { LoadingProvider } from "./lib/loading";
+import { FullScreenLoaderOverlay } from "./components/FullScreenLoaderOverlay";
 import { Layout } from "./components/Layout";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
@@ -17,7 +19,7 @@ import SuperAdminPage from "./pages/SuperAdminPage";
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const loc = useLocation();
-  if (loading) return <div className="text-sm text-slate-600">Caricamento…</div>;
+  if (loading) return <FullScreenLoaderOverlay label="Caricamento…" />;
   // Default landing for unauthenticated users is Login.
   if (!user) return <Navigate to="/login" state={{ from: loc.pathname }} replace />;
   return <>{children}</>;
@@ -26,7 +28,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 function RequireLeague({ children }: { children: React.ReactNode }) {
   const { user, loading, memberships, activeLeagueId } = useAuth();
   const loc = useLocation();
-  if (loading) return <div className="text-sm text-slate-600">Caricamento…</div>;
+  if (loading) return <FullScreenLoaderOverlay label="Caricamento…" />;
   if (!user) return <Navigate to="/login" state={{ from: loc.pathname }} replace />;
 
   const approved = memberships.filter((m) => m.status === "APPROVED");
@@ -38,7 +40,7 @@ function RequireLeague({ children }: { children: React.ReactNode }) {
 function RequireLeagueAdmin({ children }: { children: React.ReactNode }) {
   const { user, loading, memberships, activeLeagueId } = useAuth();
   const loc = useLocation();
-  if (loading) return <div className="text-sm text-slate-600">Caricamento…</div>;
+  if (loading) return <FullScreenLoaderOverlay label="Caricamento…" />;
   if (!user) return <Navigate to="/login" state={{ from: loc.pathname }} replace />;
 
   if (user.globalRole === "SUPER_ADMIN") return <>{children}</>;
@@ -51,7 +53,7 @@ function RequireLeagueAdmin({ children }: { children: React.ReactNode }) {
 function RequireSuperAdmin({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const loc = useLocation();
-  if (loading) return <div className="text-sm text-slate-600">Caricamento…</div>;
+  if (loading) return <FullScreenLoaderOverlay label="Caricamento…" />;
   if (!user) return <Navigate to="/login" state={{ from: loc.pathname }} replace />;
   if (user.globalRole !== "SUPER_ADMIN") return <Navigate to="/" replace />;
   return <>{children}</>;
@@ -60,7 +62,8 @@ function RequireSuperAdmin({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <AuthProvider>
-      <Layout>
+      <LoadingProvider>
+        <Layout>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
@@ -151,8 +154,9 @@ export default function App() {
           />
 
           <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Layout>
+          </Routes>
+        </Layout>
+      </LoadingProvider>
     </AuthProvider>
   );
 }

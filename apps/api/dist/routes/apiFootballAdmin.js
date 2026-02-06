@@ -7,9 +7,10 @@ import { env } from "../lib/env.js";
 import { listLeagues, fetchFixtures, mapApiFootballStatus, computeMatchday, getStatus } from "../services/apiFootball.js";
 import { recalcAllScoresForLeague } from "../lib/scoring.js";
 export const apiFootballAdminRouter = Router();
-apiFootballAdminRouter.use(requireAuth, requireSuperAdmin);
+// NOTE: Do NOT apply superadmin middleware globally on this router,
+// otherwise it will intercept unrelated /api/admin/* routes (league-admin ones).
 // --- Leagues search/list ---
-apiFootballAdminRouter.get("/api-football/leagues", async (req, res) => {
+apiFootballAdminRouter.get("/api-football/leagues", requireAuth, requireSuperAdmin, async (req, res) => {
     const season = req.query.season ? Number(req.query.season) : undefined;
     const search = req.query.search ? String(req.query.search).trim() : undefined;
     const country = req.query.country ? String(req.query.country).trim() : undefined;
@@ -20,7 +21,7 @@ apiFootballAdminRouter.get("/api-football/leagues", async (req, res) => {
     res.json({ leagues });
 });
 // --- Status / quota ---
-apiFootballAdminRouter.get("/api-football/status", async (_req, res) => {
+apiFootballAdminRouter.get("/api-football/status", requireAuth, requireSuperAdmin, async (_req, res) => {
     if (!env.API_FOOTBALL_KEY?.trim()) {
         return res.status(400).json({ message: "API_FOOTBALL_KEY mancante in apps/api/.env" });
     }
@@ -38,7 +39,7 @@ const SelectSchema = z.object({
     apiLeagueId: z.number().int().positive(),
     season: z.number().int().min(2000).max(2100),
 });
-apiFootballAdminRouter.post("/settings/api-football/select", async (req, res) => {
+apiFootballAdminRouter.post("/settings/api-football/select", requireAuth, requireSuperAdmin, async (req, res) => {
     await ensureMonetizationConfig();
     const body = SelectSchema.parse(req.body);
     const existing = await prisma.superSetting.findFirst({ orderBy: { createdAt: "asc" } });
@@ -60,7 +61,7 @@ apiFootballAdminRouter.post("/settings/api-football/select", async (req, res) =>
         },
     });
 });
-apiFootballAdminRouter.get("/settings/api-football/selected", async (_req, res) => {
+apiFootballAdminRouter.get("/settings/api-football/selected", requireAuth, requireSuperAdmin, async (_req, res) => {
     await ensureMonetizationConfig();
     const row = await prisma.superSetting.findFirst({ orderBy: { createdAt: "asc" } });
     res.json({
@@ -90,7 +91,7 @@ async function getSelectedOr400(res) {
     return { leagueId, season, tz };
 }
 // --- Import fixtures ---
-apiFootballAdminRouter.post("/api-football/import-fixtures", async (_req, res) => {
+apiFootballAdminRouter.post("/api-football/import-fixtures", requireAuth, requireSuperAdmin, async (_req, res) => {
     const cfg = await getSelectedOr400(res);
     if (!cfg)
         return;
@@ -134,7 +135,7 @@ apiFootballAdminRouter.post("/api-football/import-fixtures", async (_req, res) =
     res.json({ ok: true, imported: fixtures.length });
 });
 // --- Sync results ---
-apiFootballAdminRouter.post("/api-football/sync-results", async (req, res) => {
+apiFootballAdminRouter.post("/api-football/sync-results", requireAuth, requireSuperAdmin, async (req, res) => {
     const cfg = await getSelectedOr400(res);
     if (!cfg)
         return;

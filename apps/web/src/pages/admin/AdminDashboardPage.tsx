@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../../lib/api";
+import { useLoading } from "../../lib/loading";
 import { Alert, Badge, Button, Card, CardContent, CardHeader, Input, Spinner } from "../../components/ui";
 
 type Tab = "members" | "rules";
@@ -29,7 +30,7 @@ export default function AdminDashboardPage() {
       <Card>
         <CardHeader title="Dashboard amministratore di lega" subtitle="Gestisci partecipanti e regole" />
         <CardContent>
-          <div className="flex flex-wrap gap-2">
+          <div data-tour="admin-tabs" className="flex flex-wrap gap-2">
             <Button variant={tab === "members" ? "primary" : "ghost"} onClick={() => setTab("members")}>
               Partecipanti
             </Button>
@@ -47,11 +48,13 @@ export default function AdminDashboardPage() {
 }
 
 function MembersTab() {
+  const { show, hide } = useLoading();
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [items, setItems] = useState<any[]>([]);
 
   async function load() {
+    show();
     setLoading(true);
     setErr("");
     try {
@@ -61,6 +64,7 @@ function MembersTab() {
       setErr(e?.message || "Errore");
     } finally {
       setLoading(false);
+      hide();
     }
   }
 
@@ -68,7 +72,7 @@ function MembersTab() {
     load();
   }, []);
 
-  if (loading) return <Spinner />;
+  if (loading) return null;
 
   return (
     <Card>
@@ -149,6 +153,7 @@ function MembersTab() {
 }
 
 function RulesTab() {
+  const { show, hide } = useLoading();
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [ok, setOk] = useState("");
@@ -156,6 +161,7 @@ function RulesTab() {
   const [settings, setSettings] = useState<any>(null);
 
   async function load() {
+    show();
     setLoading(true);
     setErr("");
     try {
@@ -166,6 +172,7 @@ function RulesTab() {
       setErr(e?.message || "Errore");
     } finally {
       setLoading(false);
+      hide();
     }
   }
 
@@ -173,7 +180,7 @@ function RulesTab() {
     load();
   }, []);
 
-  if (loading) return <Spinner />;
+  if (loading) return null;
 
   return (
     <div className="grid gap-6 md:grid-cols-2">
@@ -257,6 +264,7 @@ function RulesTab() {
 
               <Button
                 onClick={async () => {
+                  show();
                   try {
                     setErr("");
                     setOk("");
@@ -275,6 +283,8 @@ function RulesTab() {
                     setOk("Regole salvate. Punteggi ricalcolati.");
                   } catch (e: any) {
                     setErr(e?.message || "Errore");
+                  } finally {
+                    hide();
                   }
                 }}
               >
@@ -313,6 +323,7 @@ function RulesTab() {
               <div className="flex flex-wrap gap-2">
                 <Button
                   onClick={async () => {
+                    show();
                     try {
                       setErr("");
                       setOk("");
@@ -326,6 +337,8 @@ function RulesTab() {
                       setOk("Impostazioni lock salvate.");
                     } catch (e: any) {
                       setErr(e?.message || "Errore");
+                    } finally {
+                      hide();
                     }
                   }}
                 >
@@ -336,6 +349,7 @@ function RulesTab() {
                   <Button
                     variant="ghost"
                     onClick={async () => {
+                      show();
                       try {
                         setErr("");
                         setOk("");
@@ -344,6 +358,8 @@ function RulesTab() {
                         setOk("Lock immediato attivato.");
                       } catch (e: any) {
                         setErr(e?.message || "Errore");
+                      } finally {
+                        hide();
                       }
                     }}
                   >
@@ -353,6 +369,7 @@ function RulesTab() {
                   <Button
                     variant="ghost"
                     onClick={async () => {
+                      show();
                       try {
                         setErr("");
                         setOk("");
@@ -367,6 +384,8 @@ function RulesTab() {
                         setOk("Lock rimosso.");
                       } catch (e: any) {
                         setErr(e?.message || "Errore");
+                      } finally {
+                        hide();
                       }
                     }}
                   >
@@ -407,6 +426,7 @@ function RulesTab() {
 
               <Button
                 onClick={async () => {
+                  show();
                   try {
                     setErr("");
                     setOk("");
@@ -420,6 +440,8 @@ function RulesTab() {
                     setOk("Criteri classifica salvati.");
                   } catch (e: any) {
                     setErr(e?.message || "Errore");
+                  } finally {
+                    hide();
                   }
                 }}
               >

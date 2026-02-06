@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { Alert, Button, Card, CardContent, CardHeader, Input } from "../components/ui";
-import { useLocation } from "react-router-dom";
 
 export default function OnboardingPage() {
   const { memberships, refreshMe, setActiveLeague } = useAuth();
@@ -16,11 +15,9 @@ export default function OnboardingPage() {
   const [joinCode, setJoinCode] = useState("");
   const [msg, setMsg] = useState<string>("");
   const [err, setErr] = useState<string>("");
-  const location = useLocation();
-  const showCreate = location.pathname.includes("/leghe");
+  const [showCreateLeague, setShowCreateLeague] = useState(false);
 
   return (
-    <>
     <div className="space-y-6">
       <div className="max-w-2xl">
         <h1 className="text-2xl font-semibold">Entra in una lega o creane una</h1>
@@ -74,7 +71,7 @@ export default function OnboardingPage() {
         </Card>
       ) : null}
 
-      <div className="grid gap-6">
+      <div className={`grid gap-6 ${showCreateLeague ? "md:grid-cols-2" : "md:grid-cols-1"}`}>
         <Card>
           <CardHeader title="Entra in una lega" subtitle="Inserisci il codice e invia richiesta" />
           <CardContent>
@@ -99,65 +96,45 @@ export default function OnboardingPage() {
             </div>
           </CardContent>
         </Card>
-      </div>
 
-      {/* Floating action button */}
-      <button
-        type="button"
-        onClick={() => setShowCreate(true)}
-        className="fixed bottom-24 left-1/2 z-30 flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full bg-[#2EC4B6] text-white shadow-lg active:scale-95"
-        aria-label="Crea la tua lega"
-      >
-        <span className="text-2xl leading-none">+</span>
-      </button>
-      <div className="fixed bottom-16 left-1/2 z-30 -translate-x-1/2 text-xs font-medium text-slate-600">
-        Crea la tua lega
-      </div>
-
-      {/* Create league modal */}
-      {showCreate ? (
-        <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 p-4" onClick={() => setShowCreate(false)}>
-          <div className="w-full max-w-lg rounded-3xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-3 flex items-start justify-between gap-3">
-              <div>
-                <div className="text-lg font-semibold">Crea la tua lega</div>
-                <div className="mt-1 text-sm text-slate-600">Diventi admin della nuova lega.</div>
+        {showCreateLeague ? (
+          <Card>
+            <CardHeader title="Crea una lega" subtitle="Diventi admin della tua nuova lega" />
+            <CardContent>
+              <div className="space-y-3">
+                <Input label="Nome lega" value={leagueName} onChange={(e) => setLeagueName(e.target.value)} placeholder="Es. Amici del Bar" />
+                <Button
+                  className="w-full"
+                  onClick={async () => {
+                    try {
+                      setErr(""); setMsg("");
+                      const r = await api.createLeague(leagueName.trim());
+                      await refreshMe();
+                      setActiveLeague(r.league.id);
+                      setMsg(`Lega creata! Codice: ${r.league.code}`);
+                      nav("/");
+                    } catch (e: any) {
+                      setErr(e?.message || "Errore");
+                    }
+                  }}
+                >
+                  Crea lega
+                </Button>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowCreate(false)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700"
-                aria-label="Chiudi"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              <Input label="Nome lega" value={leagueName} onChange={(e) => setLeagueName(e.target.value)} placeholder="Es. Amici del Bar" />
-              <Button
-                className="w-full"
-                onClick={async () => {
-                  try {
-                    setErr(""); setMsg("");
-                    const r = await api.createLeague(leagueName.trim());
-                    await refreshMe();
-                    setActiveLeague(r.league.id);
-                    setShowCreate(false);
-                    setMsg(`Lega creata! Codice: ${r.league.code}`);
-                    nav("/");
-                  } catch (e: any) {
-                    setErr(e?.message || "Errore");
-                  }
-                }}
-              >
-                Crea lega
-              </Button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+            </CardContent>
+          </Card>
+        ) : null}
       </div>
-    </>
+
+      <div className="pt-2">
+        <Button
+          variant={showCreateLeague ? "ghost" : "primary"}
+          className="w-full"
+          onClick={() => setShowCreateLeague((v) => !v)}
+        >
+          {showCreateLeague ? "Nascondi creazione lega" : "Crea la tua lega"}
+        </Button>
+      </div>
+    </div>
   );
 }

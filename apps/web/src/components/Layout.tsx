@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
+import { useLoading } from "../lib/loading";
+import { FullScreenLoaderOverlay } from "./FullScreenLoaderOverlay";
+import { GuidedTour, TourStep } from "./GuidedTour";
 import { Button, Spinner } from "./ui";
 
 function Icon({
@@ -71,15 +74,18 @@ function NavItem({
   to,
   children,
   onClick,
+  tourId,
 }: {
   to: string;
   children: React.ReactNode;
   onClick?: () => void;
+  tourId?: string;
 }) {
   return (
     <NavLink
       to={to}
       onClick={onClick}
+      data-tour={tourId}
       className={({ isActive }) =>
         `block w-full rounded-xl px-3 py-2 text-left text-sm font-medium ${
           isActive ? "bg-[#2EC4B6] text-white" : "text-slate-700 hover:bg-slate-100"
@@ -93,24 +99,10 @@ function NavItem({
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { user, memberships, activeLeagueId, setActiveLeague, logout } = useAuth();
+  const { isLoading } = useLoading();
   const nav = useNavigate();
 
   const [switchingLeague, setSwitchingLeague] = useState(false);
-
-  const [tourStep, setTourStep] = useState<number>(() => {
-    // One-time guided tour on first access (per device)
-    try {
-      return localStorage.getItem("tm_tour_done") === "1" ? -1 : 0;
-    } catch {
-      return -1;
-    }
-  });
-
-  useEffect(() => {
-    // If user logs out, don't show tour.
-    if (!user) setTourStep(-1);
-  }, [user]);
-
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -126,6 +118,98 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const mobileMainTabsVisible = !!user && !!activeMembership;
   const leagueTitle = activeMembership?.league?.name || "Fanta Pronostici";
   const inviteCode = activeMembership?.league?.code || "";
+
+  // --- Guided tutorial (versioned keys) ---
+  const userTutorialKey = "tm_tutorial_user_v1_done";
+  const adminTutorialKey = "tm_tutorial_admin_v1_done";
+  const [showTour, setShowTour] = useState<null | "user" | "admin">(null);
+
+  const userSteps: TourStep[] = useMemo(
+    () => [
+      {
+        id: "tabs",
+        target: '[data-tour="bottom-tabs"]',
+        title: "Navigazione principale",
+        body: "Qui trovi le sezioni principali: Classifica, Pronostici, Leghe e Menu.",
+      },
+      {
+        id: "predictions",
+        target: '[data-tour="tab-predictions"]',
+        title: "I miei pronostici",
+        body: "Inserisci e modifica i pronostici finché la finestra è aperta.",
+      },
+      {
+        id: "leaderboard",
+        target: '[data-tour="tab-leaderboard"]',
+        title: "Classifica",
+        body: "Controlla i punti tuoi e degli altri partecipanti.",
+      },
+      {
+        id: "leagues",
+        target: '[data-tour="tab-leagues"]',
+        title: "Leghe",
+        body: "Crea una lega o unisciti con un codice invito. Puoi anche cambiare lega se ne hai più di una.",
+      },
+      {
+        id: "invite",
+        target: '[data-tour="invite-code"]',
+        title: "Codice invito",
+        body: "Condividi questo codice per far entrare altri partecipanti nella tua lega.",
+      },
+    ],
+    []
+  );
+
+  const adminSteps: TourStep[] = useMemo(
+    () => [
+      {
+        id: "admin-link",
+        target: '[data-tour="admin-dashboard-link"]',
+        title: "Dashboard admin lega",
+        body: "Da qui gestisci la tua lega: partecipanti, regole e lock pronostici.",
+      },
+      {
+        id: "admin-tabs",
+        target: '[data-tour="admin-tabs"]',
+        title: "Partecipanti e Regole & Lock",
+        body: "• Partecipanti: approvi richieste e assegni ruoli.\n• Regole & Lock: punti e finestra di modifica dei pronostici.",
+      },
+    ],
+    []
+  );
+
+  useEffect(() => {
+    if (!user) {
+      setShowTour(null);
+      return;
+    }
+    // Start at first access after login (per versioned key).
+    const userDone = (() => {
+      try {
+        return localStorage.getItem(userTutorialKey) === "true";
+      } catch {
+        return false;
+      }
+    })();
+    const adminDone = (() => {
+      try {
+        return localStorage.getItem(adminTutorialKey) === "true";
+      } catch {
+        return false;
+      }
+    })();
+
+    if (!userDone) {
+      setShowTour("user");
+      return;
+    }
+
+    const shouldSeeAdmin = isLeagueAdmin || isSuperAdmin;
+    if (shouldSeeAdmin && !adminDone) {
+      setShowTour("admin");
+      return;
+    }
+  }, [user, isLeagueAdmin, isSuperAdmin]);
 
   async function copyInviteCode() {
     if (!inviteCode) return;
@@ -145,7 +229,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-slate-50 to-slate-100">
+    <div className="min-h-screen bg-slate-50">
       {/* Top bar */}
       <header className="sticky top-0 z-20 border-b border-slate-100 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
@@ -167,7 +251,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <div className="truncate text-base font-semibold leading-tight text-slate-900">{leagueTitle}</div>
               {inviteCode ? (
                 <div className="mt-1 flex flex-wrap items-center gap-2">
-                  <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-700">
+                  <span data-tour="invite-code" className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-700">
                     Codice invito: <span className="font-semibold">{inviteCode}</span>
                   </span>
                   <button
@@ -189,11 +273,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
           {/* Desktop nav */}
           <nav className="hidden items-center gap-2 md:flex">
-            <NavItem to="/leaderboard">Classifica</NavItem>
-            {user && activeMembership ? <NavItem to="/">I miei pronostici</NavItem> : null}
-            {user ? <NavItem to="/onboarding">Leghe</NavItem> : null}
+            <NavItem to="/leaderboard" tourId="tab-leaderboard">Classifica</NavItem>
+            {user && activeMembership ? <NavItem to="/" tourId="tab-predictions">I miei pronostici</NavItem> : null}
+            {user ? <NavItem to="/onboarding" tourId="tab-leagues">Leghe</NavItem> : null}
             {user && (isLeagueAdmin || isSuperAdmin) ? (
-              <NavItem to="/admin">Dashboard amministratore di lega</NavItem>
+              <NavItem to="/admin" tourId="admin-dashboard-link">Dashboard amministratore di lega</NavItem>
             ) : null}
             {user && isSuperAdmin ? <NavItem to="/super">Dashboard Superadmin</NavItem> : null}
           </nav>
@@ -325,9 +409,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {/* Mobile bottom nav (main sections only) */}
       {mobileMainTabsVisible ? (
         <nav className="fixed bottom-0 left-0 right-0 z-20 border-t border-slate-100 bg-white md:hidden">
-          <div className="mx-auto flex max-w-6xl items-stretch gap-2 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3">
+          <div
+            data-tour="bottom-tabs"
+            className="mx-auto flex max-w-6xl items-stretch gap-2 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3"
+          >
             <NavLink
               to="/leaderboard"
+              data-tour="tab-leaderboard"
               className={({ isActive }) =>
                 `flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-3 py-2 text-[11px] font-semibold ${
                   isActive ? "bg-[#E9FBF9] text-[#0F766E]" : "text-slate-600 hover:bg-slate-50"
@@ -343,6 +431,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </NavLink>
             <NavLink
               to="/"
+              data-tour="tab-predictions"
               className={({ isActive }) =>
                 `flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-3 py-2 text-[11px] font-semibold ${
                   isActive ? "bg-[#E9FBF9] text-[#0F766E]" : "text-slate-600 hover:bg-slate-50"
@@ -359,6 +448,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
             <NavLink
               to="/onboarding"
+              data-tour="tab-leagues"
               className={({ isActive }) =>
                 `flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-3 py-2 text-[11px] font-semibold ${
                   isActive ? "bg-[#E9FBF9] text-[#0F766E]" : "text-slate-600 hover:bg-slate-50"
@@ -372,71 +462,34 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 </>
               )}
             </NavLink>
+            <button
+              type="button"
+              data-tour="tab-menu"
+              onClick={() => setDrawerOpen(true)}
+              className="flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-3 py-2 text-[11px] font-semibold text-slate-600 hover:bg-slate-50"
+              aria-label="Apri menu"
+            >
+              <Icon name="menu" />
+              <span>Menu</span>
+            </button>
           </div>
         </nav>
       ) : null}
-    
-      {/* One-time guided tour */}
-      {tourStep >= 0 ? (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-3xl bg-white p-5 shadow-xl">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="text-lg font-semibold">Mini guida</div>
-                <div className="mt-1 text-sm text-slate-600">
-                  {tourStep === 0
-                    ? "Qui trovi il menu e puoi cambiare lega o uscire."
-                    : tourStep === 1
-                    ? "In basso hai le sezioni principali: Classifica, Pronostici e Leghe."
-                    : "Apri una giornata, inserisci i pronostici e controlla lo stato delle partite."}
-                </div>
-              </div>
-              <button
-                type="button"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700"
-                onClick={() => {
-                  try { localStorage.setItem("tm_tour_done", "1"); } catch {}
-                  setTourStep(-1);
-                }}
-                aria-label="Chiudi guida"
-              >
-                ✕
-              </button>
-            </div>
 
-            <div className="mt-4 flex items-center justify-between gap-3">
-              <button
-                type="button"
-                className="text-sm font-medium text-slate-600 hover:underline"
-                onClick={() => {
-                  try { localStorage.setItem("tm_tour_done", "1"); } catch {}
-                  setTourStep(-1);
-                }}
-              >
-                Salta
-              </button>
+      {isLoading ? <FullScreenLoaderOverlay /> : null}
 
-              <div className="flex items-center gap-2">
-                <div className="text-xs text-slate-500">{tourStep + 1}/3</div>
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center rounded-xl bg-[#2EC4B6] px-4 py-2 text-sm font-medium text-white"
-                  onClick={() => {
-                    if (tourStep >= 2) {
-                      try { localStorage.setItem("tm_tour_done", "1"); } catch {}
-                      setTourStep(-1);
-                    } else {
-                      setTourStep((v) => v + 1);
-                    }
-                  }}
-                >
-                  {tourStep >= 2 ? "Fine" : "Avanti"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
-</div>
+      <GuidedTour
+        open={showTour === "user"}
+        steps={userSteps}
+        storageKey={userTutorialKey}
+        onClose={() => setShowTour(null)}
+      />
+      <GuidedTour
+        open={showTour === "admin"}
+        steps={adminSteps}
+        storageKey={adminTutorialKey}
+        onClose={() => setShowTour(null)}
+      />
+    </div>
   );
 }

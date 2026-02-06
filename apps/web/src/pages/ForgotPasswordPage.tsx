@@ -58,6 +58,10 @@ export default function ForgotPasswordPage() {
               Torna al login
             </Link>
           </div>
+
+          <div className="text-xs text-slate-500">
+            Nota: per l'invio email in produzione configura SendGrid (SENDGRID_API_KEY e EMAIL_FROM).
+          </div>
         </CardContent>
       </Card>
     </div>

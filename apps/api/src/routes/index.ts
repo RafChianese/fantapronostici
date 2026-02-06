@@ -18,6 +18,9 @@ apiRouter.use("/leagues", leaguesRouter);
 
 // League admin (scoped by x-league-id / leagueId)
 // SuperAdmin (global) API-FOOTBALL endpoints (must come before /admin)
+// IMPORTANT: provider admin routers MUST NOT apply requireSuperAdmin as a router-level middleware,
+// otherwise they'd intercept unrelated /api/admin/* routes (league-admin ones).
+// Keep superadmin checks on a per-route basis inside those routers.
 apiRouter.use("/admin", footballDataAdminRouter);
 apiRouter.use("/admin", apiFootballAdminRouter);
 apiRouter.use("/admin", adminRouter);

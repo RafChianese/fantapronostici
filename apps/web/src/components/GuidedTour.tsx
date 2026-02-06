@@ -1,0 +1,141 @@
+import React, { useEffect, useMemo, useState } from "react";
+
+export type TourStep = {
+  id: string;
+  target?: string; // CSS selector (e.g. [data-tour="tab-leaderboard"])
+  title: string;
+  body: string;
+};
+
+function getTargetRect(selector?: string): DOMRect | null {
+  if (!selector) return null;
+  const el = document.querySelector(selector) as HTMLElement | null;
+  if (!el) return null;
+  const rect = el.getBoundingClientRect();
+  if (!rect || rect.width === 0 || rect.height === 0) return null;
+  return rect;
+}
+
+function clamp(n: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, n));
+}
+
+export function GuidedTour({
+  open,
+  steps,
+  onClose,
+  storageKey,
+}: {
+  open: boolean;
+  steps: TourStep[];
+  storageKey: string;
+  onClose: () => void;
+}) {
+  const [idx, setIdx] = useState(0);
+
+  useEffect(() => {
+    if (open) setIdx(0);
+  }, [open]);
+
+  // Recalc on resize/scroll for highlight positioning.
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    if (!open) return;
+    const onChange = () => setTick((t) => t + 1);
+    window.addEventListener("resize", onChange);
+    window.addEventListener("scroll", onChange, true);
+    return () => {
+      window.removeEventListener("resize", onChange);
+      window.removeEventListener("scroll", onChange, true);
+    };
+  }, [open]);
+
+  const step = steps[idx];
+  const rect = useMemo(() => getTargetRect(step?.target), [step?.target, tick]);
+
+  const isLast = idx === steps.length - 1;
+
+  if (!open || !steps.length) return null;
+
+  const padding = 10;
+  const highlight = rect
+    ? {
+        top: clamp(rect.top - padding, 8, window.innerHeight - 8),
+        left: clamp(rect.left - padding, 8, window.innerWidth - 8),
+        width: clamp(rect.width + padding * 2, 0, window.innerWidth - 16),
+        height: clamp(rect.height + padding * 2, 0, window.innerHeight - 16),
+      }
+    : null;
+
+  const cardStyle: React.CSSProperties = (() => {
+    if (!rect) return { maxWidth: 420 };
+    const preferredTop = rect.bottom + 16;
+    const top = preferredTop + 220 < window.innerHeight ? preferredTop : Math.max(16, rect.top - 16 - 220);
+    const left = clamp(rect.left, 16, window.innerWidth - 16 - 420);
+    return { top, left, maxWidth: 420 };
+  })();
+
+  function finish() {
+    try {
+      localStorage.setItem(storageKey, "true");
+    } catch {
+      // ignore
+    }
+    onClose();
+  }
+
+  return (
+    <div className="fixed inset-0 z-[110]" role="dialog" aria-modal="true" aria-label="Tutorial">
+      <div className="absolute inset-0 bg-black/60" />
+
+      {highlight ? (
+        <div
+          className="absolute rounded-2xl ring-4 ring-[#2EC4B6] shadow-[0_0_0_9999px_rgba(0,0,0,0.55)]"
+          style={{
+            top: highlight.top,
+            left: highlight.left,
+            width: highlight.width,
+            height: highlight.height,
+          }}
+        />
+      ) : null}
+
+      <div
+        className="absolute rounded-2xl bg-white p-5 shadow-2xl"
+        style={cardStyle}
+      >
+        <div className="text-xs font-semibold text-slate-500">Passo {idx + 1} / {steps.length}</div>
+        <div className="mt-1 text-lg font-semibold text-slate-900">{step.title}</div>
+        <div className="mt-2 text-sm text-slate-700 whitespace-pre-line">{step.body}</div>
+
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+          <button
+            type="button"
+            className="rounded-xl px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+            onClick={finish}
+          >
+            Salta
+          </button>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+              onClick={() => setIdx((i) => Math.max(0, i - 1))}
+              disabled={idx === 0}
+            >
+              Indietro
+            </button>
+            <button
+              type="button"
+              className="rounded-xl bg-[#2EC4B6] px-3 py-2 text-sm font-semibold text-white hover:opacity-90"
+              onClick={() => (isLast ? finish() : setIdx((i) => Math.min(steps.length - 1, i + 1)))}
+            >
+              {isLast ? "Fine" : "Avanti"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
