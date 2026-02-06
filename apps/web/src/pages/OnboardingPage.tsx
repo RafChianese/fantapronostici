@@ -30,7 +30,7 @@ export default function OnboardingPage() {
       {err ? <Alert tone="danger">{err}</Alert> : null}
 
       {approved.length > 0 ? (
-        <Card>
+        <Card data-tour="join-league">
           <CardHeader title="Le tue leghe" subtitle="Seleziona e vai all'app" />
           <CardContent>
             <div className="space-y-2">
@@ -98,7 +98,7 @@ export default function OnboardingPage() {
         </Card>
 
         {showCreateLeague ? (
-          <Card>
+          <Card data-tour="create-league">
             <CardHeader title="Crea una lega" subtitle="Diventi admin della tua nuova lega" />
             <CardContent>
               <div className="space-y-3">
@@ -130,6 +130,7 @@ export default function OnboardingPage() {
         <Button
           variant={showCreateLeague ? "ghost" : "primary"}
           className="w-full"
+          data-tour="toggle-create-league"
           onClick={() => setShowCreateLeague((v) => !v)}
         >
           {showCreateLeague ? "Nascondi creazione lega" : "Crea la tua lega"}

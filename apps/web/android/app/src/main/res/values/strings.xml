@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Fanta Pronostici</string>
+    <string name="title_activity_main">Fanta Pronostici</string>
+    <string name="package_name">com.fantapronostici.app</string>
+    <string name="custom_url_scheme">com.fantapronostici.app</string>
+</resources>

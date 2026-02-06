@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { useLoading } from "../lib/loading";
+import { FullScreenLoaderOverlay } from "../components/FullScreenLoaderOverlay";
 import { Alert, Button, Card, CardContent, CardHeader, Badge, Input } from "../components/ui";
 
 export default function SuperAdminPage() {
@@ -45,7 +46,7 @@ export default function SuperAdminPage() {
 
   useEffect(() => { load(); }, []);
 
-  if (loading) return <Spinner />;
+  if (loading) return <FullScreenLoaderOverlay label="Caricamento…" />;
 
   return (
     <div className="grid gap-6 md:grid-cols-2">
@@ -934,7 +935,7 @@ function ResultsSyncPanel() {
 
   useEffect(() => { load(); }, []);
 
-  if (loading) return <Spinner />;
+  if (loading) return <FullScreenLoaderOverlay label="Caricamento…" />;
 
   return (
     <div>

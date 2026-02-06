@@ -120,9 +120,28 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const inviteCode = activeMembership?.league?.code || "";
 
   // --- Guided tutorial (versioned keys) ---
+  const setupTutorialKey = "tm_tutorial_setup_v1_done";
   const userTutorialKey = "tm_tutorial_user_v1_done";
   const adminTutorialKey = "tm_tutorial_admin_v1_done";
-  const [showTour, setShowTour] = useState<null | "user" | "admin">(null);
+  const [showTour, setShowTour] = useState<null | "setup" | "user" | "admin">(null);
+
+  const setupSteps: TourStep[] = useMemo(
+    () => [
+      {
+        id: "join",
+        target: '[data-tour="join-league"]',
+        title: "Unisciti a una lega",
+        body: "Inserisci il codice invito che ti ha dato l'admin e invia la richiesta. Quando sarai approvato potrai inserire i pronostici.",
+      },
+      {
+        id: "create",
+        target: '[data-tour="toggle-create-league"]',
+        title: "Crea la tua lega",
+        body: "Se non hai un codice invito, puoi creare la tua lega. Tocca qui per aprire il form di creazione.",
+      },
+    ],
+    []
+  );
 
   const userSteps: TourStep[] = useMemo(
     () => [
@@ -183,6 +202,23 @@ export function Layout({ children }: { children: React.ReactNode }) {
       setShowTour(null);
       return;
     }
+
+    const hasApprovedLeague = approved.length > 0;
+
+    const setupDone = (() => {
+      try {
+        return localStorage.getItem(setupTutorialKey) === "true";
+      } catch {
+        return false;
+      }
+    })();
+
+    // If the user is not in any approved league yet, show the setup tour first.
+    if (!hasApprovedLeague && !setupDone) {
+      setShowTour("setup");
+      return;
+    }
+
     // Start at first access after login (per versioned key).
     const userDone = (() => {
       try {
@@ -199,7 +235,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
       }
     })();
 
-    if (!userDone) {
+    // Don't start the main navigation tour until the user is in a league.
+    if (hasApprovedLeague && !userDone) {
       setShowTour("user");
       return;
     }
@@ -209,7 +246,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       setShowTour("admin");
       return;
     }
-  }, [user, isLeagueAdmin, isSuperAdmin]);
+  }, [user, approved.length, isLeagueAdmin, isSuperAdmin]);
 
   async function copyInviteCode() {
     if (!inviteCode) return;
@@ -477,6 +514,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
       ) : null}
 
       {isLoading ? <FullScreenLoaderOverlay /> : null}
+
+      <GuidedTour
+        open={showTour === "setup"}
+        steps={setupSteps}
+        storageKey={setupTutorialKey}
+        onClose={() => setShowTour(null)}
+      />
 
       <GuidedTour
         open={showTour === "user"}

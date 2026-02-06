@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../../lib/api";
+import { useAuth } from "../../lib/auth";
 import { useLoading } from "../../lib/loading";
-import { Alert, Badge, Button, Card, CardContent, CardHeader, Input, Spinner } from "../../components/ui";
+import { Alert, Badge, Button, Card, CardContent, CardHeader, Input } from "../../components/ui";
 
 type Tab = "members" | "rules";
 
@@ -49,9 +50,12 @@ export default function AdminDashboardPage() {
 
 function MembersTab() {
   const { show, hide } = useLoading();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [items, setItems] = useState<any[]>([]);
+
+  const approvedAdminsCount = items.filter((m) => m.status === "APPROVED" && m.role === "ADMIN").length;
 
   async function load() {
     show();
@@ -81,6 +85,10 @@ function MembersTab() {
         {err ? <Alert tone="danger">{err}</Alert> : null}
         <div className="space-y-2">
           {items.map((m) => (
+            (() => {
+              const isSelf = !!user && m.user?.id === user.id;
+              const isOnlyAdminSelf = isSelf && m.status === "APPROVED" && m.role === "ADMIN" && approvedAdminsCount === 1;
+              return (
             <div
               key={m.id}
               className="flex flex-col gap-2 rounded-xl border border-slate-200 p-4 md:flex-row md:items-center md:justify-between"
@@ -106,7 +114,7 @@ function MembersTab() {
                   </Button>
                 ) : null}
 
-                {m.status !== "REJECTED" ? (
+                {!isOnlyAdminSelf && m.status !== "REJECTED" ? (
                   <Button
                     variant="ghost"
                     onClick={async () => {
@@ -129,22 +137,26 @@ function MembersTab() {
                     Rendi Admin
                   </Button>
                 ) : (
-                  <Button
-                    variant="ghost"
-                    onClick={async () => {
-                      try {
-                        await api.adminPatchMember(m.id, { role: "MEMBER" });
-                        load();
-                      } catch (e: any) {
-                        setErr(e?.message || "Modifica non possibile");
-                      }
-                    }}
-                  >
-                    Rendi Member
-                  </Button>
+                  !isOnlyAdminSelf ? (
+                    <Button
+                      variant="ghost"
+                      onClick={async () => {
+                        try {
+                          await api.adminPatchMember(m.id, { role: "MEMBER" });
+                          load();
+                        } catch (e: any) {
+                          setErr(e?.message || "Modifica non possibile");
+                        }
+                      }}
+                    >
+                      Rendi Member
+                    </Button>
+                  ) : null
                 )}
               </div>
             </div>
+              );
+            })()
           ))}
         </div>
       </CardContent>

@@ -135,6 +135,25 @@ export default function DashboardPage() {
 
   const dirtyCount = useMemo(() => 0, [preds]); // simple UI: we always allow saving
 
+  const hasAutoScrolledRef = React.useRef(false);
+
+  useEffect(() => {
+    if (loading) return;
+    if (hasAutoScrolledRef.current) return;
+    if (!byMatchday.length) return;
+
+    const target = byMatchday.find(([, ms]) => !(ms.length > 0 && ms.every((x) => x.status === "FINISHED"))) || byMatchday[0];
+    const matchday = target?.[0];
+    if (!matchday) return;
+
+    hasAutoScrolledRef.current = true;
+    // Allow the DOM to paint before attempting to scroll.
+    setTimeout(() => {
+      const el = document.getElementById(`matchday-${matchday}`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
+  }, [loading, byMatchday]);
+
   if (loading) return null;
 
 
@@ -226,7 +245,8 @@ export default function DashboardPage() {
             : "bg-amber-50 border-amber-200";
 
         return (
-          <Card key={matchday} className={cardClass}>
+          <div key={matchday} id={`matchday-${matchday}`}>
+            <Card className={cardClass}>
             <CardHeader
               title={`Giornata ${matchday}`}
               subtitle={`${ms.length} partite`}
@@ -332,7 +352,8 @@ export default function DashboardPage() {
                 })}
               </CardContent>
             )}
-          </Card>
+            </Card>
+          </div>
         );
       })}
 

@@ -6,7 +6,17 @@ import { fetchFixtures, mapApiFootballStatus, computeMatchday } from "../service
 import { recalcScoresForMatchAcrossLeagues } from "../lib/scoring.js";
 
 export async function runSyncOnce() {
-  const superSetting = await prisma.superSetting.findFirst({ orderBy: { createdAt: "asc" } });
+  let superSetting: any = null;
+  try {
+    superSetting = await prisma.superSetting.findFirst({ orderBy: { createdAt: "asc" } });
+  } catch (err: any) {
+    // Prisma P2021 => table does not exist (migrations not applied yet). Do not crash the job.
+    if (err?.code === "P2021") {
+      return { ok: true, message: "External sync disabled (missing SuperSetting table - run Prisma migrations)." };
+    }
+    throw err;
+  }
+
   const provider = (superSetting?.provider || "FOOTBALL_DATA").toUpperCase();
 
   // Provider 1: API-Football (api-football.com)

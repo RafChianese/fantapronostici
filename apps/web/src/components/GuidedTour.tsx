@@ -53,6 +53,23 @@ export function GuidedTour({
   const step = steps[idx];
   const rect = useMemo(() => getTargetRect(step?.target), [step?.target, tick]);
 
+  // On step change, ensure the target is visible (particularly important on mobile).
+  useEffect(() => {
+    if (!open) return;
+    if (!step?.target) return;
+    const el = document.querySelector(step.target) as HTMLElement | null;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const outOfView = r.top < 80 || r.bottom > window.innerHeight - 120;
+    if (outOfView) {
+      try {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      } catch {
+        // ignore
+      }
+    }
+  }, [idx, open, step?.target]);
+
   const isLast = idx === steps.length - 1;
 
   if (!open || !steps.length) return null;
@@ -68,6 +85,15 @@ export function GuidedTour({
     : null;
 
   const cardStyle: React.CSSProperties = (() => {
+    const isMobile = window.innerWidth < 640;
+    if (isMobile) {
+      // On mobile, keep the card pinned (top or bottom) to avoid covering the target / bottom tabs.
+      const targetNearBottom = !!rect && rect.top > window.innerHeight * 0.55;
+      return targetNearBottom
+        ? { top: 16, left: 16, right: 16, maxWidth: undefined }
+        : { bottom: 16, left: 16, right: 16, maxWidth: undefined };
+    }
+
     if (!rect) return { maxWidth: 420 };
     const preferredTop = rect.bottom + 16;
     const top = preferredTop + 220 < window.innerHeight ? preferredTop : Math.max(16, rect.top - 16 - 220);
@@ -101,7 +127,7 @@ export function GuidedTour({
       ) : null}
 
       <div
-        className="absolute rounded-2xl bg-white p-5 shadow-2xl"
+        className="absolute rounded-2xl bg-white p-5 shadow-2xl max-h-[70vh] overflow-auto"
         style={cardStyle}
       >
         <div className="text-xs font-semibold text-slate-500">Passo {idx + 1} / {steps.length}</div>
