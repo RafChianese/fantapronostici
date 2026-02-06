@@ -441,22 +441,20 @@ export default function DashboardPage() {
                         </div>
 
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <TeamDot name={m.homeTeam} />
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center justify-between gap-2">
-                                <div className="min-w-0 truncate text-sm font-semibold text-slate-900">
-                                  {m.homeTeam}
-                                </div>
-                                <span className="text-slate-400">vs</span>
-                                <div className="min-w-0 truncate text-sm font-semibold text-slate-900">
-                                  {m.awayTeam}
-                                </div>
-                              </div>
+                          {/* Mobile-first: teams stacked like Diretta */}
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <TeamDot name={m.homeTeam} logo={m.homeLogo} />
+                              <div className="min-w-0 truncate text-sm font-semibold text-slate-900">{m.homeTeam}</div>
                             </div>
-                            <TeamDot name={m.awayTeam} />
+                            <div className="flex items-center gap-2 min-w-0">
+                              <TeamDot name={m.awayTeam} logo={m.awayLogo} />
+                              <div className="min-w-0 truncate text-sm font-semibold text-slate-900">{m.awayTeam}</div>
+                            </div>
                           </div>
-                          <div className="mt-1 hidden text-xs text-slate-500 sm:block">{d.toLocaleString()} · Reale: <span className="font-medium text-slate-700">{real}</span></div>
+                          <div className="mt-1 hidden text-xs text-slate-500 sm:block">
+                            {d.toLocaleString()} · Reale: <span className="font-medium text-slate-700">{real}</span>
+                          </div>
                         </div>
 
                         <div className="flex items-center gap-1">
@@ -512,7 +510,7 @@ export default function DashboardPage() {
                             <button
                               key={`${a}-${b}`}
                               type="button"
-                              className={`rounded-lg border px-2 py-1 text-xs font-medium ${activeQuick(a, b) ? "border-[#2EC4B6] bg-[#2EC4B6]/10 text-slate-900" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"}`}
+                              className={`rounded-lg border px-2 py-1 text-xs ${activeQuick(a, b) ? "border-[#2EC4B6] bg-[#2EC4B6]/10 text-slate-900" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"}`}
                               onClick={() => setScore(a, b)}
                             >
                               {a}-{b}
