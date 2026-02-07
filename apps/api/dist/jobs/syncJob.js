@@ -1,11 +1,21 @@
 import cron from "node-cron";
 import { env } from "../lib/env.js";
 import { prisma } from "../lib/prisma.js";
-import { fetchCompetitionMatches, mapFootballDataStatus } from "../services/footballDataService.js";
+import { fetchCompetitionMatches, fetchCompetitionTeams, mapFootballDataStatus } from "../services/footballDataService.js";
 import { fetchFixtures, mapApiFootballStatus, computeMatchday } from "../services/apiFootball.js";
 import { recalcScoresForMatchAcrossLeagues } from "../lib/scoring.js";
 export async function runSyncOnce() {
-    const superSetting = await prisma.superSetting.findFirst({ orderBy: { createdAt: "asc" } });
+    let superSetting = null;
+    try {
+        superSetting = await prisma.superSetting.findFirst({ orderBy: { createdAt: "asc" } });
+    }
+    catch (err) {
+        // Prisma P2021 => table does not exist (migrations not applied yet). Do not crash the job.
+        if (err?.code === "P2021") {
+            return { ok: true, message: "External sync disabled (missing SuperSetting table - run Prisma migrations)." };
+        }
+        throw err;
+    }
     const provider = (superSetting?.provider || "FOOTBALL_DATA").toUpperCase();
     // Provider 1: API-Football (api-football.com)
     if (provider === "API_FOOTBALL") {
@@ -36,6 +46,10 @@ export async function runSyncOnce() {
                         matchday,
                         homeTeam: row.teams.home.name,
                         awayTeam: row.teams.away.name,
+                        homeLogo: row.teams?.home?.logo ?? null,
+                        awayLogo: row.teams?.away?.logo ?? null,
+                        homeLogo: row.teams?.home?.logo ?? null,
+                        awayLogo: row.teams?.away?.logo ?? null,
                         kickoffAt,
                         status,
                         homeScore,
@@ -57,6 +71,10 @@ export async function runSyncOnce() {
                         matchday,
                         homeTeam: row.teams.home.name,
                         awayTeam: row.teams.away.name,
+                        homeLogo: row.teams?.home?.logo ?? null,
+                        awayLogo: row.teams?.away?.logo ?? null,
+                        homeLogo: row.teams?.home?.logo ?? null,
+                        awayLogo: row.teams?.away?.logo ?? null,
                         kickoffAt,
                         status,
                         homeScore,
@@ -89,14 +107,26 @@ export async function runSyncOnce() {
         const status = mapFootballDataStatus(m.status);
         const homeScore = m.score?.fullTime?.home ?? null;
         const awayScore = m.score?.fullTime?.away ?? null;
+        // NOTE: football-data match endpoints may omit crest/shortName.
+        // We still store team IDs for later enrichment via /competitions/{code}/teams.
+        const homeTeamId = m.homeTeam?.id ?? null;
+        const awayTeamId = m.awayTeam?.id ?? null;
+        const homeName = (m.homeTeam?.shortName || m.homeTeam?.name || "").trim() || "Home";
+        const awayName = (m.awayTeam?.shortName || m.awayTeam?.name || "").trim() || "Away";
+        const homeLogo = m.homeTeam?.crest ?? null;
+        const awayLogo = m.awayTeam?.crest ?? null;
         const existing = await prisma.match.findFirst({ where: { source: "FOOTBALL_DATA", footballDataMatchId: m.id } });
         if (existing) {
             const updated = await prisma.match.update({
                 where: { id: existing.id },
                 data: {
                     matchday,
-                    homeTeam: m.homeTeam.name,
-                    awayTeam: m.awayTeam.name,
+                    homeTeam: homeName,
+                    awayTeam: awayName,
+                    homeLogo,
+                    awayLogo,
+                    footballDataHomeTeamId: homeTeamId,
+                    footballDataAwayTeamId: awayTeamId,
                     kickoffAt,
                     status,
                     homeScore,
@@ -113,20 +143,81 @@ export async function runSyncOnce() {
                     externalId: `fd:${m.id}`,
                     group: competitionCode.slice(0, 20),
                     matchday,
-                    homeTeam: m.homeTeam.name,
-                    awayTeam: m.awayTeam.name,
+                    homeTeam: homeName,
+                    awayTeam: awayName,
+                    homeLogo,
+                    awayLogo,
                     kickoffAt,
                     status,
                     homeScore,
                     awayScore,
                     source: "FOOTBALL_DATA",
                     footballDataMatchId: m.id,
+                    footballDataHomeTeamId: homeTeamId,
+                    footballDataAwayTeamId: awayTeamId,
                     footballDataCompetitionCode: competitionCode,
                     footballDataSeason: season,
                 },
             });
             await recalcScoresForMatchAcrossLeagues(created.id);
         }
+    }
+    // --- Enrich team crest + shortName (match endpoints may omit them) ---
+    try {
+        const teams = await fetchCompetitionTeams({ competitionCode });
+        const teamMap = new Map();
+        for (const t of teams) {
+            if (!t?.id)
+                continue;
+            teamMap.set(t.id, {
+                crest: t.crest ?? null,
+                shortName: (t.shortName || "").trim() || null,
+                name: t.name || "",
+            });
+        }
+        const where = { source: "FOOTBALL_DATA", footballDataCompetitionCode: competitionCode };
+        if (season)
+            where.footballDataSeason = season;
+        const local = await prisma.match.findMany({
+            where,
+            select: {
+                id: true,
+                homeTeam: true,
+                awayTeam: true,
+                homeLogo: true,
+                awayLogo: true,
+                footballDataHomeTeamId: true,
+                footballDataAwayTeamId: true,
+            },
+        });
+        for (const row of local) {
+            const ht = row.footballDataHomeTeamId ? teamMap.get(row.footballDataHomeTeamId) : undefined;
+            const at = row.footballDataAwayTeamId ? teamMap.get(row.footballDataAwayTeamId) : undefined;
+            const nextHomeLogo = ht?.crest ?? row.homeLogo ?? null;
+            const nextAwayLogo = at?.crest ?? row.awayLogo ?? null;
+            const nextHomeName = (ht?.shortName || ht?.name || row.homeTeam).trim();
+            const nextAwayName = (at?.shortName || at?.name || row.awayTeam).trim();
+            const needsUpdate = (nextHomeLogo ?? null) !== (row.homeLogo ?? null) ||
+                (nextAwayLogo ?? null) !== (row.awayLogo ?? null) ||
+                nextHomeName !== row.homeTeam ||
+                nextAwayName !== row.awayTeam;
+            if (!needsUpdate)
+                continue;
+            await prisma.match.update({
+                where: { id: row.id },
+                data: {
+                    homeLogo: nextHomeLogo,
+                    awayLogo: nextAwayLogo,
+                    homeTeam: nextHomeName,
+                    awayTeam: nextAwayName,
+                },
+            });
+            // No need to recalc scores: names/logos changes don't affect points.
+        }
+    }
+    catch (e) {
+        // Enrichment is best-effort (rate-limit / temporary API issues).
+        console.error("[sync] football-data teams enrichment error", e?.message || e);
     }
     return { ok: true, message: `Synced ${matches.length} matches from football-data.org (${competitionCode}${season ? `/${season}` : ""})` };
 }

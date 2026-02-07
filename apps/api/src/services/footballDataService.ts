@@ -18,10 +18,18 @@ export type FootballDataMatch = {
   matchday?: number | null;
   stage?: string;
   group?: string;
-  // football-data v4 includes crest + shortName in team objects
-  homeTeam: { name: string; shortName?: string; crest?: string };
-  awayTeam: { name: string; shortName?: string; crest?: string };
+  // football-data v4 match endpoints always include team id + name,
+  // but may omit crest/shortName depending on subscription/endpoint.
+  homeTeam: { id: number; name: string; shortName?: string; crest?: string };
+  awayTeam: { id: number; name: string; shortName?: string; crest?: string };
   score: { fullTime: { home: number | null; away: number | null } };
+};
+
+export type FootballDataTeam = {
+  id: number;
+  name: string;
+  shortName?: string;
+  crest?: string;
 };
 
 const client = new FootballDataClient();
@@ -38,6 +46,11 @@ export async function fetchCompetitionMatches(args: { competitionCode: string; s
     ...(args.status ? { status: args.status } : {}),
   });
   return (data?.matches ?? []) as FootballDataMatch[];
+}
+
+export async function fetchCompetitionTeams(args: { competitionCode: string }) {
+  const data = await client.getTeams(args.competitionCode);
+  return (data?.teams ?? []) as FootballDataTeam[];
 }
 
 export function mapFootballDataStatus(status: string) {

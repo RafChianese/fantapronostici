@@ -121,6 +121,8 @@ apiFootballAdminRouter.post("/api-football/import-fixtures", requireAuth, requir
                 matchday: md,
                 homeTeam: f.teams.home.name,
                 awayTeam: f.teams.away.name,
+                homeLogo: f.teams?.home?.logo ?? null,
+                awayLogo: f.teams?.away?.logo ?? null,
                 kickoffAt: new Date(f.fixture.date),
                 status: mapApiFootballStatus(f.fixture.status?.short),
                 homeScore: f.goals.home,

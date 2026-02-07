@@ -117,4 +117,9 @@ export class FootballDataClient {
   async getMatches(competitionCode: string, params?: { season?: number; matchday?: number; status?: string; dateFrom?: string; dateTo?: string }) {
     return this.request<any>("GET", `/competitions/${competitionCode}/matches`, params);
   }
+
+  async getTeams(competitionCode: string) {
+    // Teams change rarely during a season; cache to avoid wasting requests.
+    return this.request<any>("GET", `/competitions/${competitionCode}/teams`, undefined, { cacheTtlMs: 10 * 60 * 1000 });
+  }
 }
