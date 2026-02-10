@@ -105,10 +105,6 @@ export const api = {
 
   // public (league-scoped)
   matches: () => request(`/api/matches`),
-  rules: (leagueId?: string, leagueCode?: string) => {
-    const q = leagueId ? `?leagueId=${encodeURIComponent(leagueId)}` : leagueCode ? `?leagueCode=${encodeURIComponent(leagueCode)}` : "";
-    return request(`/api/rules${q}`);
-  },
   // leaderboard(sort?, leagueCode?)
   leaderboard: (a?: string, b?: string) => {
     const params = new URLSearchParams();
