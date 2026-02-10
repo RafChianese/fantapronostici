@@ -17,10 +17,6 @@ Monorepo:
    - **Entrare in una lega** inserendo il **codice** → viene creata una richiesta **PENDING** da approvare dall’Admin della lega.
 4. La **Classifica** e i **pronostici** sono sempre **per‑lega** (multi‑tenant).
 
-## Pagina Regolamento
-
-La sezione **Regolamento** (`/regolamento`) mostra un regolamento **generato automaticamente** in base alle regole e alle impostazioni della lega attiva (punteggi, modalità, lock pronostici, spareggi in classifica, ecc.).
-
 ## Setup locale (100% funzionante)
 
 ### 1) Avvia Postgres locale (consigliato)

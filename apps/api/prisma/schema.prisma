@@ -142,8 +142,6 @@ model Match {
   footballDataMatchId        Int?    @unique
   footballDataCompetitionCode String?
   footballDataSeason         Int?
-  // Persist team ids from match endpoint (used to enrich crest/shortName via /competitions/{code}/teams)
-  // These columns already exist in production DB; keep them to avoid destructive prisma db push.
   footballDataHomeTeamId     Int?
   footballDataAwayTeamId     Int?
 
