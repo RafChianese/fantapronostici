@@ -4,6 +4,7 @@ import { verifyToken } from "../lib/auth.js";
 import { getMonetizationConfig } from "../lib/monetization.js";
 import { getLockInfo } from "../lib/lock.js";
 import { ensureLeagueConfig } from "../services/ensureLeagueConfig.js";
+import { generateRegolamentoTemplate } from "../lib/regolamento.js";
 export const publicRouter = Router();
 async function resolveLeague(req) {
     const leagueId = req.query.leagueId || (typeof req.headers["x-league-id"] === "string" ? req.headers["x-league-id"] : undefined);
@@ -178,6 +179,22 @@ publicRouter.get("/leaderboard", async (req, res) => {
         tieBreakers: { tieBreak1: settings?.tieBreak1 ?? "EXACT", tieBreak2: settings?.tieBreak2 ?? "OUTCOME", tieBreak3: settings?.tieBreak3 ?? "SUM_GOALS" },
         leaderboard: rows,
     });
+});
+
+// Regolamento (read-only, league-scoped)
+publicRouter.get("/regolamento", async (req, res) => {
+    const league = await resolveLeague(req);
+    if (!league)
+        return res.status(400).json({ message: "Missing leagueId or leagueCode" });
+    await ensureLeagueConfig(league.id);
+    const [rules, settings] = await Promise.all([
+        prisma.rule.findUnique({ where: { leagueId: league.id } }),
+        prisma.setting.findUnique({ where: { leagueId: league.id } }),
+    ]);
+    if (!rules || !settings)
+        return res.status(500).json({ message: "Missing rules/settings for league" });
+    const regolamento = generateRegolamentoTemplate({ leagueName: league.name, rules, settings });
+    return res.json({ league: { id: league.id, name: league.name, code: league.code }, regolamento });
 });
 publicRouter.get("/users/:id/summary", async (req, res) => {
     const league = await resolveLeague(req);
