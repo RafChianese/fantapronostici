@@ -13,6 +13,7 @@ import OnboardingPage from "./pages/OnboardingPage";
 import DashboardPage from "./pages/DashboardPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import UserSummaryPage from "./pages/UserSummaryPage";
+import RulesPage from "./pages/RulesPage";
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
 import SuperAdminPage from "./pages/SuperAdminPage";
 
@@ -122,6 +123,15 @@ export default function App() {
             element={
               <RequireLeague>
                 <LeaderboardPage />
+              </RequireLeague>
+            }
+          />
+
+          <Route
+            path="/rules"
+            element={
+              <RequireLeague>
+                <RulesPage />
               </RequireLeague>
             }
           />

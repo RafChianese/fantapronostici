@@ -12,10 +12,6 @@ export async function fetchCompetitionMatches(args) {
     });
     return (data?.matches ?? []);
 }
-export async function fetchCompetitionTeams(args) {
-    const data = await client.getTeams(args.competitionCode);
-    return (data?.teams ?? []);
-}
 export function mapFootballDataStatus(status) {
     switch (status) {
         case "FINISHED":
