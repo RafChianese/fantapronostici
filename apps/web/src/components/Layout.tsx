@@ -312,7 +312,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <nav className="hidden items-center gap-2 md:flex">
             <NavItem to="/leaderboard" tourId="tab-leaderboard">Classifica</NavItem>
             {user && activeMembership ? <NavItem to="/" tourId="tab-predictions">I miei pronostici</NavItem> : null}
-            {user && activeMembership ? <NavItem to="/rules">Regolamento</NavItem> : null}
+            {user && activeMembership ? <NavItem to="/regolamento">Regolamento</NavItem> : null}
             {user ? <NavItem to="/onboarding" tourId="tab-leagues">Leghe</NavItem> : null}
             {user && (isLeagueAdmin || isSuperAdmin) ? (
               <NavItem to="/admin" tourId="admin-dashboard-link">Dashboard amministratore di lega</NavItem>
@@ -396,6 +396,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <div className="px-3 pt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Menu
                 </div>
+                <NavItem to="/regolamento" onClick={() => setDrawerOpen(false)}>
+                  Regolamento
+                </NavItem>
                 {isLeagueAdmin || isSuperAdmin ? (
                   <NavItem to="/admin" onClick={() => setDrawerOpen(false)}>
                     Dashboard amministratore di lega
@@ -406,10 +409,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     Dashboard Superadmin
                   </NavItem>
                 ) : null}
-
-                <NavItem to="/rules" onClick={() => setDrawerOpen(false)}>
-                  Regolamento
-                </NavItem>
 
                 <NavItem to="/account" onClick={() => setDrawerOpen(false)}>
                   Account

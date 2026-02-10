@@ -142,6 +142,8 @@ model Match {
   footballDataMatchId        Int?    @unique
   footballDataCompetitionCode String?
   footballDataSeason         Int?
+  footballDataHomeTeamId     Int?
+  footballDataAwayTeamId     Int?
 
   source      MatchSource   @default(SEED)
   updatedAt   DateTime      @updatedAt

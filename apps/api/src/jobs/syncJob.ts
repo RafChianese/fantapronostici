@@ -1,7 +1,7 @@
 import cron from "node-cron";
 import { env } from "../lib/env.js";
 import { prisma } from "../lib/prisma.js";
-import { fetchCompetitionMatches, mapFootballDataStatus } from "../services/footballDataService.js";
+import { fetchCompetitionMatches, fetchCompetitionTeams, mapFootballDataStatus } from "../services/footballDataService.js";
 import { fetchFixtures, mapApiFootballStatus, computeMatchday } from "../services/apiFootball.js";
 import { recalcScoresForMatchAcrossLeagues } from "../lib/scoring.js";
 
@@ -119,8 +119,11 @@ export async function runSyncOnce() {
     const homeScore = m.score?.fullTime?.home ?? null;
     const awayScore = m.score?.fullTime?.away ?? null;
 
-    // football-data v4 provides `shortName` and `crest` for teams.
-    // We persist shortName as the display name for a more compact UI.
+    // NOTE: football-data match endpoints may omit crest/shortName.
+    // We still store team IDs for later enrichment via /competitions/{code}/teams.
+    const homeTeamId = (m as any).homeTeam?.id ?? null;
+    const awayTeamId = (m as any).awayTeam?.id ?? null;
+
     const homeName = (m.homeTeam?.shortName || m.homeTeam?.name || "").trim() || "Home";
     const awayName = (m.awayTeam?.shortName || m.awayTeam?.name || "").trim() || "Away";
     const homeLogo = m.homeTeam?.crest ?? null;
@@ -136,6 +139,8 @@ export async function runSyncOnce() {
           awayTeam: awayName,
           homeLogo,
           awayLogo,
+          footballDataHomeTeamId: homeTeamId,
+          footballDataAwayTeamId: awayTeamId,
           kickoffAt,
           status,
           homeScore,
@@ -161,12 +166,74 @@ export async function runSyncOnce() {
           awayScore,
           source: "FOOTBALL_DATA",
           footballDataMatchId: m.id,
+          footballDataHomeTeamId: homeTeamId,
+          footballDataAwayTeamId: awayTeamId,
           footballDataCompetitionCode: competitionCode,
           footballDataSeason: season,
         },
       });
       await recalcScoresForMatchAcrossLeagues(created.id);
     }
+  }
+
+  // --- Enrich team crest + shortName (match endpoints may omit them) ---
+  try {
+    const teams = await fetchCompetitionTeams({ competitionCode });
+    const teamMap = new Map<number, { crest: string | null; shortName: string | null; name: string }>();
+    for (const t of teams) {
+      if (!t?.id) continue;
+      teamMap.set(t.id, {
+        crest: (t as any).crest ?? null,
+        shortName: ((t as any).shortName || "").trim() || null,
+        name: (t as any).name || "",
+      });
+    }
+
+    const where: any = { source: "FOOTBALL_DATA", footballDataCompetitionCode: competitionCode };
+    if (season) where.footballDataSeason = season;
+    const local = await prisma.match.findMany({
+      where,
+      select: {
+        id: true,
+        homeTeam: true,
+        awayTeam: true,
+        homeLogo: true,
+        awayLogo: true,
+        footballDataHomeTeamId: true,
+        footballDataAwayTeamId: true,
+      },
+    });
+
+    for (const row of local) {
+      const ht = row.footballDataHomeTeamId ? teamMap.get(row.footballDataHomeTeamId) : undefined;
+      const at = row.footballDataAwayTeamId ? teamMap.get(row.footballDataAwayTeamId) : undefined;
+
+      const nextHomeLogo = ht?.crest ?? row.homeLogo ?? null;
+      const nextAwayLogo = at?.crest ?? row.awayLogo ?? null;
+      const nextHomeName = (ht?.shortName || ht?.name || row.homeTeam).trim();
+      const nextAwayName = (at?.shortName || at?.name || row.awayTeam).trim();
+
+      const needsUpdate =
+        (nextHomeLogo ?? null) !== (row.homeLogo ?? null) ||
+        (nextAwayLogo ?? null) !== (row.awayLogo ?? null) ||
+        nextHomeName !== row.homeTeam ||
+        nextAwayName !== row.awayTeam;
+
+      if (!needsUpdate) continue;
+      await prisma.match.update({
+        where: { id: row.id },
+        data: {
+          homeLogo: nextHomeLogo,
+          awayLogo: nextAwayLogo,
+          homeTeam: nextHomeName,
+          awayTeam: nextAwayName,
+        },
+      });
+      // No need to recalc scores: names/logos changes don't affect points.
+    }
+  } catch (e: any) {
+    // Enrichment is best-effort (rate-limit / temporary API issues).
+    console.error("[sync] football-data teams enrichment error", e?.message || e);
   }
 
   return { ok: true, message: `Synced ${matches.length} matches from football-data.org (${competitionCode}${season ? `/${season}` : ""})` };

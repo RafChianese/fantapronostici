@@ -13,6 +13,9 @@ export type Membership = {
   league: League;
 };
 
+export type RegolamentoSection = { title: string; paragraphs?: string[]; bullets?: string[] };
+export type RegolamentoPayload = { title: string; generatedAtISO: string; sections: RegolamentoSection[] };
+
 export function getToken() {
   return localStorage.getItem("tm_token") || "";
 }
@@ -97,6 +100,8 @@ export const api = {
   // dashboard helper (uses league header x-league-id)
   publicConfig: () => request(`/api/lock`),
 
+  regolamento: (): Promise<{ league: League; regolamento: RegolamentoPayload }> => request(`/api/regolamento`),
+
 
   // leagues
   myLeagues: () => request(`/api/leagues/mine`),
@@ -105,10 +110,6 @@ export const api = {
 
   // public (league-scoped)
   matches: () => request(`/api/matches`),
-  rules: (leagueId?: string, leagueCode?: string) => {
-    const q = leagueId ? `?leagueId=${encodeURIComponent(leagueId)}` : leagueCode ? `?leagueCode=${encodeURIComponent(leagueCode)}` : "";
-    return request(`/api/rules${q}`);
-  },
   // leaderboard(sort?, leagueCode?)
   leaderboard: (a?: string, b?: string) => {
     const params = new URLSearchParams();
