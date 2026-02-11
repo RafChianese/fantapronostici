@@ -1,117 +1,119 @@
-import React, { useEffect, useState } from "react";
-import { api, RegolamentoPayload } from "../lib/api";
-import { Alert, Card, CardContent, CardHeader, Spinner } from "../components/ui";
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { api, RegolamentoConfigResponse } from "../lib/api";
 import { useAuth } from "../lib/auth";
-import { Link } from "react-router-dom";
+import { generateRegolamentoTemplate } from "../lib/regolamento";
+import { Alert, Button, Card, CardContent, CardHeader, Spinner } from "../components/ui";
 
 export default function RegolamentoPage() {
+  const nav = useNavigate();
   const { activeLeagueId } = useAuth();
-  const [data, setData] = useState<{ leagueName: string; regolamento: RegolamentoPayload } | null>(null);
-  const [error, setError] = useState<string>("");
+
+  const [data, setData] = useState<RegolamentoConfigResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>("");
 
   useEffect(() => {
-    let mounted = true;
+    let cancelled = false;
     async function run() {
       setLoading(true);
       setError("");
       try {
-        const res = await api.regolamento();
-        if (!mounted) return;
-        setData({ leagueName: res.league.name, regolamento: res.regolamento });
+        const res = await api.regolamentoConfig();
+        if (!cancelled) setData(res);
       } catch (e: any) {
-        if (!mounted) return;
-        setError(e?.message || "Errore nel caricamento del regolamento");
+        if (!cancelled) setError(e?.message || "Errore nel caricamento del regolamento");
       } finally {
-        if (!mounted) return;
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
+
+    // If no league is currently selected, show empty state.
+    if (!activeLeagueId) {
+      setData(null);
+      setLoading(false);
+      return;
+    }
+
     run();
     return () => {
-      mounted = false;
+      cancelled = true;
     };
   }, [activeLeagueId]);
+
+  const doc = useMemo(() => {
+    if (!data) return null;
+    return generateRegolamentoTemplate(data.rules, data.settings);
+  }, [data]);
 
   if (!activeLeagueId) {
     return (
       <Card>
         <CardHeader title="Regolamento" subtitle="Seleziona una lega per visualizzare il regolamento." />
-        <CardContent>
-          <Alert tone="info">
-            Nessuna lega attiva. Vai in <Link className="font-semibold text-[#2EC4B6] hover:underline" to="/onboarding">Leghe</Link> e selezionane una.
-          </Alert>
+        <CardContent className="space-y-4">
+          <Alert>Non hai ancora selezionato una lega attiva.</Alert>
+          <Button onClick={() => nav("/onboarding")}>Vai alle leghe</Button>
         </CardContent>
       </Card>
     );
   }
-
-  if (loading) {
-    return (
-      <Card>
-        <CardHeader title="Regolamento" subtitle="Caricamento…" />
-        <CardContent className="flex items-center gap-3">
-          <Spinner />
-          <div className="text-sm text-slate-700">Sto generando il regolamento in base alle regole della lega…</div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (error) {
-    return (
-      <Card>
-        <CardHeader title="Regolamento" subtitle="Impossibile caricare il regolamento" />
-        <CardContent>
-          <Alert tone="danger">{error}</Alert>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (!data) {
-    return null;
-  }
-
-  const { regolamento } = data;
 
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader
           title="Regolamento"
-          subtitle={`Generato automaticamente per: ${data.leagueName}`}
+          subtitle={data?.league ? `Lega: ${data.league.name} (${data.league.code})` : ""}
+          right={
+            <Button variant="secondary" onClick={() => api.regolamentoConfig().then(setData).catch((e: any) => setError(e?.message || "Errore"))}>
+              Aggiorna
+            </Button>
+          }
         />
-        <CardContent>
-          <div className="text-sm text-slate-600">
-            Ultimo aggiornamento: {new Date(regolamento.generatedAtISO).toLocaleString("it-IT")}
-          </div>
-        </CardContent>
-      </Card>
+        <CardContent className="space-y-5">
+          {loading ? (
+            <div className="flex items-center gap-3 text-sm text-slate-700">
+              <Spinner />
+              Caricamento regolamento…
+            </div>
+          ) : null}
 
-      {regolamento.sections.map((s, idx) => (
-        <Card key={`${idx}-${s.title}`}>
-          <CardHeader title={s.title} />
-          <CardContent>
-            {s.paragraphs?.length ? (
+          {!loading && error ? <Alert tone="danger">{error}</Alert> : null}
+
+          {!loading && !error && doc ? (
+            <div className="space-y-6">
               <div className="space-y-2">
-                {s.paragraphs.map((p, i) => (
-                  <p key={i} className="text-sm leading-relaxed text-slate-700">
+                <div className="text-xl font-semibold text-slate-900">{doc.title}</div>
+                {doc.intro.map((p, idx) => (
+                  <p key={idx} className="text-sm text-slate-700">
                     {p}
                   </p>
                 ))}
               </div>
-            ) : null}
-            {s.bullets?.length ? (
-              <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-700">
-                {s.bullets.map((b, i) => (
-                  <li key={i}>{b}</li>
-                ))}
-              </ul>
-            ) : null}
-          </CardContent>
-        </Card>
-      ))}
+
+              {doc.sections.map((s) => (
+                <section key={s.title} className="space-y-2">
+                  <h3 className="text-base font-semibold text-slate-900">{s.title}</h3>
+                  {s.paragraphs?.map((p, idx) => (
+                    <p key={idx} className="text-sm text-slate-700">
+                      {p}
+                    </p>
+                  ))}
+                  {s.bullets?.length ? (
+                    <ul className="list-disc space-y-1 pl-5 text-sm text-slate-700">
+                      {s.bullets.map((b, idx) => (
+                        <li key={idx}>{b}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </section>
+              ))}
+            </div>
+          ) : null}
+
+          {!loading && !error && !doc ? <Alert>Nessun dato disponibile.</Alert> : null}
+        </CardContent>
+      </Card>
     </div>
   );
 }

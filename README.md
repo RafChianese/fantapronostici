@@ -17,6 +17,14 @@ Monorepo:
    - **Entrare in una lega** inserendo il **codice** → viene creata una richiesta **PENDING** da approvare dall’Admin della lega.
 4. La **Classifica** e i **pronostici** sono sempre **per‑lega** (multi‑tenant).
 
+## Pagina "Regolamento" (per‑lega)
+
+Nel frontend è disponibile la pagina **Regolamento** (route: `/regolamento`).
+
+- È accessibile dal menu di navigazione.
+- Mostra un testo di regolamento **generato automaticamente** in base alle regole/setting configurati dall'admin della lega attiva.
+- I dati arrivano dall'endpoint read‑only: `GET /api/regolamento-config` (scoped per‑lega tramite header `x-league-id` o query `leagueId/leagueCode`).
+
 ## Setup locale (100% funzionante)
 
 ### 1) Avvia Postgres locale (consigliato)

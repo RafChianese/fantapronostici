@@ -49,6 +49,49 @@ publicRouter.get("/lock", async (req, res) => {
         features: { underOver25: !!rules?.enableUnderOver25, matchdayAwards: !!rules?.enableMatchdayAwards },
     });
 });
+// Read-only: returns the rule + setting values that affect the league regulation ("Regolamento").
+// It is league-scoped via x-league-id header or via leagueId/leagueCode query params.
+publicRouter.get("/regolamento-config", async (req, res) => {
+    const league = await resolveLeague(req);
+    if (!league)
+        return res.status(400).json({ message: "Missing leagueId or leagueCode" });
+    await ensureLeagueConfig(league.id);
+    const [rules, settings, lockInfo] = await Promise.all([
+        prisma.rule.findUnique({ where: { leagueId: league.id } }),
+        prisma.setting.findUnique({ where: { leagueId: league.id } }),
+        getLockInfo(league.id),
+    ]);
+    if (!rules || !settings)
+        return res.status(500).json({ message: "Missing league config" });
+    res.json({
+        league: { id: league.id, name: league.name, code: league.code },
+        rules: {
+            pointsExact: rules.pointsExact,
+            pointsOutcome: rules.pointsOutcome,
+            pointsSumGoals: rules.pointsSumGoals,
+            enableUnderOver25: rules.enableUnderOver25,
+            pointsUnderOver25: rules.pointsUnderOver25,
+            enableMatchdayAwards: rules.enableMatchdayAwards,
+            scoringMode: rules.scoringMode,
+            allowOutcomeWithExact: rules.allowOutcomeWithExact,
+            allowSumGoalsWithExact: rules.allowSumGoalsWithExact,
+            allowSumGoalsWithOutcome: rules.allowSumGoalsWithOutcome,
+        },
+        settings: {
+            lockUntil: settings.lockUntil,
+            isForceLocked: settings.isForceLocked,
+            tieBreak1: settings.tieBreak1,
+            tieBreak2: settings.tieBreak2,
+            tieBreak3: settings.tieBreak3,
+        },
+        lock: {
+            lockUntil: lockInfo.lockUntil,
+            isForceLocked: lockInfo.isForceLocked,
+            lockedByTime: lockInfo.lockedByTime,
+            isLocked: lockInfo.isLocked,
+        },
+    });
+});
 publicRouter.get("/leaderboard", async (req, res) => {
     const league = await resolveLeague(req);
     if (!league)

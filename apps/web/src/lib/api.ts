@@ -13,6 +13,37 @@ export type Membership = {
   league: League;
 };
 
+export type ScoringMode = "CUMULATIVE" | "BEST_ONLY" | "MIXED";
+export type RankingCriterion = "EXACT" | "OUTCOME" | "SUM_GOALS";
+
+export type LeagueRules = {
+  pointsExact: number;
+  pointsOutcome: number;
+  pointsSumGoals: number;
+  enableUnderOver25: boolean;
+  pointsUnderOver25: number;
+  enableMatchdayAwards: boolean;
+  scoringMode: ScoringMode;
+  allowOutcomeWithExact: boolean;
+  allowSumGoalsWithExact: boolean;
+  allowSumGoalsWithOutcome: boolean;
+};
+
+export type LeagueSettings = {
+  lockUntil: string; // ISO date string
+  isForceLocked: boolean;
+  tieBreak1: RankingCriterion;
+  tieBreak2: RankingCriterion;
+  tieBreak3: RankingCriterion;
+};
+
+export type RegolamentoConfigResponse = {
+  league: League;
+  rules: LeagueRules;
+  settings: LeagueSettings;
+  lock: { lockUntil: string; isForceLocked: boolean; lockedByTime: boolean; isLocked: boolean };
+};
+
 export function getToken() {
   return localStorage.getItem("tm_token") || "";
 }
@@ -96,6 +127,12 @@ export const api = {
   },
   // dashboard helper (uses league header x-league-id)
   publicConfig: () => request(`/api/lock`),
+
+  // league public rules+settings (used by "Regolamento")
+  regolamentoConfig: () => request(`/api/regolamento-config`) as Promise<RegolamentoConfigResponse>,
+
+  // public: league regolamento config (uses league header x-league-id)
+  regolamentoConfig: () => request(`/api/regolamento-config`),
 
 
   // leagues

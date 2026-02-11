@@ -15,6 +15,7 @@ import LeaderboardPage from "./pages/LeaderboardPage";
 import UserSummaryPage from "./pages/UserSummaryPage";
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
 import SuperAdminPage from "./pages/SuperAdminPage";
+import RegolamentoPage from "./pages/RegolamentoPage";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -122,6 +123,15 @@ export default function App() {
             element={
               <RequireLeague>
                 <LeaderboardPage />
+              </RequireLeague>
+            }
+          />
+
+          <Route
+            path="/regolamento"
+            element={
+              <RequireLeague>
+                <RegolamentoPage />
               </RequireLeague>
             }
           />
