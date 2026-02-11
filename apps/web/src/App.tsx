@@ -2,6 +2,8 @@ import React from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./lib/auth";
 import { LoadingProvider } from "./lib/loading";
+import { ToastProvider } from "./lib/toast";
+import { LockProvider } from "./lib/lock";
 import { FullScreenLoaderOverlay } from "./components/FullScreenLoaderOverlay";
 import { Layout } from "./components/Layout";
 import LoginPage from "./pages/LoginPage";
@@ -16,7 +18,6 @@ import UserSummaryPage from "./pages/UserSummaryPage";
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
 import SuperAdminPage from "./pages/SuperAdminPage";
 import RegolamentoPage from "./pages/RegolamentoPage";
-import StatsPage from "./pages/StatsPage";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -65,8 +66,10 @@ export default function App() {
   return (
     <AuthProvider>
       <LoadingProvider>
-        <Layout>
-        <Routes>
+        <ToastProvider>
+          <LockProvider>
+            <Layout>
+            <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -138,15 +141,6 @@ export default function App() {
           />
 
           <Route
-            path="/stats"
-            element={
-              <RequireLeague>
-                <StatsPage />
-              </RequireLeague>
-            }
-          />
-
-          <Route
             path="/users/:id"
             element={
               <RequireLeague>
@@ -174,8 +168,10 @@ export default function App() {
           />
 
           <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Layout>
+            </Routes>
+            </Layout>
+          </LockProvider>
+        </ToastProvider>
       </LoadingProvider>
     </AuthProvider>
   );

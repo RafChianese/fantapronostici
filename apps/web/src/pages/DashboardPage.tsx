@@ -441,6 +441,12 @@ export default function DashboardPage() {
                 {ms.map((m) => {
                   const p = preds[m.id];
                   const canEdit = !isLocked && m.status === "NOT_STARTED";
+                  const lockReason = isLocked
+                    ? "Lock lega attivo"
+                    : m.status !== "NOT_STARTED"
+                    ? "Partita già iniziata"
+                    : "";
+                  
                   const real = m.homeScore !== null && m.awayScore !== null ? `${m.homeScore}-${m.awayScore}` : "—";
 
                   const d = new Date(m.kickoffAt);
@@ -484,14 +490,23 @@ export default function DashboardPage() {
                   const activeQuick = (a: number, b: number) => p?.homeGoals === a && p?.awayGoals === b;
 
                   return (
-                    <div key={m.id} className="rounded-2xl border border-slate-100 bg-white/70 p-3">
+                    <div key={m.id} className="relative overflow-hidden rounded-2xl border border-slate-100 bg-white/70 p-3">
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                           {statusBadge(m.status)}
-                          {!canEdit ? <Badge tone="gray">Lock</Badge> : null}
+                          {!canEdit ? <Badge tone="gray" title={lockReason}>Lock</Badge> : null}
                         </div>
                         <div className="text-xs text-slate-500 sm:hidden">Reale: <span className="font-medium text-slate-700">{real}</span></div>
                       </div>
+
+                      {!canEdit ? (
+                        <div className="pointer-events-none absolute inset-0 bg-white/60 backdrop-blur-[1px]">
+                          <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 px-3 py-2">
+                            <span className="text-xs font-semibold text-slate-700">Bloccato</span>
+                            <span className="text-xs text-slate-600">{lockReason}</span>
+                          </div>
+                        </div>
+                      ) : null}
 
                       <div className="mt-2 grid grid-cols-[54px_1fr_auto] items-center gap-2">
                         <div className="text-xs text-slate-600">

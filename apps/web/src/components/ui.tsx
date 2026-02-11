@@ -79,10 +79,6 @@ export function Spinner() {
   return <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-200 border-t-[#2EC4B6]" />;
 }
 
-export function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`animate-pulse rounded-xl bg-slate-200/70 ${className}`} />;
-}
-
 export function Alert({ tone = "info", children }: { tone?: "info" | "danger" | "success"; children: React.ReactNode }) {
   const cls =
     tone === "danger"

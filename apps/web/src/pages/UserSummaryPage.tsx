@@ -150,7 +150,109 @@ export default function UserSummaryPage() {
   if (loading) return null;
 
   if (adRequired) {
+  
+
+  // --- Statistiche (gamification) ---
+  const finishedItems = safeItems
+    .filter((it: any) => !!it?.prediction && !!it?.real)
+    .slice()
+    .sort((a: any, b: any) => new Date(a?.match?.kickoffAt).getTime() - new Date(b?.match?.kickoffAt).getTime());
+
+  const isExactHit = (it: any) => {
+    if (!it?.prediction || !it?.real) return false;
+    return Number(it.prediction.homeGoals) == Number(it.real.home) && Number(it.prediction.awayGoals) == Number(it.real.away);
+  };
+
+  const isOutcomeHit = (it: any) => {
+    if (!it?.prediction || !it?.real) return false;
+    const ph = Number(it.prediction.homeGoals);
+    const pa = Number(it.prediction.awayGoals);
+    const rh = Number(it.real.home);
+    const ra = Number(it.real.away);
+    const p = ph === pa ? 0 : ph > pa ? 1 : -1;
+    const r = rh === ra ? 0 : rh > ra ? 1 : -1;
+    return p === r;
+  };
+
+  const totalFinished = finishedItems.length;
+  const exactHits = finishedItems.filter(isExactHit).length;
+  const outcomeHits = finishedItems.filter(isOutcomeHit).length;
+
+  const pct = (n: number, d: number) => (d > 0 ? Math.round((n / d) * 100) : 0);
+  const pctExact = pct(exactHits, totalFinished);
+  const pctOutcome = pct(outcomeHits, totalFinished);
+
+  const streakFromEnd = (fn) => {
+    let s = 0;
+    for (let i = finishedItems.length - 1; i >= 0; i--) {
+      if (fn(finishedItems[i])) s += 1;
+      else break;
+    }
+    return s;
+  };
+
+  const streakOutcome = streakFromEnd(isOutcomeHit);
+  const streakExact = streakFromEnd(isExactHit);
+
+  const pointsByMatchday = matchdays.reduce((acc: Record<number, number>, md) => {
+    const items = byMatchday[String(md)] ?? [];
+    const tot = items.reduce((s: number, it: any) => s + Number(it?.points?.total ?? 0), 0);
+    acc[md] = tot;
+    return acc;
+  }, {} as any);
+
+  const bestMatchday = (() => {
+    let bestMd: number | null = null;
+    let bestPts = -Infinity;
+    for (const md of matchdays) {
+      const v = pointsByMatchday[md] ?? 0;
+      if (v > bestPts) {
+        bestPts = v;
+        bestMd = md;
+      }
+    }
+    return { md: bestMd, pts: Number.isFinite(bestPts) ? bestPts : 0 };
+  })();
+
+  const cumulativeSeries = (() => {
+    let run = 0;
+    return matchdays.map((md) => {
+      run += Number(pointsByMatchday[md] ?? 0);
+      return { md, y: run };
+    });
+  })();
+
+  const renderMiniChart = (series: { md: number; y: number }[]) => {
+    if (!series.length) return null;
+    const w = 320;
+    const h = 90;
+    const pad = 10;
+    const ys = series.map((p) => p.y);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+    const span = maxY - minY || 1;
+
+    const xStep = series.length > 1 ? (w - pad * 2) / (series.length - 1) : 0;
+    const xy = series.map((p, i) => {
+      const x = pad + i * xStep;
+      const y = pad + (h - pad * 2) * (1 - (p.y - minY) / span);
+      return { x, y };
+    });
+
+    const d = xy
+      .map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)} ${p.y.toFixed(1)}`)
+      .join(" ");
+
     return (
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full" role="img" aria-label="Andamento punti">
+        <path d={d} fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-700" />
+        {xy.map((p, i) => (
+          <circle key={i} cx={p.x} cy={p.y} r={2.5} className="fill-slate-700" />
+        ))}
+      </svg>
+    );
+  };
+  return (
       <div className="space-y-4">
         <Card>
           <CardHeader
@@ -335,6 +437,104 @@ export default function UserSummaryPage() {
     return <Badge>NON INIZIATA</Badge>;
   };
 
+  // --- Mini dashboard (Step 3): statistiche + andamento punti ---
+  const finished = safeItems
+    .filter((it: any) => !!it?.prediction && !!it?.real && getStatus(it) === "FINISHED")
+    .slice()
+    .sort((a: any, b: any) => new Date(a?.match?.kickoffAt || 0).getTime() - new Date(b?.match?.kickoffAt || 0).getTime());
+
+  const isExactHit = (it: any) => {
+    const pr = it?.prediction;
+    const r = it?.real;
+    if (!pr || !r) return false;
+    return Number(pr.homeGoals) == Number(r.home) && Number(pr.awayGoals) == Number(r.away);
+  };
+
+  const outcomeOf = (h: number, a: number) => (h > a ? "1" : h < a ? "2" : "X");
+
+  const isOutcomeHit = (it: any) => {
+    const pr = it?.prediction;
+    const r = it?.real;
+    if (!pr || !r) return false;
+    const o1 = outcomeOf(Number(pr.homeGoals), Number(pr.awayGoals));
+    const o2 = outcomeOf(Number(r.home), Number(r.away));
+    return o1 === o2;
+  };
+
+  const finishedCount = finished.length;
+  const exactHits = finished.filter(isExactHit).length;
+  const outcomeHits = finished.filter(isOutcomeHit).length;
+
+  const pctExact = finishedCount ? Math.round((exactHits / finishedCount) * 100) : 0;
+  const pctOutcome = finishedCount ? Math.round((outcomeHits / finishedCount) * 100) : 0;
+
+  const streakFromEnd = (fn: (it: any) => boolean) => {
+    let s = 0;
+    for (let i = finished.length - 1; i >= 0; i--) {
+      if (fn(finished[i])) s += 1;
+      else break;
+    }
+    return s;
+  };
+
+  const streakOutcome = streakFromEnd(isOutcomeHit);
+  const streakExact = streakFromEnd(isExactHit);
+
+  const pointsByMatchday = new Map<number, number>();
+  for (const it of safeItems) {
+    const md = Number(it?.match?.matchday ?? 1);
+    const pts = Number(it?.points?.total ?? 0);
+    pointsByMatchday.set(md, (pointsByMatchday.get(md) ?? 0) + (Number.isFinite(pts) ? pts : 0));
+  }
+
+  const mdSeries = matchdays.map((md) => ({ md, pts: pointsByMatchday.get(md) ?? 0 }));
+  let cum = 0;
+  const chartSeries = mdSeries.map((s) => {
+    cum += s.pts;
+    return { label: `G${s.md}`, y: cum };
+  });
+
+  const bestMatchday = mdSeries.reduce(
+    (acc, it) => (it.pts > acc.pts ? it : acc),
+    mdSeries[0] ?? { md: 1, pts: 0 }
+  );
+
+  const renderMiniChart = () => {
+    if (chartSeries.length < 2) {
+      return <div className="text-xs text-slate-500">Nessun andamento disponibile.</div>;
+    }
+    const w = 100;
+    const h = 60;
+    const pad = 6;
+    const ys = chartSeries.map((p) => p.y);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+    const xStep = (w - pad * 2) / (chartSeries.length - 1);
+    const scaleY = (y: number) => {
+      if (maxY === minY) return h / 2;
+      const t = (y - minY) / (maxY - minY);
+      return pad + (h - pad * 2) * (1 - t);
+    };
+    const pts = chartSeries.map((p, i) => ({ x: pad + i * xStep, y: scaleY(p.y) }));
+    const d = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(" ");
+
+    return (
+      <div className="w-full">
+        <svg viewBox={`0 0 ${w} ${h}`} className="h-20 w-full">
+          <path d={d} fill="none" stroke="currentColor" strokeWidth={2.2} className="text-teal-600" />
+          {pts.map((p, i) => (
+            <circle key={i} cx={p.x} cy={p.y} r={2.2} className="text-teal-600" fill="currentColor" />
+          ))}
+        </svg>
+        <div className="mt-1 flex items-center justify-between text-[11px] text-slate-500">
+          <span>{chartSeries[0].label}</span>
+          <span>{chartSeries[chartSeries.length - 1].label}</span>
+        </div>
+      </div>
+    );
+  };
+
+
   return (
     <div className="space-y-6">
       <Card>
@@ -343,8 +543,52 @@ export default function UserSummaryPage() {
           subtitle={`${safeLeague.name} · Totale punti: ${safeSummary.total} (Esatto ${safeSummary.exact} · 1X2 ${safeSummary.outcome} · Somma ${safeSummary.sumGoals}${features.underOver25 ? ` · 2.5 ${safeSummary.underOver ?? 0}` : ""})`}
           right={<Link className="text-sm text-slate-600 hover:underline" to="/leaderboard">← Torna alla classifica</Link>}
         />
-        <CardContent className="text-sm text-slate-600">
-          Elenco partite con pronostico, risultato reale e punti ottenuti.
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
+              <div className="text-[11px] font-medium text-slate-600">% Esatti</div>
+              <div className="mt-1 text-2xl font-semibold text-slate-900">{pctExact}%</div>
+              <div className="mt-1 text-xs text-slate-500">Su {finishedCount} partite finite</div>
+            </div>
+            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
+              <div className="text-[11px] font-medium text-slate-600">% 1X2</div>
+              <div className="mt-1 text-2xl font-semibold text-slate-900">{pctOutcome}%</div>
+              <div className="mt-1 text-xs text-slate-500">Su {finishedCount} partite finite</div>
+            </div>
+            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
+              <div className="text-[11px] font-medium text-slate-600">Streak 1X2</div>
+              <div className="mt-1 text-2xl font-semibold text-slate-900">{streakOutcome}</div>
+              <div className="mt-1 text-xs text-slate-500">Consecutivi corretti</div>
+            </div>
+            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
+              <div className="text-[11px] font-medium text-slate-600">Miglior giornata</div>
+              <div className="mt-1 text-2xl font-semibold text-slate-900">G{bestMatchday.md}</div>
+              <div className="mt-1 text-xs text-slate-500">{bestMatchday.pts} punti</div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl border border-slate-100 bg-white p-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-semibold text-slate-900">Andamento punti</div>
+                  <div className="text-xs text-slate-500">Totale cumulativo per giornata</div>
+                </div>
+                <Badge tone="gray">Streak esatti {streakExact}</Badge>
+              </div>
+              <div className="mt-2 text-slate-900">{renderMiniChart()}</div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-100 bg-white p-3">
+              <div className="text-sm font-semibold text-slate-900">Sintesi</div>
+              <div className="mt-1 text-xs text-slate-600">
+                Esatti: <b>{exactHits}</b> · 1X2: <b>{outcomeHits}</b> · Partite finite: <b>{finishedCount}</b>
+              </div>
+              <div className="mt-2 text-xs text-slate-500">
+                Nota: le percentuali si basano solo sulle partite terminate con risultato disponibile.
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
