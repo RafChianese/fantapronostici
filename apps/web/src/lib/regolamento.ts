@@ -120,16 +120,12 @@ export function generateRegolamentoTemplate(rules: LeagueRules, settings: League
         paragraphs: ["In questa lega il premio miglior giornata non è previsto."],
       };
 
-  const lockMode = settings.lockMode ?? "MANUAL_UNTIL";
-
   const lockSection: RegolamentoSection = {
     title: "Lock pronostici",
     paragraphs: [
-      lockMode === "AUTO_MATCHDAY_30MIN"
-        ? "In questa lega è attivo il lock automatico: i pronostici vengono bloccati automaticamente 30 minuti prima dell'inizio della giornata (mezz'ora prima del primo match) e vengono riaperti al termine dell'ultima partita della giornata."
-        : `I pronostici sono modificabili fino al lock configurato dall'admin. In questa lega il lock è impostato su: ${lockUntil}.`,
+      `I pronostici sono modificabili fino al lock configurato dall'admin. In questa lega il lock è impostato su: ${lockUntil}.`,
       settings.isForceLocked
-        ? "Inoltre, l'admin ha attivato un lock forzato immediato: in questo momento i pronostici risultano bloccati anche se il lock automatico/manuale non sarebbe ancora scattato."
+        ? "Inoltre, l'admin ha attivato un lock forzato immediato: in questo momento i pronostici risultano bloccati anche se la data/ora non è ancora raggiunta."
         : "Il lock forzato immediato non è attivo.",
     ],
   };

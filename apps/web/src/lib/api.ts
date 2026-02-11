@@ -16,8 +16,6 @@ export type Membership = {
 export type ScoringMode = "CUMULATIVE" | "BEST_ONLY" | "MIXED";
 export type RankingCriterion = "EXACT" | "OUTCOME" | "SUM_GOALS";
 
-export type LockMode = "MANUAL_UNTIL" | "AUTO_MATCHDAY_30MIN";
-
 export type LeagueRules = {
   pointsExact: number;
   pointsOutcome: number;
@@ -34,7 +32,6 @@ export type LeagueRules = {
 export type LeagueSettings = {
   lockUntil: string; // ISO date string
   isForceLocked: boolean;
-  lockMode?: LockMode;
   tieBreak1: RankingCriterion;
   tieBreak2: RankingCriterion;
   tieBreak3: RankingCriterion;
@@ -44,7 +41,7 @@ export type RegolamentoConfigResponse = {
   league: League;
   rules: LeagueRules;
   settings: LeagueSettings;
-  lock: { lockUntil: string; isForceLocked: boolean; lockMode?: LockMode; lockedByTime: boolean; isLocked: boolean; autoLock?: any };
+  lock: { lockUntil: string; isForceLocked: boolean; lockedByTime: boolean; isLocked: boolean };
 };
 
 export function getToken() {

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../lib/api";
 import { useLoading } from "../lib/loading";
-import { Badge, Card, CardContent, CardHeader } from "../components/ui";
+import { Badge, Button, Card, CardContent, CardHeader } from "../components/ui";
 import { useAuth } from "../lib/auth";
 import { showNativeRewardedAd } from "../lib/nativeAds";
 
@@ -19,6 +19,7 @@ export default function UserSummaryPage() {
   const [showAd, setShowAd] = useState(false);
   const [adSecondsLeft, setAdSecondsLeft] = useState(15);
   const [demoAdsEnabled, setDemoAdsEnabled] = useState(true);
+  const [showAllMatchdays, setShowAllMatchdays] = useState(false);
 
   const refetch = () => {
     show();
@@ -273,6 +274,67 @@ export default function UserSummaryPage() {
     .map((s) => Number(s))
     .sort((a, b) => a - b);
 
+  const getStatus = (it: any): "NOT_STARTED" | "IN_PROGRESS" | "FINISHED" => {
+    const raw = String(it?.match?.status || "NOT_STARTED");
+    if (raw === "FINISHED" || raw === "IN_PROGRESS" || raw === "NOT_STARTED") return raw as any;
+    return "NOT_STARTED";
+  };
+
+  const nowTs = Date.now();
+  const isAllFinished = (md: number) => {
+    const items = byMatchday[String(md)] ?? [];
+    if (!items.length) return true;
+    return items.every((it: any) => {
+      const s = getStatus(it);
+      if (s === "FINISHED") return true;
+      // Fallback: if status missing, infer from kickoffAt (very conservative)
+      const ko = new Date(it?.match?.kickoffAt).getTime();
+      return Number.isFinite(ko) ? ko < nowTs - 4 * 60 * 60 * 1000 : false;
+    });
+  };
+
+  const isAllNotStarted = (md: number) => {
+    const items = byMatchday[String(md)] ?? [];
+    if (!items.length) return false;
+    return items.every((it: any) => {
+      const s = getStatus(it);
+      if (s === "NOT_STARTED") return true;
+      const ko = new Date(it?.match?.kickoffAt).getTime();
+      return Number.isFinite(ko) ? ko > nowTs : false;
+    });
+  };
+
+  const currentMatchday = (() => {
+    const md = matchdays.find((m) => !isAllFinished(m));
+    return md ?? matchdays[0] ?? 1;
+  })();
+
+  const nextMatchday = (() => {
+    const after = matchdays.filter((m) => m > currentMatchday);
+    // "Prossima" = prima giornata successiva NON ancora iniziata.
+    const md = after.find((m) => isAllNotStarted(m));
+    return md ?? null;
+  })();
+
+  const visibleMatchdays = showAllMatchdays
+    ? matchdays
+    : [currentMatchday, nextMatchday].filter((x): x is number => typeof x === "number");
+
+  const TeamDot = ({ name, logo }: { name: string; logo?: string | null }) => {
+    if (logo) return <img src={logo} alt={name} className="h-6 w-6 rounded-full object-contain" />;
+    return (
+      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-[10px] font-bold text-slate-700">
+        {name.trim().slice(0, 1).toUpperCase()}
+      </span>
+    );
+  };
+
+  const statusBadge = (s: "NOT_STARTED" | "IN_PROGRESS" | "FINISHED") => {
+    if (s === "FINISHED") return <Badge tone="green">FINITA</Badge>;
+    if (s === "IN_PROGRESS") return <Badge tone="blue">IN CORSO</Badge>;
+    return <Badge>NON INIZIATA</Badge>;
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -287,36 +349,81 @@ export default function UserSummaryPage() {
       </Card>
 
       <Card>
-        <CardHeader title="Partite e punteggi" subtitle="Per ogni match: pronostico, risultato reale e punti (raggruppati per giornata)." />
+        <CardHeader
+          title="Partite e punteggi"
+          subtitle={showAllMatchdays ? "Stai visualizzando tutte le giornate." : "Di default vedi solo la giornata in corso e la prossima (non iniziata)."}
+          right={
+            <Button variant="secondary" onClick={() => setShowAllMatchdays((v) => !v)}>
+              {showAllMatchdays ? "Mostra solo (corrente + prossima)" : "Mostra tutte"}
+            </Button>
+          }
+        />
         <CardContent>
           <div className="space-y-6">
-            {matchdays.map((md) => (
-              <div key={md} className="rounded-2xl border border-slate-100">
-                <div className="flex items-center justify-between px-4 py-3">
-                  <div className="font-semibold">Giornata {md}</div>
-                  <div className="text-xs text-slate-500">{byMatchday[String(md)]?.length ?? 0} partite</div>
-                </div>
-                <div className="divide-y divide-slate-100">
-                  {byMatchday[String(md)]?.map((it: any) => (
-                    <div key={it?.match?.id ?? `${it?.match?.kickoffAt}-${it?.match?.homeTeam}`} className="px-4 py-4">
-                      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                        <div>
-                          <div className="font-medium">{it.match.homeTeam} <span className="text-slate-400">vs</span> {it.match.awayTeam}</div>
-                          <div className="text-sm text-slate-500">{new Date(it.match.kickoffAt).toLocaleString()}</div>
-                          <div className="text-sm text-slate-600">
-                            Pronostico: <span className="font-medium">{it.prediction ? `${it.prediction.homeGoals}-${it.prediction.awayGoals}` : "—"}</span>{" "}
-                            · Reale: <span className="font-medium">{it.real ? `${it.real.home}-${it.real.away}` : "—"}</span>
+            {visibleMatchdays.map((md) => (
+              <Card key={md} className="border border-slate-100">
+                <CardHeader
+                  title={`Giornata ${md}`}
+                  subtitle={`${byMatchday[String(md)]?.length ?? 0} partite`}
+                />
+                <CardContent className="space-y-3">
+                  {byMatchday[String(md)]?.map((it: any) => {
+                    const m = it?.match;
+                    const kickoff = m?.kickoffAt ? new Date(m.kickoffAt) : null;
+                    const date = kickoff
+                      ? `${String(kickoff.getDate()).padStart(2, "0")}.${String(kickoff.getMonth() + 1).padStart(2, "0")}`
+                      : "";
+                    const time = kickoff
+                      ? `${String(kickoff.getHours()).padStart(2, "0")}:${String(kickoff.getMinutes()).padStart(2, "0")}`
+                      : "";
+
+                    const pr = it?.prediction ? `${it.prediction.homeGoals}-${it.prediction.awayGoals}` : "—";
+                    const real = it?.real ? `${it.real.home}-${it.real.away}` : "—";
+                    const pts = it?.points?.total ?? 0;
+                    const status = getStatus(it);
+
+                    return (
+                      <div key={m?.id ?? `${m?.kickoffAt}-${m?.homeTeam}`} className="rounded-2xl border border-slate-100 bg-white/70 p-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            {statusBadge(status)}
+                          </div>
+                          <Badge tone={pts > 0 ? "green" : "gray"}>{pts} pt</Badge>
+                        </div>
+
+                        <div className="mt-2 grid grid-cols-[54px_1fr] items-center gap-2">
+                          <div className="text-xs text-slate-600">
+                            <div className="font-semibold">{date}</div>
+                            <div className="text-slate-500">{time}</div>
+                          </div>
+
+                          <div className="min-w-0">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <TeamDot name={m?.homeTeam || ""} logo={m?.homeLogo} />
+                                <div className="min-w-0 truncate text-sm font-semibold text-slate-900">{m?.homeTeam}</div>
+                              </div>
+                              <div className="flex items-center gap-2 min-w-0">
+                                <TeamDot name={m?.awayTeam || ""} logo={m?.awayLogo} />
+                                <div className="min-w-0 truncate text-sm font-semibold text-slate-900">{m?.awayTeam}</div>
+                              </div>
+                            </div>
+                            <div className="mt-2 text-sm text-slate-600">
+                              Pronostico: <span className="font-medium">{pr}</span>
+                              <span className="mx-2 text-slate-400">·</span>
+                              Reale: <span className="font-medium">{real}</span>
+                            </div>
+                            <div className="mt-1 text-xs text-slate-500">{buildBreakdown(it?.points)}</div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <Badge tone={(it?.points?.total ?? 0) > 0 ? "green" : "gray"}>{it?.points?.total ?? 0} pt</Badge>
-                          <div className="text-xs text-slate-500">{buildBreakdown(it?.points)}</div>
-                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+                    );
+                  })}
+                  {(!byMatchday[String(md)] || byMatchday[String(md)].length === 0) ? (
+                    <div className="py-3 text-sm text-slate-600">Nessuna partita.</div>
+                  ) : null}
+                </CardContent>
+              </Card>
             ))}
             {safeItems.length === 0 ? <div className="py-6 text-sm text-slate-600">Nessuna partita.</div> : null}
           </div>

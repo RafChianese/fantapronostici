@@ -119,7 +119,6 @@ adminRouter.get("/settings", async (req, res) => {
 const SettingsSchema = z.object({
     lockUntil: z.string().datetime(),
     isForceLocked: z.boolean().optional(),
-    lockMode: z.enum(["MANUAL_UNTIL", "AUTO_MATCHDAY_30MIN"]).optional(),
     tieBreak1: z.enum(["EXACT", "OUTCOME", "SUM_GOALS"]).optional(),
     tieBreak2: z.enum(["EXACT", "OUTCOME", "SUM_GOALS"]).optional(),
     tieBreak3: z.enum(["EXACT", "OUTCOME", "SUM_GOALS"]).optional(),
@@ -135,7 +134,6 @@ adminRouter.put("/settings", async (req, res) => {
             leagueId,
             lockUntil: new Date(body.lockUntil),
             isForceLocked: body.isForceLocked ?? false,
-            ...(body.lockMode ? { lockMode: body.lockMode } : {}),
             ...(body.tieBreak1 ? { tieBreak1: body.tieBreak1 } : {}),
             ...(body.tieBreak2 ? { tieBreak2: body.tieBreak2 } : {}),
             ...(body.tieBreak3 ? { tieBreak3: body.tieBreak3 } : {}),
@@ -143,7 +141,6 @@ adminRouter.put("/settings", async (req, res) => {
         update: {
             lockUntil: new Date(body.lockUntil),
             ...(typeof body.isForceLocked === "boolean" ? { isForceLocked: body.isForceLocked } : {}),
-            ...(body.lockMode ? { lockMode: body.lockMode } : {}),
             ...(body.tieBreak1 ? { tieBreak1: body.tieBreak1 } : {}),
             ...(body.tieBreak2 ? { tieBreak2: body.tieBreak2 } : {}),
             ...(body.tieBreak3 ? { tieBreak3: body.tieBreak3 } : {}),
@@ -157,7 +154,7 @@ adminRouter.post("/lock-now", async (req, res) => {
         return;
     const settings = await prisma.setting.upsert({
         where: { leagueId },
-        create: { leagueId, lockUntil: new Date(), isForceLocked: true, lockMode: "MANUAL_UNTIL" },
+        create: { leagueId, lockUntil: new Date(), isForceLocked: true },
         update: { isForceLocked: true },
     });
     res.json({ settings });

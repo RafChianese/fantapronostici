@@ -45,7 +45,7 @@ publicRouter.get("/lock", async (req, res) => {
     const rules = await prisma.rule.findUnique({ where: { leagueId: league.id } });
     const info = await getLockInfo(league.id);
     res.json({
-        lock: { lockUntil: info.lockUntil, isForceLocked: info.isForceLocked, lockMode: info.lockMode, lockedByTime: info.lockedByTime, isLocked: info.isLocked, autoLock: info.autoLock ?? null },
+        lock: { lockUntil: info.lockUntil, isForceLocked: info.isForceLocked, lockedByTime: info.lockedByTime, isLocked: info.isLocked },
         features: { underOver25: !!rules?.enableUnderOver25, matchdayAwards: !!rules?.enableMatchdayAwards },
     });
 });
@@ -80,7 +80,6 @@ publicRouter.get("/regolamento-config", async (req, res) => {
         settings: {
             lockUntil: settings.lockUntil,
             isForceLocked: settings.isForceLocked,
-            lockMode: settings.lockMode,
             tieBreak1: settings.tieBreak1,
             tieBreak2: settings.tieBreak2,
             tieBreak3: settings.tieBreak3,
@@ -88,10 +87,8 @@ publicRouter.get("/regolamento-config", async (req, res) => {
         lock: {
             lockUntil: lockInfo.lockUntil,
             isForceLocked: lockInfo.isForceLocked,
-            lockMode: lockInfo.lockMode,
             lockedByTime: lockInfo.lockedByTime,
             isLocked: lockInfo.isLocked,
-            autoLock: lockInfo.autoLock ?? null,
         },
     });
 });

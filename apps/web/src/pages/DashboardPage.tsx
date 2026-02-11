@@ -70,6 +70,25 @@ export default function DashboardPage() {
 
   const isLocked = !!config?.lock?.isLocked;
 
+  const reloadAll = async (opts?: { silent?: boolean }) => {
+    const silent = !!opts?.silent;
+    try {
+      if (!silent) show();
+      setLoading(true);
+      const [m, p, c] = await Promise.all([api.matches(), api.myPredictions(), api.publicConfig()]);
+      setMatches(m.matches);
+      const map: Record<string, PredictionState> = {};
+      for (const pr of (p.predictions as PredictionState[])) map[pr.matchId] = pr;
+      setPreds(map);
+      setConfig(c);
+    } catch (e: any) {
+      setToast({ tone: "danger", msg: e.message });
+    } finally {
+      setLoading(false);
+      if (!silent) hide();
+    }
+  };
+
   const matchById = useMemo(() => {
     const m = new Map<string, Match>();
     for (const it of matches) m.set(it.id, it);
@@ -89,24 +108,64 @@ export default function DashboardPage() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      try {
-        show();
-        setLoading(true);
-        const [m, p, c] = await Promise.all([api.matches(), api.myPredictions(), api.publicConfig()]);
-        if (cancelled) return;
-        setMatches(m.matches);
-        const map: Record<string, PredictionState> = {};
-        for (const pr of (p.predictions as PredictionState[])) map[pr.matchId] = pr;
-        setPreds(map);
-        setConfig(c);
-      } catch (e: any) {
-        setToast({ tone: "danger", msg: e.message });
-      } finally {
-        if (!cancelled) setLoading(false);
-        hide();
-      }
+      await reloadAll();
     })();
     return () => { cancelled = true; };
+  }, [activeLeagueId]);
+
+  // Keep lock state fresh. Important UX: when lock becomes active, immediately refresh the page data so inputs
+  // get disabled and any in-flight local edits are overwritten by server state.
+  useEffect(() => {
+    if (!activeLeagueId) return;
+
+    let cancelled = false;
+    let interval: any = null;
+    let timer: any = null;
+
+    const scheduleExactRefreshAt = (iso: string | undefined | null) => {
+      if (timer) clearTimeout(timer);
+      if (!iso) return;
+      const t = new Date(iso).getTime();
+      if (!Number.isFinite(t)) return;
+      const ms = t - Date.now();
+      // If lock is in the future, schedule a refresh a tiny bit after the deadline.
+      if (ms > 0) timer = setTimeout(() => reloadAll({ silent: true }), Math.min(ms + 350, 2_147_483_600));
+    };
+
+    // Initial scheduling based on current config.
+    scheduleExactRefreshAt(config?.lock?.lockUntil);
+
+    interval = setInterval(async () => {
+      try {
+        const next = await api.publicConfig();
+        if (cancelled) return;
+
+        const prevLocked = !!config?.lock?.isLocked;
+        const nextLocked = !!next?.lock?.isLocked;
+
+        // If lock flips (either on or off), refresh everything.
+        if (prevLocked !== nextLocked) {
+          setConfig(next);
+          await reloadAll({ silent: true });
+          if (nextLocked) setToast({ tone: "danger", msg: "Lock appena attivato: pagina aggiornata." });
+        } else {
+          // Still update config to keep countdown accurate.
+          setConfig(next);
+        }
+
+        // Re-schedule exact refresh (manual lockUntil) if it changes.
+        scheduleExactRefreshAt(next?.lock?.lockUntil);
+      } catch {
+        // ignore polling errors
+      }
+    }, 10_000);
+
+    return () => {
+      cancelled = true;
+      if (interval) clearInterval(interval);
+      if (timer) clearTimeout(timer);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeLeagueId]);
 
   const hasAnyPrediction = useMemo(() => {

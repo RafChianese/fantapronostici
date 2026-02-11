@@ -48,12 +48,6 @@ enum RankingCriterion {
   SUM_GOALS
 }
 
-enum LockMode {
-  MANUAL_UNTIL
-  AUTO_MATCHDAY_30MIN
-}
-
-
 model User {
   id           String       @id @default(cuid())
   email        String       @unique
@@ -220,7 +214,6 @@ model Setting {
   leagueId      String   @unique
   lockUntil     DateTime
   isForceLocked Boolean  @default(false)
-  lockMode      LockMode @default(MANUAL_UNTIL)
   // Tie-breakers used when total points are equal in the leaderboard.
   // The primary criterion is always total points.
   tieBreak1     RankingCriterion @default(EXACT)
