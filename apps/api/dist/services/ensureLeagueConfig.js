@@ -12,6 +12,7 @@ export async function ensureLeagueConfig(leagueId) {
             leagueId,
             lockUntil: farFuture,
             isForceLocked: false,
+            lockMode: "MANUAL_UNTIL",
             tieBreak1: "EXACT",
             tieBreak2: "OUTCOME",
             tieBreak3: "SUM_GOALS",

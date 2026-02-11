@@ -804,6 +804,36 @@ function LeagueDetail({ league, onChanged }: { league: any; onChanged: () => voi
               {loadingCfg ? <Spinner /> : null}
               {settings ? (
                 <div className="space-y-3">
+                  <div className="rounded-xl border border-slate-200 p-3">
+                    <div className="font-medium">Modalità lock</div>
+                    <div className="mt-1 text-xs text-slate-600">Scegli se usare una scadenza manuale oppure un lock automatico basato sulle giornate.</div>
+                    <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-6">
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="radio"
+                          name="lockMode"
+                          checked={(settings.lockMode ?? "MANUAL_UNTIL") === "MANUAL_UNTIL"}
+                          onChange={() => setSettings({ ...settings, lockMode: "MANUAL_UNTIL" })}
+                        />
+                        Manuale (data/ora)
+                      </label>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="radio"
+                          name="lockMode"
+                          checked={(settings.lockMode ?? "MANUAL_UNTIL") === "AUTO_MATCHDAY_30MIN"}
+                          onChange={() => setSettings({ ...settings, lockMode: "AUTO_MATCHDAY_30MIN" })}
+                        />
+                        Automatico (30 min prima della giornata)
+                      </label>
+                    </div>
+                    {(settings.lockMode ?? "MANUAL_UNTIL") === "AUTO_MATCHDAY_30MIN" ? (
+                      <div className="mt-2 text-xs text-slate-600">
+                        In modalità automatica, il lock scatta 30 minuti prima del primo match della giornata e si rimuove dopo la fine dell'ultima partita.
+                      </div>
+                    ) : null}
+                  </div>
+
                   <Input
                     label="Lock fino a (data e ora)"
                     type="datetime-local"
@@ -812,6 +842,7 @@ function LeagueDetail({ league, onChanged }: { league: any; onChanged: () => voi
                       const pad = (n: number) => String(n).padStart(2, "0");
                       return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
                     })()}
+                    disabled={(settings.lockMode ?? "MANUAL_UNTIL") === "AUTO_MATCHDAY_30MIN"}
                     onChange={(e) => {
                       const iso = new Date(e.target.value).toISOString();
                       setSettings({ ...settings, lockUntil: iso });
@@ -841,6 +872,7 @@ function LeagueDetail({ league, onChanged }: { league: any; onChanged: () => voi
                             {
                               lockUntil: settings.lockUntil,
                               isForceLocked: !!settings.isForceLocked,
+                              lockMode: settings.lockMode ?? "MANUAL_UNTIL",
                               tieBreak1: settings.tieBreak1,
                               tieBreak2: settings.tieBreak2,
                               tieBreak3: settings.tieBreak3,
@@ -884,6 +916,7 @@ function LeagueDetail({ league, onChanged }: { league: any; onChanged: () => voi
                               {
                                 lockUntil: settings.lockUntil,
                                 isForceLocked: false,
+                                lockMode: settings.lockMode ?? "MANUAL_UNTIL",
                                 tieBreak1: settings.tieBreak1,
                                 tieBreak2: settings.tieBreak2,
                                 tieBreak3: settings.tieBreak3,
