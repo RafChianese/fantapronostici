@@ -44,6 +44,28 @@ export type RegolamentoConfigResponse = {
   lock: { lockUntil: string; isForceLocked: boolean; lockedByTime: boolean; isLocked: boolean };
 };
 
+export type LeagueStatsResponse = {
+  league: League;
+  summary: {
+    participants: number;
+    matches: number;
+    matchdays: number;
+    predictions: number;
+    currentMatchday: number;
+    nextMatchday: number | null;
+  };
+  leaderboards: {
+    topTotal: { userId: string; displayName: string; totalPoints: number }[];
+    topExact: { userId: string; displayName: string; exactHits: number }[];
+    topOutcome: { userId: string; displayName: string; outcomeHits: number }[];
+    topSumGoals: { userId: string; displayName: string; sumGoalsHits: number }[];
+  };
+  matches: {
+    hardest: any[];
+    easiest: any[];
+  };
+};
+
 export function getToken() {
   return localStorage.getItem("tm_token") || "";
 }
@@ -131,8 +153,8 @@ export const api = {
   // league public rules+settings (used by "Regolamento")
   regolamentoConfig: () => request(`/api/regolamento-config`) as Promise<RegolamentoConfigResponse>,
 
-  // public: league regolamento config (uses league header x-league-id)
-  regolamentoConfig: () => request(`/api/regolamento-config`),
+  // league statistics
+  leagueStats: () => request(`/api/stats`) as Promise<LeagueStatsResponse>,
 
 
   // leagues

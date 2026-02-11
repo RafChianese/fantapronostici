@@ -25,6 +25,14 @@ Nel frontend è disponibile la pagina **Regolamento** (route: `/regolamento`).
 - Mostra un testo di regolamento **generato automaticamente** in base alle regole/setting configurati dall'admin della lega attiva.
 - I dati arrivano dall'endpoint read‑only: `GET /api/regolamento-config` (scoped per‑lega tramite header `x-league-id` o query `leagueId/leagueCode`).
 
+## Pagina "Statistiche" (per‑lega)
+
+Nel frontend è disponibile la pagina **Statistiche** (route: `/stats`).
+
+- È accessibile dal menu di navigazione.
+- Mostra insight di base sulla lega (Top 3, contatori, partite più difficili/facili).
+- I dati arrivano dall'endpoint read‑only: `GET /api/stats` (scoped per‑lega tramite header `x-league-id` o query `leagueId/leagueCode`).
+
 ## Setup locale (100% funzionante)
 
 ### 1) Avvia Postgres locale (consigliato)

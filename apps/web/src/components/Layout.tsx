@@ -312,6 +312,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <nav className="hidden items-center gap-2 md:flex">
             <NavItem to="/leaderboard" tourId="tab-leaderboard">Classifica</NavItem>
             {user && activeMembership ? <NavItem to="/" tourId="tab-predictions">I miei pronostici</NavItem> : null}
+            {user && activeMembership ? <NavItem to="/stats">Statistiche</NavItem> : null}
             {user && activeMembership ? <NavItem to="/regolamento">Regolamento</NavItem> : null}
             {user ? <NavItem to="/onboarding" tourId="tab-leagues">Leghe</NavItem> : null}
             {user && (isLeagueAdmin || isSuperAdmin) ? (
@@ -412,10 +413,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 </NavItem>
 
                 {activeMembership ? (
+                  <NavItem to="/stats" onClick={() => setDrawerOpen(false)}>
+                    Statistiche
+                  </NavItem>
+                ) : null}
+
+                {activeMembership ? (
                   <NavItem to="/regolamento" onClick={() => setDrawerOpen(false)}>
                     Regolamento
                   </NavItem>
                 ) : null}
+
 
                 <div className="mt-3 border-t border-slate-100 pt-3">
                   <button
