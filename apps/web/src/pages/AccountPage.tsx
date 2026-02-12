@@ -28,7 +28,7 @@ export default function AccountPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <Card>
+      {/* <Card>
         <CardHeader title="Account" subtitle={user ? `Sei loggato come ${user.email}` : ""} />
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -42,7 +42,7 @@ export default function AccountPage() {
             </div>
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
 
       <Card>
         <CardHeader title="Profilo" subtitle="Aggiorna il nome mostrato agli altri utenti." />
