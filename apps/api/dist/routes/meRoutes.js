@@ -3,7 +3,7 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth, requireLeagueMember, resolveLeagueId } from "../middleware/authMiddleware.js";
-import { assertPredictionsEditableForMatches, getLockInfo } from "../lib/lock.js";
+import { assertPredictionsEditable, getLockInfo } from "../lib/lock.js";
 import { recalcAllScoresForLeague } from "../lib/scoring.js";
 import { getMonetizationConfig } from "../lib/monetization.js";
 export const meRouter = Router();
@@ -49,16 +49,7 @@ meRouter.get("/lock", async (req, res) => {
     if (!leagueId)
         return res.status(400).json({ message: "Missing leagueId" });
     const info = await getLockInfo(leagueId);
-    res.json({
-        lock: {
-            lockUntil: info.lockUntil,
-            isForceLocked: info.isForceLocked,
-            lockedByTime: info.lockedByTime,
-            isLocked: info.isLocked,
-            lockAll: !!info?.auto?.lockAll,
-            lockedMatchdays: (info?.auto?.lockedMatchdays || []).map((x) => Number(x)),
-        },
-    });
+    res.json({ lock: { lockUntil: info.lockUntil, isForceLocked: info.isForceLocked, lockedByTime: info.lockedByTime, isLocked: info.isLocked } });
 });
 meRouter.get("/predictions", requireLeagueMember, async (req, res) => {
     const leagueId = resolveLeagueId(req);
@@ -80,15 +71,15 @@ const PutPredictionsSchema = z.object({
 });
 meRouter.put("/predictions", requireLeagueMember, async (req, res) => {
     const leagueId = resolveLeagueId(req);
-    const { predictions } = PutPredictionsSchema.parse(req.body);
     try {
-        await assertPredictionsEditableForMatches(leagueId, predictions.map((p) => p.matchId));
+        await assertPredictionsEditable(leagueId);
     }
     catch (e) {
         if (e?.status)
             return res.status(e.status).json(e.payload ?? { message: e.message });
         throw e;
     }
+    const { predictions } = PutPredictionsSchema.parse(req.body);
     if (!predictions.length) {
         return res.status(400).json({ message: "Nessun pronostico da salvare.", reason: "EMPTY_PREDICTIONS" });
     }
