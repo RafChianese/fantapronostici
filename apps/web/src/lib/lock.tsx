@@ -10,6 +10,11 @@ export type LockResponse = {
     lockedByTime: boolean;
     isLocked: boolean;
   };
+  leagueSettings?: {
+    lockMode?: "MANUAL" | "AUTO";
+    lockOffsetMinutes?: number;
+    predictionMode?: "MATCHDAY_BY_MATCHDAY" | "TOURNAMENT_PRE";
+  };
   features?: {
     underOver25?: boolean;
     matchdayAwards?: boolean;
@@ -37,6 +42,11 @@ export function LockProvider({ children }: { children: React.ReactNode }) {
   const { push } = useToast();
   const [data, setData] = useState<LockResponse | null>(null);
 
+  // Session-scoped state to avoid reload loops: when the page reloads while locked,
+  // the first poll would otherwise see "prevLocked=false" and reload again.
+  const lockStateKey = "tm_lock_state_v1";
+  const lastReloadAtKey = "tm_lock_last_reload_at_v1";
+
   const dataRef = useRef<LockResponse | null>(null);
   useEffect(() => {
     dataRef.current = data;
@@ -49,6 +59,12 @@ export function LockProvider({ children }: { children: React.ReactNode }) {
     }
     const next = (await api.publicConfig()) as LockResponse;
     setData(next);
+    // Keep a stable marker of the last known lock state across reloads.
+    try {
+      sessionStorage.setItem(lockStateKey, next?.lock?.isLocked ? "1" : "0");
+    } catch {
+      // ignore
+    }
   }, [activeLeagueId]);
 
   useEffect(() => {
@@ -82,22 +98,57 @@ export function LockProvider({ children }: { children: React.ReactNode }) {
         const next = (await api.publicConfig()) as LockResponse;
         if (cancelled) return;
 
-        const prevLocked = !!dataRef.current?.lock?.isLocked;
+        const prev = dataRef.current;
+        const prevLocked = !!prev?.lock?.isLocked;
         const nextLocked = !!next?.lock?.isLocked;
 
-        setData(next);
+        // Only update React state if something relevant actually changed.
+        // This avoids heavy rerenders (and losing in-progress edits) while we poll.
+        const sameLock =
+          !!prev &&
+          prev.lock.isLocked === next.lock.isLocked &&
+          prev.lock.lockUntil === next.lock.lockUntil &&
+          prev.lock.isForceLocked === next.lock.isForceLocked &&
+          prev.lock.lockedByTime === next.lock.lockedByTime &&
+          (prev.leagueSettings?.lockMode ?? null) === (next.leagueSettings?.lockMode ?? null) &&
+          (prev.leagueSettings?.lockOffsetMinutes ?? null) === (next.leagueSettings?.lockOffsetMinutes ?? null) &&
+          (prev.leagueSettings?.predictionMode ?? null) === (next.leagueSettings?.predictionMode ?? null);
 
-        // If lock just became active, force a full reload to avoid any chance of editing with stale state.
-        if (!prevLocked && nextLocked) {
-          const markerKey = "tm_lock_reload_marker";
-          const marker = `${safeIso(next.lock.lockUntil)}_${next.lock.isForceLocked ? "force" : "time"}`;
-          const prevMarker = sessionStorage.getItem(markerKey);
-          if (prevMarker !== marker) {
-            sessionStorage.setItem(markerKey, marker);
-            push({ tone: "danger", msg: "Lock appena attivato: aggiornamento…", ttlMs: 1800 });
-            // Slight delay so the toast can render before reload.
-            setTimeout(() => window.location.reload(), 200);
+        if (!sameLock) {
+          setData(next);
+          // Update the ref immediately too, so the next poll doesn't see stale state.
+          dataRef.current = next;
+        }
+
+        // Reload the predictions page only when the lock state actually changes.
+        // This guarantees the UI cannot keep editing across the lock boundary,
+        // without reloading on every poll.
+        try {
+          const stored = sessionStorage.getItem(lockStateKey);
+          const storedLocked = stored === "1";
+          const storedIsValid = stored === "1" || stored === "0";
+          const lockChanged = storedIsValid ? storedLocked !== nextLocked : prevLocked !== nextLocked;
+
+          // Persist the new state so a reload while locked doesn't cause another reload loop.
+          sessionStorage.setItem(lockStateKey, nextLocked ? "1" : "0");
+
+          if (lockChanged) {
+            // Prevent back-to-back reload storms (edge cases / flaky time sync)
+            const last = Number(sessionStorage.getItem(lastReloadAtKey) || "0");
+            const now = Date.now();
+            const allow = !Number.isFinite(last) || now - last > 5_000;
+            if (allow) {
+              sessionStorage.setItem(lastReloadAtKey, String(now));
+              const path = window.location.pathname;
+              const isPredictionsPage = path === "/"; // "I miei pronostici"
+              if (isPredictionsPage) {
+                push({ tone: "info", msg: "Lock aggiornato: ricarico i pronostici…", ttlMs: 1600 });
+                setTimeout(() => window.location.reload(), 150);
+              }
+            }
           }
+        } catch {
+          // ignore
         }
 
         scheduleExact(next?.lock?.lockUntil);

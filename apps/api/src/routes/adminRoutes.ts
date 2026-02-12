@@ -6,6 +6,7 @@ import { recalcAllScoresForLeague } from "../lib/scoring.js";
 import { clearMatchdayAwardsForLeague } from "../lib/matchdayAwards.js";
 import { runSyncOnce } from "../jobs/syncJob.js";
 import { ensureLeagueConfig } from "../services/ensureLeagueConfig.js";
+import { buildAutoLockSentinel, decodeLeagueSettings } from "../lib/leagueConfigEncoding.js";
 
 export const adminRouter = Router();
 
@@ -131,13 +132,23 @@ adminRouter.get("/settings", async (req, res) => {
 
   await ensureLeagueConfig(leagueId);
   const settings = await prisma.setting.findUnique({ where: { leagueId } });
-  res.json({ settings });
+  if (!settings) return res.json({ settings: null });
+  const decoded = decodeLeagueSettings(settings.lockUntil);
+  // Expose decoded fields to admin UI (still read-only).
+  res.json({ settings: { ...settings, ...decoded } });
 });
 
 const SettingsSchema = z.object({
-  // lockUntil can be omitted to keep current value (helps older/broken clients)
+  // lockUntil is no longer edited manually. Kept optional for backward compatibility with older web builds.
   lockUntil: z.string().datetime().optional(),
   isForceLocked: z.boolean().optional(),
+
+  // --- Deploy-safe extensions (optional, backward compatible) ---
+  // Deprecated (lock is always automatic). Still accepted for backward compatibility.
+  lockMode: z.enum(["MANUAL", "AUTO"]).optional(),
+  lockOffsetMinutes: z.number().int().min(0).max(120).optional(),
+  predictionMode: z.enum(["TOURNAMENT_PRE", "MATCHDAY_BY_MATCHDAY"]).optional(),
+
   tieBreak1: z.enum(["EXACT", "OUTCOME", "SUM_GOALS"]).optional(),
   tieBreak2: z.enum(["EXACT", "OUTCOME", "SUM_GOALS"]).optional(),
   tieBreak3: z.enum(["EXACT", "OUTCOME", "SUM_GOALS"]).optional(),
@@ -149,20 +160,30 @@ adminRouter.put("/settings", async (req, res) => {
 
   const body = SettingsSchema.parse(req.body);
 
+  // Deploy-safe encoding into Setting.lockUntil (no new DB columns).
+  // NEW: lock is ALWAYS automatic. We only persist (predictionMode + lockOffsetMinutes) via sentinel.
   const existing = await prisma.setting.findUnique({ where: { leagueId } });
-  const lockUntilDate = body.lockUntil ? new Date(body.lockUntil) : (existing?.lockUntil ?? new Date(Date.now() + 365 * 24 * 60 * 60_000));
+  const existingDecoded = existing
+    ? decodeLeagueSettings(existing.lockUntil)
+    : { lockMode: "AUTO", lockOffsetMinutes: 30, predictionMode: "MATCHDAY_BY_MATCHDAY" as const };
+
+  const predictionMode = (body.predictionMode ?? existingDecoded.predictionMode) as any;
+  const lockOffsetMinutes = typeof body.lockOffsetMinutes === "number" ? body.lockOffsetMinutes : existingDecoded.lockOffsetMinutes;
+
+  const lockUntilToStore = buildAutoLockSentinel(predictionMode, lockOffsetMinutes);
+
   const settings = await prisma.setting.upsert({
     where: { leagueId },
     create: {
       leagueId,
-      lockUntil: lockUntilDate,
+      lockUntil: lockUntilToStore,
       isForceLocked: body.isForceLocked ?? false,
       ...(body.tieBreak1 ? { tieBreak1: body.tieBreak1 } : {}),
       ...(body.tieBreak2 ? { tieBreak2: body.tieBreak2 } : {}),
       ...(body.tieBreak3 ? { tieBreak3: body.tieBreak3 } : {}),
     },
     update: {
-      lockUntil: lockUntilDate,
+      lockUntil: lockUntilToStore,
       ...(typeof body.isForceLocked === "boolean" ? { isForceLocked: body.isForceLocked } : {}),
       ...(body.tieBreak1 ? { tieBreak1: body.tieBreak1 } : {}),
       ...(body.tieBreak2 ? { tieBreak2: body.tieBreak2 } : {}),

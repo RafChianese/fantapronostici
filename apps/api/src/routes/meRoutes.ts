@@ -3,7 +3,7 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth, requireLeagueMember, resolveLeagueId, AuthedRequest } from "../middleware/authMiddleware.js";
-import { assertPredictionsEditable, getLockInfo } from "../lib/lock.js";
+import { assertPredictionsEditableForMatches, getLockInfo } from "../lib/lock.js";
 import { recalcAllScoresForLeague } from "../lib/scoring.js";
 import { getMonetizationConfig } from "../lib/monetization.js";
 
@@ -58,7 +58,16 @@ meRouter.get("/lock", async (req, res) => {
   if (!leagueId) return res.status(400).json({ message: "Missing leagueId" });
 
   const info = await getLockInfo(leagueId);
-  res.json({ lock: { lockUntil: info.lockUntil, isForceLocked: info.isForceLocked, lockedByTime: info.lockedByTime, isLocked: info.isLocked } });
+  res.json({
+    lock: {
+      lockUntil: info.lockUntil,
+      isForceLocked: info.isForceLocked,
+      lockedByTime: info.lockedByTime,
+      isLocked: info.isLocked,
+      lockAll: !!info?.auto?.lockAll,
+      lockedMatchdays: (info?.auto?.lockedMatchdays || []).map((x: any) => Number(x)),
+    },
+  });
 });
 
 meRouter.get("/predictions", requireLeagueMember, async (req: AuthedRequest, res) => {
@@ -86,14 +95,17 @@ const PutPredictionsSchema = z.object({
 meRouter.put("/predictions", requireLeagueMember, async (req: AuthedRequest, res) => {
   const leagueId = resolveLeagueId(req)!;
 
+  const { predictions } = PutPredictionsSchema.parse(req.body);
+
   try {
-    await assertPredictionsEditable(leagueId);
+    await assertPredictionsEditableForMatches(
+      leagueId,
+      predictions.map((p) => p.matchId)
+    );
   } catch (e: any) {
     if (e?.status) return res.status(e.status).json(e.payload ?? { message: e.message });
     throw e;
   }
-
-  const { predictions } = PutPredictionsSchema.parse(req.body);
 
   if (!predictions.length) {
     return res.status(400).json({ message: "Nessun pronostico da salvare.", reason: "EMPTY_PREDICTIONS" });

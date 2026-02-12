@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Lock } from "lucide-react";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { useLoading } from "../lib/loading";
-import { Alert, Badge, Button, Card, CardContent, CardHeader, Input } from "../components/ui";
-import { Countdown } from "../components/Countdown";
+import { Alert, Badge, Button, Card, CardContent, CardHeader, Input, Skeleton } from "../components/ui";
 
 type Match = {
   id: string;
@@ -101,8 +101,24 @@ export default function DashboardPage() {
 
   const isMatchLocked = (m: Match | undefined) => {
     if (!m) return true;
-    // A match is "locked" for editing if the league window is locked OR the match already started.
-    return isLocked || m.status !== "NOT_STARTED";
+
+    const lock = config?.lock as any;
+    const mode = (config?.leagueSettings?.predictionMode as any) || "MATCHDAY_BY_MATCHDAY";
+
+    // Forced lock blocks everything.
+    if (lock?.isForceLocked) return true;
+
+    // Always block once a match has started.
+    if (m.status !== "NOT_STARTED") return true;
+
+    if (mode === "TOURNAMENT_PRE") {
+      // In tournament-pre, when the lock triggers it blocks ALL editing (even future matchdays).
+      return !!lock?.isLocked;
+    }
+
+    // Matchday-by-matchday: lock is scoped to the matchdays currently in lock window.
+    const locked = new Set<number>((lock?.lockedMatchdays || []).map((x: any) => Number(x)));
+    return locked.has(Number(m.matchday || 1));
   };
 
   useEffect(() => {
@@ -132,22 +148,30 @@ export default function DashboardPage() {
       if (ms > 0) timer = setTimeout(() => reloadAll({ silent: true }), Math.min(ms + 350, 2_147_483_600));
     };
 
+    const makeSig = (c: any) => {
+      const l = c?.lock || {};
+      const mds = Array.isArray(l.lockedMatchdays) ? [...l.lockedMatchdays].map(Number).sort((a,b)=>a-b).join(",") : "";
+      return [!!l.isLocked, !!l.isForceLocked, !!l.lockAll, mds].join("|");
+    };
+
     // Initial scheduling based on current config.
     scheduleExactRefreshAt(config?.lock?.lockUntil);
+    let lastSig = makeSig(config);
 
     interval = setInterval(async () => {
       try {
         const next = await api.publicConfig();
         if (cancelled) return;
 
-        const prevLocked = !!config?.lock?.isLocked;
-        const nextLocked = !!next?.lock?.isLocked;
+        const nextSig = makeSig(next);
+        const changed = nextSig !== lastSig;
+        lastSig = nextSig;
 
-        // If lock flips (either on or off), refresh everything.
-        if (prevLocked !== nextLocked) {
+        // Refresh only when the lock state truly changes (isLocked OR locked matchdays/scope).
+        if (changed) {
           setConfig(next);
           await reloadAll({ silent: true });
-          if (nextLocked) setToast({ tone: "danger", msg: "Lock appena attivato: pagina aggiornata." });
+          if (next?.lock?.isLocked) setToast({ tone: "danger", msg: "Lock aggiornato: pagina aggiornata." });
         } else {
           // Still update config to keep countdown accurate.
           setConfig(next);
@@ -189,8 +213,24 @@ export default function DashboardPage() {
       if (!map.has(md)) map.set(md, []);
       map.get(md)!.push(m);
     }
-    return Array.from(map.entries()).sort((a, b) => a[0] - b[0]);
-  }, [matches]);
+    const all = Array.from(map.entries()).sort((a, b) => a[0] - b[0]);
+
+    const mode = (config?.leagueSettings?.predictionMode as any) || "MATCHDAY_BY_MATCHDAY";
+    if (mode === "TOURNAMENT_PRE") return all;
+
+    const now = Date.now();
+    const isFinished = (ms: Match[]) => ms.length > 0 && ms.every((x) => x.status === "FINISHED");
+    const started = (ms: Match[]) => ms.some((x) => x.status !== "NOT_STARTED" || new Date(x.kickoffAt).getTime() <= now);
+
+    const ongoing = all.find(([_, ms]) => started(ms) && !isFinished(ms))?.[0] ?? null;
+    const upcoming = matches
+      .filter((m) => m.status === "NOT_STARTED" && new Date(m.kickoffAt).getTime() > now)
+      .sort((a, b) => new Date(a.kickoffAt).getTime() - new Date(b.kickoffAt).getTime())[0]?.matchday ?? null;
+
+    const visible = Array.from(new Set([ongoing, upcoming].filter((x): x is number => typeof x === "number" && Number.isFinite(x))));
+    if (!visible.length) return all.slice(0, 1);
+    return all.filter(([md]) => visible.includes(md));
+  }, [matches, config?.leagueSettings?.predictionMode]);
 
   const firstNotFinishedMatchday = useMemo(() => {
     const target = byMatchday.find(([, ms]) => !(ms.length > 0 && ms.every((x) => x.status === "FINISHED")));
@@ -282,7 +322,34 @@ export default function DashboardPage() {
     }, 900);
   };
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader title="I miei pronostici" subtitle="Caricamento…" />
+          <CardContent>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="h-10 rounded-2xl bg-slate-200/60 animate-pulse" />
+                <div className="h-10 rounded-2xl bg-slate-200/60 animate-pulse" />
+              </div>
+              <div className="h-4 w-2/3 rounded bg-slate-200/60 animate-pulse" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader title="Partite" subtitle="" />
+          <CardContent>
+            <div className="space-y-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="h-24 rounded-2xl bg-slate-200/60 animate-pulse" />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
 
   if (!config || !config.lock) {
@@ -308,23 +375,13 @@ export default function DashboardPage() {
           }
         />
         <CardContent>
-          {config?.lock ? (
-            <div className={`mb-3 w-full rounded-2xl border px-3 py-2 ${isLocked ? "border-rose-200 bg-rose-50" : "border-emerald-200 bg-emerald-50"}`}>
-              <Countdown
-                lockUntilIso={config?.lock?.lockUntil ? new Date(config?.lock?.lockUntil).toISOString() : new Date().toISOString()}
-                nowIso={new Date().toISOString()}
-                labelOpen="Modifiche aperte (chiusura tra)"
-                labelClosed="Pronostici bloccati"
-              />
-            </div>
-          ) : null}
           {isLocked ? (
             <Alert tone="danger">
-              Pronostici bloccati. Se necessario l'admin può sbloccare o aggiornare la data di lock.
+              Pronostici bloccati.
             </Alert>
           ) : (
             <div className="text-sm text-slate-600">
-              Modifiche aperte fino a: <span className="font-medium">{config?.lock?.lockUntil ? new Date(config?.lock?.lockUntil).toLocaleString() : "—"}</span>
+              Puoi inserire e modificare i pronostici finché la finestra è aperta.
             </div>
           )}
         </CardContent>
@@ -490,20 +547,23 @@ export default function DashboardPage() {
                   const activeQuick = (a: number, b: number) => p?.homeGoals === a && p?.awayGoals === b;
 
                   return (
-                    <div key={m.id} className="relative overflow-hidden rounded-2xl border border-slate-100 bg-white/70 p-3">
+                    <div key={m.id} className="relative overflow-hidden rounded-2xl border border-slate-100 bg-white/70 p-3 transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-md">
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                           {statusBadge(m.status)}
-                          {!canEdit ? <Badge tone="gray" title={lockReason}>Lock</Badge> : null}
+                          {!canEdit ? (
+                            <span
+                              title={lockReason}
+                              className="inline-flex items-center rounded-full border border-slate-200 bg-white/70 px-2 py-1"
+                            >
+                              <Lock className="h-3.5 w-3.5 text-slate-700" aria-hidden="true" />
+                            </span>
+                          ) : null}
                         </div>
                         <div className="text-xs text-slate-500 sm:hidden">Reale: <span className="font-medium text-slate-700">{real}</span></div>
                       </div>
 
-                      {!canEdit ? (
-                        <div className="pointer-events-none absolute inset-0 bg-white/60 backdrop-blur-[1px]">
-                          
-                        </div>
-                      ) : null}
+                      {!canEdit ? <div className="pointer-events-none absolute inset-0 bg-white/25" /> : null}
 
                       <div className="mt-2 grid grid-cols-[54px_1fr_auto] items-center gap-2">
                         <div className="text-xs text-slate-600">

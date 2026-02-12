@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../lib/api";
 import { useLoading } from "../lib/loading";
-import { Badge, Button, Card, CardContent, CardHeader } from "../components/ui";
+import { Badge, Button, Card, CardContent, CardHeader, Skeleton } from "../components/ui";
 import { useAuth } from "../lib/auth";
 import { showNativeRewardedAd } from "../lib/nativeAds";
 
@@ -147,7 +147,31 @@ export default function UserSummaryPage() {
     };
   }, [showAd, demoAdsEnabled]);
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader title="Partecipante" subtitle="Caricamento…" />
+          <CardContent>
+            <div className="space-y-3">
+              <Skeleton className="h-4 w-48" />
+              <Skeleton className="h-4 w-72" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader title="Pronostici" subtitle="" />
+          <CardContent>
+            <div className="space-y-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-24 w-full" />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (adRequired) {
   

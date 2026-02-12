@@ -42,7 +42,7 @@ export function Input(
 }
 
 export function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <div className={`rounded-2xl bg-white shadow-sm border border-slate-100 ${className}`}>{children}</div>;
+  return <div className={`rounded-2xl bg-white shadow-sm border border-slate-100 transition-shadow duration-200 hover:shadow-md ${className}`}>{children}</div>;
 }
 
 export function CardHeader({ title, subtitle, right }: { title: string; subtitle?: string; right?: React.ReactNode }) {
@@ -77,6 +77,10 @@ export function Badge({ children, tone = "gray" }: { children: React.ReactNode; 
 
 export function Spinner() {
   return <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-200 border-t-[#2EC4B6]" />;
+}
+
+export function Skeleton({ className = "" }: { className?: string }) {
+  return <div className={`animate-pulse rounded-xl bg-slate-200/60 ${className}`} aria-hidden="true" />;
 }
 
 export function Alert({ tone = "info", children }: { tone?: "info" | "danger" | "success"; children: React.ReactNode }) {

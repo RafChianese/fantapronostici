@@ -3,26 +3,8 @@ import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { useLoading } from "../../lib/loading";
 import { Alert, Badge, Button, Card, CardContent, CardHeader, Input } from "../../components/ui";
-import { decodeConfigFromLockUntil, encodeLockUntilIso, LockMode, PredictionsMode } from "../../lib/leagueConfigEncoding";
 
 type Tab = "members" | "rules";
-
-function isoToLocalDatetime(iso?: string | null) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const yyyy = d.getFullYear();
-  const mm = pad(d.getMonth() + 1);
-  const dd = pad(d.getDate());
-  const hh = pad(d.getHours());
-  const mi = pad(d.getMinutes());
-  return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
-}
-function localDatetimeToIso(v: string) {
-  if (!v) return null;
-  const d = new Date(v);
-  return d.toISOString();
-}
 
 export default function AdminDashboardPage() {
   const [tab, setTab] = useState<Tab>("members");
@@ -172,9 +154,6 @@ function RulesTab() {
   const [ok, setOk] = useState("");
   const [rules, setRules] = useState<any>(null);
   const [settings, setSettings] = useState<any>(null);
-  const [lockMode, setLockMode] = useState<LockMode>("MANUAL");
-  const [predictionsMode, setPredictionsMode] = useState<PredictionsMode>("MATCHDAY_BY_MATCHDAY");
-  const [lockOffsetMinutes, setLockOffsetMinutes] = useState<number>(30);
 
   async function load() {
     show();
@@ -184,12 +163,6 @@ function RulesTab() {
       const [r1, r2] = await Promise.all([api.adminRules(), api.adminSettings()]);
       setRules(r1.rules);
       setSettings(r2.settings);
-      if (r2.settings?.lockUntil) {
-        const decoded = decodeConfigFromLockUntil(r2.settings.lockUntil);
-        setLockMode(decoded.lockMode);
-        setPredictionsMode(decoded.predictionsMode);
-        setLockOffsetMinutes(decoded.lockOffsetMinutes);
-      }
     } catch (e: any) {
       setErr(e?.message || "Errore");
     } finally {
@@ -318,47 +291,82 @@ function RulesTab() {
       </Card>
 
       <Card>
-        <CardHeader title="Lock pronostici" subtitle="Imposta scadenza e blocco manuale" />
+        <CardHeader title="Lock pronostici" subtitle="Blocco automatico gestito dal calendario" />
         <CardContent>
           {settings ? (
-            <div className="space-y-3">
-              <label className="text-sm font-medium text-slate-700">Modalità lock</label>
-              <select
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
-                value={lockMode}
-                onChange={(e) => setLockMode(e.target.value as LockMode)}
-              >
-                <option value="MANUAL">Manuale (lockUntil)</option>
-                <option value="AUTO_MATCHDAY">Automatico (matchday)</option>
-              </select>
+            <div className="space-y-4">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+                <div className="font-medium">Come funziona</div>
+                <ul className="mt-1 list-disc space-y-1 pl-5 text-xs text-slate-600">
+                  <li>
+                    Il lock è <b>sempre automatico</b>: parte X minuti prima del primo match rilevante.
+                  </li>
+                  <li>
+                    In modalità <b>giornata per giornata</b> si sblocca quando la giornata è conclusa (con fallback).
+                  </li>
+                  <li>
+                    In modalità <b>tutti prima del torneo</b> il lock si riferisce alla prima partita della prima giornata.
+                  </li>
+                </ul>
+              </div>
 
-              <label className="text-sm font-medium text-slate-700">Modalità inserimento pronostici</label>
-              <select
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
-                value={predictionsMode}
-                onChange={(e) => setPredictionsMode(e.target.value as PredictionsMode)}
-              >
-                <option value="TOURNAMENT_PRE">Tutti prima del torneo</option>
-                <option value="MATCHDAY_BY_MATCHDAY">Giornata per giornata</option>
-              </select>
+              <div>
+                <div className="text-sm font-medium text-slate-700">Modalità inserimento pronostici</div>
+                <div className="mt-2 grid gap-2">
+                  <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 ${
+                    (settings.predictionMode || "MATCHDAY_BY_MATCHDAY") === "TOURNAMENT_PRE"
+                      ? "border-slate-300 bg-white"
+                      : "border-slate-200 bg-white/60"
+                  }`}>
+                    <input
+                      type="radio"
+                      name="predictionMode"
+                      checked={(settings.predictionMode || "MATCHDAY_BY_MATCHDAY") === "TOURNAMENT_PRE"}
+                      onChange={() => setSettings({ ...settings, predictionMode: "TOURNAMENT_PRE" })}
+                    />
+                    <div>
+                      <div className="font-medium">Tutti prima del torneo</div>
+                      <div className="text-xs text-slate-600">I partecipanti inseriscono tutti i pronostici prima dell'inizio.</div>
+                    </div>
+                  </label>
 
-              <Input
-                label="Lock automatico: minuti prima"
-                type="number"
-                min={0}
-                max={120}
-                value={String(lockOffsetMinutes)}
-                onChange={(e) => setLockOffsetMinutes(Math.max(0, Math.min(120, Number(e.target.value))))}
-                disabled={lockMode !== "AUTO_MATCHDAY"}
-              />
+                  <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 ${
+                    (settings.predictionMode || "MATCHDAY_BY_MATCHDAY") === "MATCHDAY_BY_MATCHDAY"
+                      ? "border-slate-300 bg-white"
+                      : "border-slate-200 bg-white/60"
+                  }`}>
+                    <input
+                      type="radio"
+                      name="predictionMode"
+                      checked={(settings.predictionMode || "MATCHDAY_BY_MATCHDAY") === "MATCHDAY_BY_MATCHDAY"}
+                      onChange={() => setSettings({ ...settings, predictionMode: "MATCHDAY_BY_MATCHDAY" })}
+                    />
+                    <div>
+                      <div className="font-medium">Giornata per giornata</div>
+                      <div className="text-xs text-slate-600">Si pronostica la giornata in corso (se rinvii) + la prossima che deve iniziare.</div>
+                    </div>
+                  </label>
+                </div>
+              </div>
 
-              <Input
-                label="Lock fino a (data e ora)"
-                type="datetime-local"
-                value={isoToLocalDatetime(settings.lockUntil)}
-                onChange={(e) => setSettings({ ...settings, lockUntil: localDatetimeToIso(e.target.value) })}
-                disabled={lockMode !== "MANUAL"}
-              />
+              <div>
+                <div className="text-sm font-medium text-slate-700">Quando bloccare i pronostici</div>
+                <div className="mt-2">
+                  <select
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                    value={String(settings.lockOffsetMinutes ?? 30)}
+                    onChange={(e) => setSettings({ ...settings, lockOffsetMinutes: Number(e.target.value) })}
+                  >
+                    <option value="60">1 ora prima</option>
+                    <option value="30">30 minuti prima</option>
+                    <option value="15">15 minuti prima</option>
+                    <option value="0">All'inizio della partita (0 min)</option>
+                  </select>
+                  <div className="mt-1 text-xs text-slate-600">
+                    Esempio: primo match alle 20:45 con 30 minuti → lock dalle 20:15.
+                  </div>
+                </div>
+              </div>
 
               <div className="flex items-center justify-between rounded-xl border border-slate-200 p-3">
                 <div>
@@ -380,17 +388,10 @@ function RulesTab() {
                     try {
                       setErr("");
                       setOk("");
-
-                      const encodedLockUntil = encodeLockUntilIso({
-                        lockMode,
-                        predictionsMode,
-                        lockOffsetMinutes,
-                        manualLockUntilIso: settings.lockUntil || new Date().toISOString(),
-                      });
-
                       await api.adminSaveSettings({
-                        lockUntil: encodedLockUntil,
                         isForceLocked: !!settings.isForceLocked,
+                        lockOffsetMinutes: Number(settings.lockOffsetMinutes ?? 30),
+                        predictionMode: settings.predictionMode || "MATCHDAY_BY_MATCHDAY",
                         tieBreak1: settings.tieBreak1,
                         tieBreak2: settings.tieBreak2,
                         tieBreak3: settings.tieBreak3,
@@ -398,7 +399,7 @@ function RulesTab() {
                       await load();
                       setOk("Impostazioni lock salvate.");
                     } catch (e: any) {
-                      setErr(e?.message || e?.data?.message || "Errore");
+                      setErr(e?.message || "Errore");
                     } finally {
                       hide();
                     }
@@ -417,7 +418,7 @@ function RulesTab() {
                         setOk("");
                         await api.adminLockNow();
                         await load();
-                        setOk("Lock immediato attivato.");
+                        setOk("Lock forzato attivato.");
                       } catch (e: any) {
                         setErr(e?.message || "Errore");
                       } finally {
@@ -425,7 +426,7 @@ function RulesTab() {
                       }
                     }}
                   >
-                    Lock subito
+                    Blocca ora (forzato)
                   </Button>
                 ) : (
                   <Button
@@ -436,14 +437,15 @@ function RulesTab() {
                         setErr("");
                         setOk("");
                         await api.adminSaveSettings({
-                          lockUntil: settings.lockUntil,
                           isForceLocked: false,
+                          lockOffsetMinutes: Number(settings.lockOffsetMinutes ?? 30),
+                          predictionMode: settings.predictionMode || "MATCHDAY_BY_MATCHDAY",
                           tieBreak1: settings.tieBreak1,
                           tieBreak2: settings.tieBreak2,
                           tieBreak3: settings.tieBreak3,
                         });
                         await load();
-                        setOk("Lock rimosso.");
+                        setOk("Lock forzato rimosso.");
                       } catch (e: any) {
                         setErr(e?.message || "Errore");
                       } finally {
@@ -451,7 +453,7 @@ function RulesTab() {
                       }
                     }}
                   >
-                    Sblocca
+                    Rimuovi lock forzato
                   </Button>
                 )}
               </div>
@@ -493,8 +495,10 @@ function RulesTab() {
                     setErr("");
                     setOk("");
                     await api.adminSaveSettings({
-                      lockUntil: settings.lockUntil,
+                      // Keep lock options untouched while saving tie-breakers
                       isForceLocked: !!settings.isForceLocked,
+                      lockOffsetMinutes: Number(settings.lockOffsetMinutes ?? 30),
+                      predictionMode: settings.predictionMode || "MATCHDAY_BY_MATCHDAY",
                       tieBreak1: settings.tieBreak1,
                       tieBreak2: settings.tieBreak2,
                       tieBreak3: settings.tieBreak3,

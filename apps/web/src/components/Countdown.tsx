@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 
 function pad(n: number) { return String(n).padStart(2, "0"); }
 
-export function Countdown({ lockUntilIso, nowIso, labelOpen, labelClosed }: { lockUntilIso: string; nowIso: string; labelOpen?: string; labelClosed?: string }) {
+export function Countdown({ lockUntilIso, nowIso, labelOpen, labelClosed, compact = false }: { lockUntilIso: string; nowIso: string; labelOpen?: string; labelClosed?: string; compact?: boolean }) {
   const lockUntil = useMemo(() => new Date(lockUntilIso).getTime(), [lockUntilIso]);
   const [now, setNow] = useState(() => new Date(nowIso).getTime());
 
@@ -19,12 +19,22 @@ export function Countdown({ lockUntilIso, nowIso, labelOpen, labelClosed }: { lo
   const m = Math.floor((seconds % 3600) / 60);
   const s = seconds % 60;
 
+  const timeStr = `${d > 0 ? `${d}d ` : ""}${pad(h)}:${pad(m)}:${pad(s)}`;
+
+  if (compact) {
+    const lbl = closed ? (labelClosed ?? "Pronostici bloccati") : (labelOpen ?? "Modifiche aperte");
+    return (
+      <div className="flex items-center gap-2 text-xs text-slate-700">
+        <span className="truncate">{lbl}</span>
+        <span className="font-mono">{timeStr}</span>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-1">
       <div className="text-xs text-slate-600">{closed ? (labelClosed ?? "Pronostici bloccati") : (labelOpen ?? "Modifiche aperte")}</div>
-      <div className="font-mono text-sm">
-        {d > 0 ? `${d}d ` : ""}{pad(h)}:{pad(m)}:{pad(s)}
-      </div>
+      <div className="font-mono text-sm">{timeStr}</div>
     </div>
   );
 }
