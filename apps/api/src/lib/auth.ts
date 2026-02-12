@@ -6,7 +6,7 @@ export type JwtPayload = {
 };
 
 export function signToken(payload: JwtPayload) {
-  return jwt.sign(payload, env.JWT_SECRET, { expiresIn: env.JWT_EXPIRES_IN });
+  return jwt.sign(payload, env.JWT_SECRET, { expiresIn: env.JWT_EXPIRES_IN as unknown as jwt.SignOptions["expiresIn"] });
 }
 
 export function verifyToken(token: string): JwtPayload {

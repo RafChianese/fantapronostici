@@ -6,6 +6,7 @@ import { recalcAllScoresForLeague } from "../lib/scoring.js";
 import { clearMatchdayAwardsForLeague } from "../lib/matchdayAwards.js";
 import { runSyncOnce } from "../jobs/syncJob.js";
 import { ensureLeagueConfig } from "../services/ensureLeagueConfig.js";
+import { buildAutoLockSentinel, decodeLeagueSettings } from "../lib/leagueConfigEncoding.js";
 export const adminRouter = Router();
 adminRouter.use(requireAuth, requireLeagueAdmin);
 function getLeagueOr400(req, res) {
@@ -114,11 +115,23 @@ adminRouter.get("/settings", async (req, res) => {
         return;
     await ensureLeagueConfig(leagueId);
     const settings = await prisma.setting.findUnique({ where: { leagueId } });
-    res.json({ settings });
+    if (!settings)
+        return res.json({ settings: null });
+    const decoded = decodeLeagueSettings(settings.lockUntil);
+    // Expose decoded fields to admin UI (still read-only).
+    res.json({ settings: { ...settings, ...decoded } });
 });
 const SettingsSchema = z.object({
-    lockUntil: z.string().datetime(),
+    // lockUntil is no longer edited manually. Kept optional for backward compatibility with older web builds.
+    // NOTE: Some older deployments/web builds may omit this field entirely.
+    // Using `.default()` makes it effectively optional and prevents runtime crashes.
+    lockUntil: z.string().datetime().optional().default("1970-01-01T00:00:00.000Z"),
     isForceLocked: z.boolean().optional(),
+    // --- Deploy-safe extensions (optional, backward compatible) ---
+    // Deprecated (lock is always automatic). Still accepted for backward compatibility.
+    lockMode: z.enum(["MANUAL", "AUTO"]).optional(),
+    lockOffsetMinutes: z.number().int().min(0).max(120).optional(),
+    predictionMode: z.enum(["TOURNAMENT_PRE", "MATCHDAY_BY_MATCHDAY"]).optional(),
     tieBreak1: z.enum(["EXACT", "OUTCOME", "SUM_GOALS"]).optional(),
     tieBreak2: z.enum(["EXACT", "OUTCOME", "SUM_GOALS"]).optional(),
     tieBreak3: z.enum(["EXACT", "OUTCOME", "SUM_GOALS"]).optional(),
@@ -128,18 +141,27 @@ adminRouter.put("/settings", async (req, res) => {
     if (!leagueId)
         return;
     const body = SettingsSchema.parse(req.body);
+    // Deploy-safe encoding into Setting.lockUntil (no new DB columns).
+    // NEW: lock is ALWAYS automatic. We only persist (predictionMode + lockOffsetMinutes) via sentinel.
+    const existing = await prisma.setting.findUnique({ where: { leagueId } });
+    const existingDecoded = existing
+        ? decodeLeagueSettings(existing.lockUntil)
+        : { lockMode: "AUTO", lockOffsetMinutes: 30, predictionMode: "MATCHDAY_BY_MATCHDAY" };
+    const predictionMode = (body.predictionMode ?? existingDecoded.predictionMode);
+    const lockOffsetMinutes = typeof body.lockOffsetMinutes === "number" ? body.lockOffsetMinutes : existingDecoded.lockOffsetMinutes;
+    const lockUntilToStore = buildAutoLockSentinel(predictionMode, lockOffsetMinutes);
     const settings = await prisma.setting.upsert({
         where: { leagueId },
         create: {
             leagueId,
-            lockUntil: new Date(body.lockUntil),
+            lockUntil: lockUntilToStore,
             isForceLocked: body.isForceLocked ?? false,
             ...(body.tieBreak1 ? { tieBreak1: body.tieBreak1 } : {}),
             ...(body.tieBreak2 ? { tieBreak2: body.tieBreak2 } : {}),
             ...(body.tieBreak3 ? { tieBreak3: body.tieBreak3 } : {}),
         },
         update: {
-            lockUntil: new Date(body.lockUntil),
+            lockUntil: lockUntilToStore,
             ...(typeof body.isForceLocked === "boolean" ? { isForceLocked: body.isForceLocked } : {}),
             ...(body.tieBreak1 ? { tieBreak1: body.tieBreak1 } : {}),
             ...(body.tieBreak2 ? { tieBreak2: body.tieBreak2 } : {}),

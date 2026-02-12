@@ -18,7 +18,6 @@ function isMissingTableError(err: unknown): boolean {
     typeof err === "object" &&
     err !== null &&
     "code" in err &&
-    // @ts-expect-error prisma error shape
     (err as any).code === "P2021"
   );
 }
