@@ -41,7 +41,17 @@ export type RegolamentoConfigResponse = {
   league: League;
   rules: LeagueRules;
   settings: LeagueSettings;
-  lock: { lockUntil: string; isForceLocked: boolean; lockedByTime: boolean; isLocked: boolean };
+  lock: {
+    lockUntil: string;
+    isForceLocked: boolean;
+    lockedByTime: boolean;
+    /** True if any lock window is currently active. */
+    isLocked: boolean;
+    /** When true, lock applies to all matchdays (e.g. TOURNAMENT_PRE). */
+    lockAll?: boolean;
+    /** Matchdays currently locked (scoped lock). */
+    lockedMatchdays?: number[];
+  };
 };
 
 export function getToken() {
