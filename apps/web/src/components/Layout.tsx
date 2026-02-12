@@ -362,7 +362,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Global lock status (league-scoped). */}
-        {user && activeMembership ? <LockBanner /> : null}
+        {/* {user && activeMembership ? <LockBanner /> : null} */}
       </header>
 
       {/* Mobile drawer (admin/super/leghe + switch lega) */}

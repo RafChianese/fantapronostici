@@ -501,10 +501,7 @@ export default function DashboardPage() {
 
                       {!canEdit ? (
                         <div className="pointer-events-none absolute inset-0 bg-white/60 backdrop-blur-[1px]">
-                          <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 px-3 py-2">
-                            <span className="text-xs font-semibold text-slate-700">Bloccato</span>
-                            <span className="text-xs text-slate-600">{lockReason}</span>
-                          </div>
+                          
                         </div>
                       ) : null}
 
