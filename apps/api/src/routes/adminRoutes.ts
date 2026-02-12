@@ -140,7 +140,9 @@ adminRouter.get("/settings", async (req, res) => {
 
 const SettingsSchema = z.object({
   // lockUntil is no longer edited manually. Kept optional for backward compatibility with older web builds.
-  lockUntil: z.string().datetime().optional(),
+  // NOTE: Some older deployments/web builds may omit this field entirely.
+  // Using `.default()` makes it effectively optional and prevents runtime crashes.
+  lockUntil: z.string().datetime().optional().default("1970-01-01T00:00:00.000Z"),
   isForceLocked: z.boolean().optional(),
 
   // --- Deploy-safe extensions (optional, backward compatible) ---
