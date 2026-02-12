@@ -10,6 +10,11 @@ export type LockResponse = {
     lockedByTime: boolean;
     isLocked: boolean;
   };
+  leagueSettings?: {
+    lockMode?: "MANUAL" | "AUTO";
+    lockOffsetMinutes?: number;
+    predictionMode?: "MATCHDAY_BY_MATCHDAY" | "TOURNAMENT_PRE";
+  };
   features?: {
     underOver25?: boolean;
     matchdayAwards?: boolean;

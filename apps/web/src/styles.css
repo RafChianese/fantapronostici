@@ -1,3 +1,16 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@keyframes tmFlashUp {
+  0% { background-color: rgba(34,197,94,0.18); }
+  100% { background-color: transparent; }
+}
+
+@keyframes tmFlashDown {
+  0% { background-color: rgba(244,63,94,0.14); }
+  100% { background-color: transparent; }
+}
+
+.tm-flash-up { animation: tmFlashUp 1.2s ease-out; }
+.tm-flash-down { animation: tmFlashDown 1.2s ease-out; }

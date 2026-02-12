@@ -56,6 +56,7 @@ publicRouter.get("/lock", async (req, res) => {
   const info = await getLockInfo(league.id);
   res.json({
     lock: { lockUntil: info.lockUntil, isForceLocked: info.isForceLocked, lockedByTime: info.lockedByTime, isLocked: info.isLocked },
+    leagueSettings: info.leagueSettings,
     features: { underOver25: !!rules?.enableUnderOver25, matchdayAwards: !!rules?.enableMatchdayAwards },
   });
 });
