@@ -3,6 +3,7 @@ import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { useLoading } from "../../lib/loading";
 import { Alert, Badge, Button, Card, CardContent, CardHeader, Input } from "../../components/ui";
+import { decodeConfigFromLockUntil, encodeLockUntilIso, LockMode, PredictionsMode } from "../../lib/leagueConfigEncoding";
 
 type Tab = "members" | "rules";
 
@@ -171,6 +172,9 @@ function RulesTab() {
   const [ok, setOk] = useState("");
   const [rules, setRules] = useState<any>(null);
   const [settings, setSettings] = useState<any>(null);
+  const [lockMode, setLockMode] = useState<LockMode>("MANUAL");
+  const [predictionsMode, setPredictionsMode] = useState<PredictionsMode>("MATCHDAY_BY_MATCHDAY");
+  const [lockOffsetMinutes, setLockOffsetMinutes] = useState<number>(30);
 
   async function load() {
     show();
@@ -180,6 +184,12 @@ function RulesTab() {
       const [r1, r2] = await Promise.all([api.adminRules(), api.adminSettings()]);
       setRules(r1.rules);
       setSettings(r2.settings);
+      if (r2.settings?.lockUntil) {
+        const decoded = decodeConfigFromLockUntil(r2.settings.lockUntil);
+        setLockMode(decoded.lockMode);
+        setPredictionsMode(decoded.predictionsMode);
+        setLockOffsetMinutes(decoded.lockOffsetMinutes);
+      }
     } catch (e: any) {
       setErr(e?.message || "Errore");
     } finally {
@@ -308,46 +318,46 @@ function RulesTab() {
       </Card>
 
       <Card>
-        <CardHeader title="Lock pronostici" subtitle="Manuale o Automatico (matchday)" />
+        <CardHeader title="Lock pronostici" subtitle="Imposta scadenza e blocco manuale" />
         <CardContent>
           {settings ? (
             <div className="space-y-3">
               <label className="text-sm font-medium text-slate-700">Modalità lock</label>
               <select
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
-                value={settings.lockMode || "MANUAL"}
-                onChange={(e) => setSettings({ ...settings, lockMode: e.target.value })}
+                value={lockMode}
+                onChange={(e) => setLockMode(e.target.value as LockMode)}
               >
                 <option value="MANUAL">Manuale (lockUntil)</option>
-                <option value="AUTO">Automatico (AUTO matchday)</option>
+                <option value="AUTO_MATCHDAY">Automatico (matchday)</option>
               </select>
 
               <label className="text-sm font-medium text-slate-700">Modalità inserimento pronostici</label>
               <select
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
-                value={settings.predictionMode || "MATCHDAY_BY_MATCHDAY"}
-                onChange={(e) => setSettings({ ...settings, predictionMode: e.target.value })}
+                value={predictionsMode}
+                onChange={(e) => setPredictionsMode(e.target.value as PredictionsMode)}
               >
-                <option value="MATCHDAY_BY_MATCHDAY">Giornata per giornata</option>
                 <option value="TOURNAMENT_PRE">Tutti prima del torneo</option>
+                <option value="MATCHDAY_BY_MATCHDAY">Giornata per giornata</option>
               </select>
 
               <Input
-                label="Anticipo lock automatico (minuti)"
+                label="Lock automatico: minuti prima"
                 type="number"
                 min={0}
                 max={120}
-                disabled={(settings.lockMode || "MANUAL") !== "AUTO"}
-                value={String(settings.lockOffsetMinutes ?? 30)}
-                onChange={(e) => setSettings({ ...settings, lockOffsetMinutes: Number(e.target.value) })}
+                value={String(lockOffsetMinutes)}
+                onChange={(e) => setLockOffsetMinutes(Math.max(0, Math.min(120, Number(e.target.value))))}
+                disabled={lockMode !== "AUTO_MATCHDAY"}
               />
 
               <Input
                 label="Lock fino a (data e ora)"
                 type="datetime-local"
-                disabled={(settings.lockMode || "MANUAL") === "AUTO"}
                 value={isoToLocalDatetime(settings.lockUntil)}
                 onChange={(e) => setSettings({ ...settings, lockUntil: localDatetimeToIso(e.target.value) })}
+                disabled={lockMode !== "MANUAL"}
               />
 
               <div className="flex items-center justify-between rounded-xl border border-slate-200 p-3">
@@ -370,19 +380,25 @@ function RulesTab() {
                     try {
                       setErr("");
                       setOk("");
+
+                      const encodedLockUntil = encodeLockUntilIso({
+                        lockMode,
+                        predictionsMode,
+                        lockOffsetMinutes,
+                        manualLockUntilIso: settings.lockUntil || new Date().toISOString(),
+                      });
+
                       await api.adminSaveSettings({
-                        lockUntil: settings.lockUntil,
+                        lockUntil: encodedLockUntil,
                         isForceLocked: !!settings.isForceLocked,
-                        lockMode: settings.lockMode || "MANUAL",
-                        lockOffsetMinutes: Number(settings.lockOffsetMinutes ?? 30),
-                        predictionMode: settings.predictionMode || "MATCHDAY_BY_MATCHDAY",
                         tieBreak1: settings.tieBreak1,
                         tieBreak2: settings.tieBreak2,
                         tieBreak3: settings.tieBreak3,
                       });
+                      await load();
                       setOk("Impostazioni lock salvate.");
                     } catch (e: any) {
-                      setErr(e?.message || "Errore");
+                      setErr(e?.message || e?.data?.message || "Errore");
                     } finally {
                       hide();
                     }
@@ -422,9 +438,6 @@ function RulesTab() {
                         await api.adminSaveSettings({
                           lockUntil: settings.lockUntil,
                           isForceLocked: false,
-                          lockMode: settings.lockMode || "MANUAL",
-                          lockOffsetMinutes: Number(settings.lockOffsetMinutes ?? 30),
-                          predictionMode: settings.predictionMode || "MATCHDAY_BY_MATCHDAY",
                           tieBreak1: settings.tieBreak1,
                           tieBreak2: settings.tieBreak2,
                           tieBreak3: settings.tieBreak3,
@@ -482,9 +495,6 @@ function RulesTab() {
                     await api.adminSaveSettings({
                       lockUntil: settings.lockUntil,
                       isForceLocked: !!settings.isForceLocked,
-                      lockMode: settings.lockMode || "MANUAL",
-                      lockOffsetMinutes: Number(settings.lockOffsetMinutes ?? 30),
-                      predictionMode: settings.predictionMode || "MATCHDAY_BY_MATCHDAY",
                       tieBreak1: settings.tieBreak1,
                       tieBreak2: settings.tieBreak2,
                       tieBreak3: settings.tieBreak3,

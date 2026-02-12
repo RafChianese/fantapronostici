@@ -1,91 +1,91 @@
 import { prisma } from "./prisma.js";
 import { ensureLeagueConfig } from "../services/ensureLeagueConfig.js";
-import { decodeLeagueSettings, isAutoSentinel, stripMs, type PredictionMode } from "./leagueConfigEncoding.js";
+import { decodeLeagueConfigFromLockUntil } from "./leagueConfigEncoding.js";
 
-const AUTO_FALLBACK_HOURS = 12;
+type MatchLite = { matchday: number; kickoffAt: Date; status: string };
 
-function allFinished(matches: { status: any }[]) {
-  return matches.length > 0 && matches.every((m) => m.status === "FINISHED");
+function groupByMatchday(matches: MatchLite[]) {
+  const map = new Map<number, MatchLite[]>();
+  for (const m of matches) {
+    const day = m.matchday ?? 1;
+    if (!map.has(day)) map.set(day, []);
+    map.get(day)!.push(m);
+  }
+  // Ensure deterministic ordering inside groups
+  for (const [k, arr] of map.entries()) {
+    arr.sort((a, b) => a.kickoffAt.getTime() - b.kickoffAt.getTime());
+    map.set(k, arr);
+  }
+  return map;
 }
 
-function getMatchdayBounds(matches: { kickoffAt: Date }[]) {
-  const sorted = [...matches].sort((a, b) => a.kickoffAt.getTime() - b.kickoffAt.getTime());
-  const first = sorted[0]?.kickoffAt;
-  const last = sorted[sorted.length - 1]?.kickoffAt;
-  return { first, last };
+function computeMatchdayMeta(matches: MatchLite[], now: Date) {
+  const firstKickoff = matches[0]?.kickoffAt;
+  const lastKickoff = matches[matches.length - 1]?.kickoffAt;
+  const allFinished = matches.every((m) => String(m.status) === "FINISHED");
+  const anyStartedOrPast = matches.some(
+    (m) => String(m.status) === "IN_PROGRESS" || String(m.status) === "FINISHED" || m.kickoffAt.getTime() <= now.getTime()
+  );
+  const anyNotStartedFuture = matches.some((m) => String(m.status) === "NOT_STARTED" && m.kickoffAt.getTime() > now.getTime());
+  return { firstKickoff, lastKickoff, allFinished, anyStartedOrPast, anyNotStartedFuture };
 }
 
-async function computeAutoLockInfo(leagueId: string, predictionMode: PredictionMode, offsetMinutes: number) {
+async function computeAutoLockInfo(leagueId: string, cfg: { predictionsMode: "MATCHDAY_BY_MATCHDAY" | "TOURNAMENT_PRE"; lockOffsetMinutes: number }) {
   const now = new Date();
   const matches = await prisma.match.findMany({
+    where: { predictions: { some: { leagueId } } },
+    select: { matchday: true, kickoffAt: true, status: true },
     orderBy: [{ matchday: "asc" }, { kickoffAt: "asc" }],
-    select: { id: true, matchday: true, kickoffAt: true, status: true },
   });
 
-  // No matches yet: keep unlocked.
-  if (!matches.length) {
-    return {
-      lockUntil: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
-      lockedByTime: false,
-      isLocked: false,
-      auto: { targetMatchday: null as any, startAt: null as any, endAt: null as any },
-    };
+  // If no matches are scoped by predictions yet (new league), fallback to global matches list.
+  const all = matches.length
+    ? matches
+    : await prisma.match.findMany({ select: { matchday: true, kickoffAt: true, status: true }, orderBy: [{ matchday: "asc" }, { kickoffAt: "asc" }] });
+
+  const byDay = groupByMatchday(all as any);
+  if (byDay.size === 0) {
+    return { lockStart: new Date(0), isLocked: false, lockedByTime: false, targetMatchday: null };
   }
 
-  const byMd = new Map<number, typeof matches>();
-  for (const m of matches) {
-    const md = Number(m.matchday || 1);
-    if (!byMd.has(md)) byMd.set(md, [] as any);
-    (byMd.get(md) as any).push(m);
+  const days = Array.from(byDay.keys()).sort((a, b) => a - b);
+
+  // Determine target day depending on predictionsMode
+  let target: number | null = null;
+
+  if (cfg.predictionsMode === "TOURNAMENT_PRE") {
+    target = days[0];
+  } else {
+    // next day to start = day with closest future first kickoff
+    let bestDay: number | null = null;
+    let bestKick = Infinity;
+    for (const d of days) {
+      const arr = byDay.get(d)!;
+      const meta = computeMatchdayMeta(arr, now);
+      if (!meta.firstKickoff) continue;
+      const t = meta.firstKickoff.getTime();
+      if (t > now.getTime() && t < bestKick) {
+        bestKick = t;
+        bestDay = d;
+      }
+    }
+    // If all firstKickoff are in the past (season ended), keep last matchday.
+    target = bestDay ?? days[days.length - 1];
   }
-  const mds = Array.from(byMd.keys()).sort((a, b) => a - b);
 
-  // Tournament-pre: lock relative to the very first match of matchday 1 (or earliest kickoff overall).
-  if (predictionMode === "TOURNAMENT_PRE") {
-    const day1 = byMd.get(1);
-    const candidate = (day1 && day1.length ? day1 : matches) as any;
-    const { first } = getMatchdayBounds(candidate);
-    const startAt = new Date(first.getTime() - offsetMinutes * 60_000);
-    const lockedByTime = now >= startAt;
-    return {
-      lockUntil: startAt,
-      lockedByTime,
-      isLocked: lockedByTime,
-      auto: { targetMatchday: 1, startAt, endAt: null as any },
-    };
-  }
+  const matchesTarget = byDay.get(target!) || [];
+  const meta = computeMatchdayMeta(matchesTarget, now);
+  const firstKickoff = meta.firstKickoff ?? now;
+  const lastKickoff = meta.lastKickoff ?? now;
+  const lockStart = new Date(firstKickoff.getTime() - cfg.lockOffsetMinutes * 60_000);
 
-  // MATCHDAY_BY_MATCHDAY: find ongoing (started but not concluded) matchday, else upcoming.
-  const startedNotConcluded = mds.find((md) => {
-    const ms = byMd.get(md) as any;
-    const started = ms.some((m: any) => m.status !== "NOT_STARTED" || m.kickoffAt.getTime() <= now.getTime());
-    const concluded = allFinished(ms);
-    return started && !concluded;
-  });
+  const fallbackUnlock = new Date(lastKickoff.getTime() + 12 * 60 * 60_000);
+  const concluded = meta.allFinished || now.getTime() >= fallbackUnlock.getTime();
 
-  const upcomingMatch = matches
-    .filter((m) => m.status === "NOT_STARTED" && m.kickoffAt.getTime() > now.getTime())
-    .sort((a, b) => a.kickoffAt.getTime() - b.kickoffAt.getTime())[0];
-  const upcomingMd = upcomingMatch ? Number(upcomingMatch.matchday || 1) : null;
+  const lockedByTime = now.getTime() >= lockStart.getTime();
+  const isLocked = lockedByTime && !concluded;
 
-  const targetMd = (startedNotConcluded ?? upcomingMd ?? mds[mds.length - 1]) as number;
-  const targetMatches = byMd.get(targetMd) as any;
-  const { first, last } = getMatchdayBounds(targetMatches);
-  const startAt = new Date(first.getTime() - offsetMinutes * 60_000);
-
-  // Unlock when all finished; fallback: last kickoff + N hours.
-  const fallbackEndAt = new Date(last.getTime() + AUTO_FALLBACK_HOURS * 60 * 60_000);
-  const concluded = allFinished(targetMatches);
-
-  const lockedByTime = now >= startAt;
-  const isLocked = lockedByTime && !concluded && now < fallbackEndAt;
-
-  return {
-    lockUntil: startAt,
-    lockedByTime,
-    isLocked,
-    auto: { targetMatchday: targetMd, startAt, endAt: concluded ? now : fallbackEndAt },
-  };
+  return { lockStart, isLocked, lockedByTime, targetMatchday: target };
 }
 
 export async function getLockInfo(leagueId: string) {
@@ -95,28 +95,32 @@ export async function getLockInfo(leagueId: string) {
   const setting = await prisma.setting.findUnique({ where: { leagueId } });
   if (!setting) throw new Error("Missing Setting row for league (unexpected).");
 
-  const decoded = decodeLeagueSettings(setting.lockUntil);
-
-  // MANUAL: lockUntil is the actual deadline. Ignore milliseconds in comparisons.
-  if (!isAutoSentinel(setting.lockUntil)) {
-    const now = new Date();
-    const lockUntil = stripMs(setting.lockUntil);
-    const lockedByTime = now >= lockUntil;
-    const isLocked = setting.isForceLocked || lockedByTime;
-    return { ...setting, lockUntil, lockedByTime, isLocked, leagueSettings: decoded } as any;
-  }
+  const cfg = decodeLeagueConfigFromLockUntil(setting.lockUntil);
 
   // AUTO: compute dynamic lock based on matches.
-  const auto = await computeAutoLockInfo(leagueId, decoded.predictionMode, decoded.lockOffsetMinutes);
-  const isLocked = setting.isForceLocked || auto.isLocked;
-  return {
-    ...setting,
-    lockUntil: auto.lockUntil,
-    lockedByTime: auto.lockedByTime,
-    isLocked,
-    leagueSettings: decoded,
-    auto,
-  } as any;
+  if (cfg.lockMode === "AUTO_MATCHDAY") {
+    const auto = await computeAutoLockInfo(leagueId, {
+      predictionsMode: cfg.predictionsMode,
+      lockOffsetMinutes: cfg.lockOffsetMinutes,
+    });
+    const isLocked = setting.isForceLocked || auto.isLocked;
+    return {
+      ...setting,
+      lockUntil: auto.lockStart,
+      lockedByTime: auto.lockedByTime,
+      isLocked,
+      // extra debug/info fields (ignored by old clients)
+      _lockMode: cfg.lockMode,
+      _predictionsMode: cfg.predictionsMode,
+      _lockOffsetMinutes: cfg.lockOffsetMinutes,
+      _targetMatchday: auto.targetMatchday,
+    } as any;
+  }
+
+  const now = new Date();
+  const lockedByTime = now >= setting.lockUntil;
+  const isLocked = setting.isForceLocked || lockedByTime;
+  return { ...setting, lockedByTime, isLocked };
 }
 
 export async function assertPredictionsEditable(leagueId: string) {

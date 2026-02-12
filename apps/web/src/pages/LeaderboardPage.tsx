@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../lib/api";
 import { useLoading } from "../lib/loading";
-import { Badge, Button, Card, CardContent, CardHeader, Skeleton } from "../components/ui";
+import { Badge, Button, Card, CardContent, CardHeader } from "../components/ui";
 import { useAuth } from "../lib/auth";
 
 type Row = {
@@ -32,8 +32,6 @@ export default function LeaderboardPage() {
   const sortParam = `${sortKey}_${sortDir}`;
 
   const [rows, setRows] = useState<Row[]>([]);
-  const [deltas, setDeltas] = useState<Record<string, number>>({});
-  const [flash, setFlash] = useState<Record<string, "up" | "down" | "">>({});
   const myRank = useMemo(() => {
     if (!user?.id) return null;
     const idx = rows.findIndex((r) => r.userId === user.id);
@@ -65,37 +63,7 @@ export default function LeaderboardPage() {
     api.leaderboard(sortParam)
       .then((r) => {
         if (cancelled) return;
-        const nextRows = (r.leaderboard || []) as Row[];
-
-        // Highlight position changes (persist previous snapshot in localStorage).
-        try {
-          const key = `tm_leaderboard_pos_${activeLeagueId || ""}_${sortParam}`;
-          const prevRaw = localStorage.getItem(key);
-          const prev: Record<string, number> = prevRaw ? JSON.parse(prevRaw) : {};
-          const nextPos: Record<string, number> = {};
-          nextRows.forEach((row, idx) => { nextPos[row.userId] = idx + 1; });
-
-          const d: Record<string, number> = {};
-          const f: Record<string, "up" | "down" | ""> = {};
-          for (const row of nextRows) {
-            const p = prev[row.userId];
-            const n = nextPos[row.userId];
-            if (typeof p === "number" && typeof n === "number" && p !== n) {
-              const delta = p - n; // positive => moved up
-              d[row.userId] = delta;
-              f[row.userId] = delta > 0 ? "up" : "down";
-            }
-          }
-          setDeltas(d);
-          setFlash(f);
-          localStorage.setItem(key, JSON.stringify(nextPos));
-          // Clear flash after a short delay.
-          window.setTimeout(() => setFlash({}), 1400);
-        } catch {
-          // ignore storage errors
-        }
-
-        setRows(nextRows);
+        setRows(r.leaderboard || []);
         setLeagueName(r?.league?.name ? String(r.league.name) : "");
         setFeatures({ underOver25: !!r?.features?.underOver25, matchdayAwards: !!r?.features?.matchdayAwards });
       })
@@ -161,38 +129,15 @@ export default function LeaderboardPage() {
         </div>
       ) : null}
       <CardContent>
-        {loading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 10 }).map((_, i) => (
-              <div key={i} className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <Skeleton className="h-6 w-10" />
-                  <Skeleton className="h-4 w-40" />
-                </div>
-                <Skeleton className="h-4 w-14" />
-              </div>
-            ))}
-          </div>
-        ) : (
+        {loading ? null : (
           <div className="divide-y divide-slate-100">
-            {rows.map((r, idx) => {
-              const tr = flash[r.userId] || "";
-              const flashCls = tr === "up" ? "tm-flash-up" : tr === "down" ? "tm-flash-down" : "";
-              const delta = deltas[r.userId] || 0;
-              return (
-              <div key={r.userId} className={`py-3 ${user?.id && r.userId === user.id ? "rounded-2xl bg-[#2EC4B6]/10 px-3" : ""} ${flashCls}`}>
+            {rows.map((r, idx) => (
+              <div key={r.userId} className={`py-3 ${user?.id && r.userId === user.id ? "rounded-2xl bg-[#2EC4B6]/10 px-3" : ""}`}>
                 {/* Mobile: 2 righe senza scroll orizzontale. Desktop: layout a colonne */}
                 <div className="flex flex-col gap-2 sm:grid sm:grid-cols-12 sm:items-center sm:gap-3">
                   <div className="flex items-center justify-between sm:col-span-8 sm:justify-start sm:gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-2">
-                        <Badge tone={idx === 0 ? "amber" : "gray"}>#{idx + 1}</Badge>
-                        {delta !== 0 ? (
-                          <span className="text-[11px] font-semibold text-slate-700" title="Variazione posizione">
-                            {delta > 0 ? "▲" : "▼"}
-                          </span>
-                        ) : null}
-                      </div>
+                      <Badge tone={idx === 0 ? "amber" : "gray"}>#{idx + 1}</Badge>
                       <Link className="font-medium hover:underline" to={`/users/${r.userId}`}>{r.displayName}</Link>
                     </div>
                     <div className="text-right text-sm font-semibold sm:hidden">{r.totalPoints} pt</div>
@@ -213,8 +158,7 @@ export default function LeaderboardPage() {
                   </div>
                 </div>
               </div>
-            );
-            })}
+            ))}
             {rows.length === 0 ? <div className="py-6 text-sm text-slate-600">Nessun partecipante attivo.</div> : null}
           </div>
         )}
