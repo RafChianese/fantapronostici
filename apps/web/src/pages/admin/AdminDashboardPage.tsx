@@ -12,7 +12,7 @@ export default function AdminDashboardPage() {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader title="Area amministratore di lega" subtitle="Gestisci partecipanti e regole" />
+        <CardHeader title="Dashboard amministratore di lega" subtitle="Gestisci partecipanti e regole" />
         <CardContent>
           <div data-tour="admin-tabs" className="flex flex-wrap gap-2">
             <Button variant={tab === "members" ? "primary" : "ghost"} onClick={() => setTab("members")}>

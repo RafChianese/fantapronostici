@@ -78,8 +78,10 @@ async function request(path: string, opts: RequestInit = {}) {
   const token = getToken();
   const leagueId = getActiveLeagueId();
 
+  const isForm = typeof FormData !== "undefined" && opts.body instanceof FormData;
+
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    ...(isForm ? {} : { "Content-Type": "application/json" }),
     ...(opts.headers as any),
   };
 
@@ -148,6 +150,7 @@ export const api = {
   // leagues
   myLeagues: () => request(`/api/leagues/mine`),
   createLeague: (name: string) => request(`/api/leagues`, { method: "POST", body: JSON.stringify({ name }) }),
+  uploadLeagueLogo: (leagueId: string, dataUrl: string) => request(`/api/leagues/${leagueId}/logo`, { method: "POST", body: JSON.stringify({ dataUrl }) }),
   joinLeague: (code: string) => request(`/api/leagues/join`, { method: "POST", body: JSON.stringify({ code }) }),
 
   // public (league-scoped)

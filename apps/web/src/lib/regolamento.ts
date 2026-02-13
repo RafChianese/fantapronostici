@@ -31,6 +31,40 @@ export function formatDateTimeIt(iso: string): string {
   }).format(d);
 }
 
+
+type DecodedLockConfig = {
+  mode: "LEGACY_MANUAL" | "AUTO";
+  predictionMode: "TOURNAMENT_PRE" | "MATCHDAY_BY_MATCHDAY";
+  lockOffsetMinutes: number;
+};
+
+/**
+ * Deploy-safe decoding: the backend encodes AUTO settings into lockUntil using a sentinel year (2099).
+ * - year !== 2099 => legacy/manual date stored as-is
+ * - year === 2099 => AUTO, with:
+ *    - day 1 => MATCHDAY_BY_MATCHDAY
+ *    - day 2 => TOURNAMENT_PRE
+ *    - hour/minute => lockOffsetMinutes (hour*60 + minute), clamped 0..120
+ */
+export function decodeLockConfigFromLockUntil(lockUntilIso: string): DecodedLockConfig {
+  const d = new Date(lockUntilIso);
+  if (Number.isNaN(d.getTime()) || d.getUTCFullYear() !== 2099) {
+    return { mode: "LEGACY_MANUAL", predictionMode: "MATCHDAY_BY_MATCHDAY", lockOffsetMinutes: 30 };
+  }
+  const predictionMode = d.getUTCDate() === 2 ? "TOURNAMENT_PRE" : "MATCHDAY_BY_MATCHDAY";
+  const mins = d.getUTCHours() * 60 + d.getUTCMinutes();
+  const lockOffsetMinutes = Math.max(0, Math.min(120, mins));
+  return { mode: "AUTO", predictionMode, lockOffsetMinutes };
+}
+
+function lockOffsetLabel(mins: number): string {
+  if (mins >= 60) return "1 ora";
+  if (mins === 30) return "30 minuti";
+  if (mins === 15) return "15 minuti";
+  if (mins === 0) return "al momento del calcio d'inizio";
+  return `${mins} minuti`;
+}
+
 function mixedCombos(r: LeagueRules): string[] {
   const combos: string[] = [];
   // Base categories are always available.
@@ -49,6 +83,7 @@ function mixedCombos(r: LeagueRules): string[] {
 }
 
 export function generateRegolamentoTemplate(rules: LeagueRules, settings: LeagueSettings): RegolamentoDoc {
+  const decodedLock = decodeLockConfigFromLockUntil(settings.lockUntil);
   const lockUntil = formatDateTimeIt(settings.lockUntil);
 
   const pointsBullets = [
@@ -123,7 +158,12 @@ export function generateRegolamentoTemplate(rules: LeagueRules, settings: League
   const lockSection: RegolamentoSection = {
     title: "Lock pronostici",
     paragraphs: [
-      `I pronostici sono modificabili fino al lock configurato dall'admin. In questa lega il lock è impostato su: ${lockUntil}.`,
+      decodedLock.mode === "LEGACY_MANUAL"
+        ? `I pronostici sono modificabili fino al lock configurato dall'admin. In questa lega il lock è impostato su: ${lockUntil}.`
+        : decodedLock.predictionMode === "TOURNAMENT_PRE"
+          ? `I pronostici si bloccano automaticamente ${lockOffsetLabel(decodedLock.lockOffsetMinutes)} prima dell'inizio della prima partita della prima giornata pronosticabile.`
+          : `Ogni giornata si blocca automaticamente ${lockOffsetLabel(decodedLock.lockOffsetMinutes)} prima dell'inizio del primo match della giornata. In caso di rinvii, si blocca solo la giornata interessata e le giornate successive restano pronosticabili fino al loro lock.`,
+
       settings.isForceLocked
         ? "Inoltre, l'admin ha attivato un lock forzato immediato: in questo momento i pronostici risultano bloccati anche se la data/ora non è ancora raggiunta."
         : "Il lock forzato immediato non è attivo.",

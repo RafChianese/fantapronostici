@@ -74,6 +74,37 @@ leaguesRouter.post("/", requireAuth, async (req: AuthedRequest, res) => {
 
 const JoinSchema = z.object({ code: z.string().min(3).max(20) });
 
+
+leaguesRouter.post("/:leagueId/logo", requireAuth, requireLeagueAdmin, async (req: AuthedRequest, res) => {
+  const leagueIdFromParam = req.params.leagueId;
+  const leagueId = (req.headers["x-league-id"] as string) || (req.query.leagueId as string) || leagueIdFromParam;
+  if (!leagueId || leagueId !== leagueIdFromParam) {
+    return res.status(400).json({ message: "leagueId mismatch" });
+  }
+
+  const parsed = UploadLogoSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ message: "Payload non valido", issues: parsed.error.issues });
+
+  // data:[<mime>];base64,<data>
+  const dataUrl = parsed.data.dataUrl;
+  const m = /^data:(image\/(png|jpeg|jpg|webp));base64,(.+)$/i.exec(dataUrl);
+  if (!m) return res.status(400).json({ message: "Formato immagine non supportato. Usa PNG/JPG/WebP." });
+
+  const mime = m[1].toLowerCase();
+  const b64 = m[3];
+  const buf = Buffer.from(b64, "base64");
+
+  // basic size guard (~1.5MB)
+  if (buf.length > 1_500_000) return res.status(413).json({ message: "Immagine troppo grande (max ~1.5MB)" });
+
+  const objectPath = `${leagueId}.png`;
+  const up = await uploadToSupabaseStorage(objectPath, mime, buf);
+  if (!up.ok) return res.status(501).json({ message: up.message });
+
+  return res.json({ ok: true, publicUrl: up.publicUrl });
+});
+
+
 leaguesRouter.post("/join", requireAuth, async (req: AuthedRequest, res) => {
   const { code } = JoinSchema.parse(req.body);
   const league = await prisma.league.findUnique({ where: { code: code.toUpperCase() } });

@@ -171,7 +171,7 @@ export default function DashboardPage() {
         if (changed) {
           setConfig(next);
           await reloadAll({ silent: true });
-          
+          if (next?.lock?.isLocked) setToast({ tone: "danger", msg: "Lock aggiornato: pagina aggiornata." });
         } else {
           // Still update config to keep countdown accurate.
           setConfig(next);

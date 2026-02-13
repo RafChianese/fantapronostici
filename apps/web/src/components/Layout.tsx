@@ -316,9 +316,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
             {user && activeMembership ? <NavItem to="/regolamento">Regolamento</NavItem> : null}
             {user ? <NavItem to="/onboarding" tourId="tab-leagues">Leghe</NavItem> : null}
             {user && (isLeagueAdmin || isSuperAdmin) ? (
-              <NavItem to="/admin" tourId="admin-dashboard-link">Area amministratore</NavItem>
+              <NavItem to="/admin" tourId="admin-dashboard-link">Dashboard amministratore di lega</NavItem>
             ) : null}
-            {user && isSuperAdmin ? <NavItem to="/super">Area Superadmin</NavItem> : null}
+            {user && isSuperAdmin ? <NavItem to="/super">Dashboard Superadmin</NavItem> : null}
           </nav>
 
           <div className="flex items-center gap-2">
@@ -362,7 +362,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Global lock status (league-scoped). */}
-        {user && activeMembership ? <LockBanner /> : null}
+        {/* {user && activeMembership ? <LockBanner /> : null} */}
       </header>
 
       {/* Mobile drawer (admin/super/leghe + switch lega) */}
@@ -402,12 +402,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 </div>
                 {isLeagueAdmin || isSuperAdmin ? (
                   <NavItem to="/admin" onClick={() => setDrawerOpen(false)}>
-                    Area amministratore
+                    Dashboard amministratore di lega
                   </NavItem>
                 ) : null}
                 {isSuperAdmin ? (
                   <NavItem to="/super" onClick={() => setDrawerOpen(false)}>
-                    Area Superadmin
+                    Dashboard Superadmin
                   </NavItem>
                 ) : null}
 
