@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { Alert, Button, Card, CardContent, CardHeader, Input } from "../components/ui";
+import { LeagueAvatar } from "../components/LeagueAvatar";
 
 export default function AccountPage() {
   const { user, memberships, refreshMe, activeLeagueId } = useAuth();
@@ -28,22 +29,6 @@ export default function AccountPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <Card>
-        <CardHeader title="Account" subtitle={user ? `Sei loggato come ${user.email}` : ""} />
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-xl border p-3">
-              <div className="text-xs text-slate-500">Ruolo globale</div>
-              <div className="font-semibold">{user?.globalRole === "SUPER_ADMIN" ? "Dashboard Superadmin" : "Utente"}</div>
-            </div>
-            <div className="rounded-xl border p-3">
-              <div className="text-xs text-slate-500">Lega attiva</div>
-              <div className="font-semibold">{activeLeague?.name || "—"}</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       <Card>
         <CardHeader title="Profilo" subtitle="Aggiorna il nome mostrato agli altri utenti." />
         <CardContent className="space-y-4">
@@ -145,10 +130,13 @@ export default function AccountPage() {
           {(memberships || []).length === 0 ? <div className="text-sm text-slate-600">Nessuna lega.</div> : null}
           {(memberships || []).map((m) => (
             <div key={m.id} className="flex items-center justify-between rounded-xl border p-3">
-              <div>
+              <div className="flex items-center gap-3">
+                <LeagueAvatar leagueId={m.league.id} leagueName={m.league.name} size={40} />
+                <div>
                 <div className="font-semibold">{m.league.name}</div>
                 <div className="text-xs text-slate-500">
                   Stato: {m.status} • Ruolo: {m.role}
+                </div>
                 </div>
               </div>
               <div className="text-xs text-slate-500">{m.league.id === activeLeagueId ? "Attiva" : ""}</div>

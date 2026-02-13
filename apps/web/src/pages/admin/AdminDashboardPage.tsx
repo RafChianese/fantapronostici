@@ -12,7 +12,7 @@ export default function AdminDashboardPage() {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader title="Dashboard amministratore di lega" subtitle="Gestisci partecipanti e regole" />
+        <CardHeader title="Area admin" subtitle="Gestisci partecipanti e impostazioni" />
         <CardContent>
           <div data-tour="admin-tabs" className="flex flex-wrap gap-2">
             <Button variant={tab === "members" ? "primary" : "ghost"} onClick={() => setTab("members")}>
@@ -257,6 +257,77 @@ function RulesTab() {
                 </div>
               ) : null}
 
+              <div className="rounded-2xl border border-slate-200 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-semibold text-slate-900">Quota e premi (facoltativo)</div>
+                    <div className="text-xs text-slate-600">Questi valori appaiono nel regolamento. Se lasci vuoto, non verranno mostrati.</div>
+                  </div>
+                </div>
+
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <Input
+                    label="Quota di partecipazione (€)"
+                    type="number"
+                    value={rules.entryFeeCents ? String(Math.round(Number(rules.entryFeeCents) / 100)) : ""}
+                    placeholder="Es. 10"
+                    onChange={(e) => {
+                      const v = e.target.value.trim();
+                      if (!v) return setRules({ ...rules, entryFeeCents: null });
+                      const cents = Math.max(0, Math.round(Number(v) * 100));
+                      setRules({ ...rules, entryFeeCents: Number.isFinite(cents) ? cents : null });
+                    }}
+                  />
+
+                  <Input
+                    label="Numero posizioni a premio"
+                    type="number"
+                    min={0}
+                    max={50}
+                    value={String(Array.isArray(rules.prizesJson) ? rules.prizesJson.length : 0)}
+                    onChange={(e) => {
+                      const n = Math.max(0, Math.min(50, Number(e.target.value || 0)));
+                      const prev: any[] = Array.isArray(rules.prizesJson) ? rules.prizesJson : [];
+                      const next = Array.from({ length: n }).map((_, idx) => {
+                        const pos = idx + 1;
+                        const existing = prev.find((p) => p.position === pos);
+                        return existing ? existing : { position: pos, amountCents: 0 };
+                      });
+                      setRules({ ...rules, prizesJson: next });
+                    }}
+                  />
+                </div>
+
+                {Array.isArray(rules.prizesJson) && rules.prizesJson.length > 0 ? (
+                  <div className="mt-3 space-y-2">
+                    {rules.prizesJson.map((p: any, idx: number) => (
+                      <Input
+                        key={p.position ?? idx}
+                        label={`${p.position}° posto (€)`}
+                        type="number"
+                        value={String(Math.round(Number(p.amountCents || 0) / 100))}
+                        placeholder={p.position === 1 ? "Es. 200" : ""}
+                        onChange={(e) => {
+                          const v = e.target.value.trim();
+                          const cents = v ? Math.max(0, Math.round(Number(v) * 100)) : 0;
+                          const next = [...rules.prizesJson];
+                          next[idx] = { ...next[idx], amountCents: Number.isFinite(cents) ? cents : 0 };
+                          setRules({ ...rules, prizesJson: next });
+                        }}
+                      />
+                    ))}
+
+                    <Button
+                      variant="ghost"
+                      className="!px-4"
+                      onClick={() => setRules({ ...rules, prizesJson: [] })}
+                    >
+                      Rimuovi premi
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+
               <Button
                 onClick={async () => {
                   show();
@@ -274,6 +345,8 @@ function RulesTab() {
                       allowOutcomeWithExact: !!rules.allowOutcomeWithExact,
                       allowSumGoalsWithExact: !!rules.allowSumGoalsWithExact,
                       allowSumGoalsWithOutcome: !!rules.allowSumGoalsWithOutcome,
+                      ...(typeof rules.entryFeeCents === "number" ? { entryFeeCents: Number(rules.entryFeeCents) } : { entryFeeCents: null }),
+                      prizesJson: Array.isArray(rules.prizesJson) ? rules.prizesJson : null,
                     });
                     setOk("Regole salvate. Punteggi ricalcolati.");
                   } catch (e: any) {

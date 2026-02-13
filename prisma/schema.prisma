@@ -187,6 +187,12 @@ model Rule {
   allowOutcomeWithExact  Boolean    @default(true)
   allowSumGoalsWithExact Boolean    @default(true)
   allowSumGoalsWithOutcome Boolean  @default(true)
+
+  // Optional league monetization (all optional, non-destructive)
+  // entryFeeCents: participation fee in cents (e.g., 1000 = 10.00€)
+  entryFeeCents          Int?
+  // prizesJson: array of {position:int, amountCents:int} stored as JSON
+  prizesJson             Json?
   updatedAt              DateTime   @updatedAt
 
   league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)

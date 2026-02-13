@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
@@ -15,6 +15,12 @@ export default function OnboardingPage() {
   const [leagueName, setLeagueName] = useState("");
   const [leagueLogoFile, setLeagueLogoFile] = useState<File | null>(null);
   const [leagueLogoPreview, setLeagueLogoPreview] = useState<string>("");
+  const logoInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Optional monetization
+  const [entryFeeEuro, setEntryFeeEuro] = useState<string>("");
+  const [prizeCount, setPrizeCount] = useState<number>(0);
+  const [prizeEuros, setPrizeEuros] = useState<Record<number, string>>({});
 
   async function fileToDataUrl(file: File): Promise<string> {
     return await new Promise((resolve, reject) => {
@@ -131,20 +137,94 @@ export default function OnboardingPage() {
                   </div>
                   <div className="flex-1">
                     <label className="block text-sm font-medium text-slate-800">Logo lega (facoltativo)</label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="mt-1 block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-900 file:px-3 file:py-2 file:text-white hover:file:bg-slate-800"
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      <input
+                        ref={logoInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0] || null;
+                          setLeagueLogoFile(f);
+                          if (!f) return setLeagueLogoPreview("");
+                          const url = URL.createObjectURL(f);
+                          setLeagueLogoPreview(url);
+                        }}
+                      />
+
+                      <Button
+                        variant="ghost"
+                        onClick={() => logoInputRef.current?.click()}
+                        className="!px-4"
+                      >
+                        Carica logo
+                      </Button>
+
+                      {leagueLogoFile ? (
+                        <Button
+                          variant="ghost"
+                          onClick={() => {
+                            setLeagueLogoFile(null);
+                            setLeagueLogoPreview("");
+                            if (logoInputRef.current) logoInputRef.current.value = "";
+                          }}
+                          className="!px-4"
+                        >
+                          Rimuovi
+                        </Button>
+                      ) : null}
+
+                      <span className="text-xs text-slate-600">PNG/JPG/WebP • max ~1.5MB</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-sm font-semibold">Quota e premi (facoltativo)</div>
+                      <div className="text-xs text-slate-600">Questi valori appariranno nel regolamento e saranno modificabili in Area admin.</div>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Input
+                      label="Quota di partecipazione (€)"
+                      type="number"
+                      value={entryFeeEuro}
+                      placeholder="Es. 10"
+                      onChange={(e) => setEntryFeeEuro(e.target.value)}
+                    />
+                    <Input
+                      label="Numero posizioni a premio"
+                      type="number"
+                      value={String(prizeCount)}
+                      min={0}
+                      max={50}
                       onChange={(e) => {
-                        const f = e.target.files?.[0] || null;
-                        setLeagueLogoFile(f);
-                        if (!f) return setLeagueLogoPreview("");
-                        const url = URL.createObjectURL(f);
-                        setLeagueLogoPreview(url);
+                        const v = Math.max(0, Math.min(50, Number(e.target.value || 0)));
+                        setPrizeCount(v);
                       }}
                     />
-                    <div className="mt-1 text-xs text-slate-600">Consigliato: immagine quadrata (PNG/JPG).</div>
                   </div>
+
+                  {prizeCount > 0 ? (
+                    <div className="space-y-2">
+                      {Array.from({ length: prizeCount }).map((_, idx) => {
+                        const pos = idx + 1;
+                        return (
+                          <Input
+                            key={pos}
+                            label={`${pos}° posto (€)`}
+                            type="number"
+                            value={prizeEuros[pos] || ""}
+                            placeholder={pos === 1 ? "Es. 200" : ""}
+                            onChange={(e) => setPrizeEuros((p) => ({ ...p, [pos]: e.target.value }))}
+                          />
+                        );
+                      })}
+                    </div>
+                  ) : null}
                 </div>
 
                 <Button
@@ -152,7 +232,18 @@ export default function OnboardingPage() {
                   onClick={async () => {
                     try {
                       setErr(""); setMsg("");
-                      const r = await api.createLeague(leagueName.trim());
+                      const entryFee = entryFeeEuro.trim() ? Math.round(Number(entryFeeEuro) * 100) : undefined;
+                      const prizes = prizeCount > 0
+                        ? Array.from({ length: prizeCount }).map((_, idx) => {
+                            const pos = idx + 1;
+                            const amount = prizeEuros[pos]?.trim() ? Math.round(Number(prizeEuros[pos]) * 100) : 0;
+                            return { position: pos, amountCents: amount };
+                          })
+                        : undefined;
+                      const r = await api.createLeague(leagueName.trim(), {
+                        ...(typeof entryFee === "number" && !Number.isNaN(entryFee) ? { entryFeeCents: Math.max(0, entryFee) } : {}),
+                        ...(prizes ? { prizes } : {}),
+                      });
                       // Optional logo upload (non-blocking)
                       try {
                         if (leagueLogoFile) {
@@ -167,6 +258,9 @@ export default function OnboardingPage() {
                       setMsg(`Lega creata! Codice: ${r.league.code}`);
                       setLeagueLogoFile(null);
                       setLeagueLogoPreview("");
+                      setEntryFeeEuro("");
+                      setPrizeCount(0);
+                      setPrizeEuros({});
                       nav("/");
                     } catch (e: any) {
                       setErr(e?.message || "Errore");
