@@ -100,6 +100,36 @@ model League {
 
   // Awards (best matchday score)
   matchdayAwards MatchdayAward[]
+
+  // Optional monetization (entry fee + prizes)
+  monetization LeagueMonetization?
+}
+
+// Optional league monetization (additive table; deploy-safe)
+model LeagueMonetization {
+  id            String   @id @default(cuid())
+  leagueId      String   @unique
+  entryFeeCents Int?
+  currency      String   @default("EUR")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  prizes LeaguePrize[]
+
+  @@index([leagueId])
+}
+
+model LeaguePrize {
+  id             String   @id @default(cuid())
+  monetizationId String
+  position       Int
+  amountCents    Int
+
+  monetization LeagueMonetization @relation(fields: [monetizationId], references: [id], onDelete: Cascade)
+
+  @@unique([monetizationId, position])
+  @@index([monetizationId])
 }
 
 model LeagueMember {
@@ -189,6 +219,12 @@ model Rule {
   allowOutcomeWithExact  Boolean    @default(true)
   allowSumGoalsWithExact Boolean    @default(true)
   allowSumGoalsWithOutcome Boolean  @default(true)
+
+  // Optional league monetization (all optional, non-destructive)
+  // entryFeeCents: participation fee in cents (e.g., 1000 = 10.00€)
+  entryFeeCents          Int?
+  // prizesJson: array of {position:int, amountCents:int} stored as JSON
+  prizesJson             Json?
   updatedAt              DateTime   @updatedAt
 
   league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)

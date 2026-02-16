@@ -3,33 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { Alert, Button, Card, CardContent, CardHeader, Input } from "../components/ui";
-
-function getLeagueLogoUrl(leagueId: string) {
-  const base = (import.meta as any).env?.VITE_SUPABASE_URL as string | undefined;
-  const bucket = ((import.meta as any).env?.VITE_SUPABASE_LEAGUE_LOGO_BUCKET as string | undefined) || "league-logos";
-  if (!base) return "";
-  return `${base.replace(/\/$/, "")}/storage/v1/object/public/${bucket}/${leagueId}.png`;
-}
-
-function LeagueAvatar({ leagueId, name }: { leagueId: string; name: string }) {
-  const [broken, setBroken] = useState(false);
-  const url = getLeagueLogoUrl(leagueId);
-  const initials = (name || "L").trim().slice(0, 1).toUpperCase();
-  return (
-    <div className="h-10 w-10 overflow-hidden rounded-full border border-slate-200 bg-slate-100 flex items-center justify-center">
-      {!broken && url ? (
-        <img
-          src={url}
-          alt={name}
-          className="h-full w-full object-cover"
-          onError={() => setBroken(true)}
-        />
-      ) : (
-        <span className="text-sm font-semibold text-slate-600">{initials}</span>
-      )}
-    </div>
-  );
-}
+import { LeagueAvatar } from "../components/LeagueAvatar";
 
 export default function OnboardingPage() {
   const { memberships, refreshMe, setActiveLeague } = useAuth();
@@ -39,6 +13,7 @@ export default function OnboardingPage() {
   const pending = useMemo(() => memberships.filter((m) => m.status === "PENDING"), [memberships]);
 
   const [leagueName, setLeagueName] = useState("");
+
   const [joinCode, setJoinCode] = useState("");
   const [msg, setMsg] = useState<string>("");
   const [err, setErr] = useState<string>("");
@@ -64,10 +39,10 @@ export default function OnboardingPage() {
               {approved.map((m) => (
                 <div key={m.id} className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3">
                   <div className="flex items-center gap-3">
-                    <LeagueAvatar leagueId={m.league.id} name={m.league.name} />
+                    <LeagueAvatar leagueId={m.league.id} leagueName={m.league.name} size={44} />
                     <div>
-                    <div className="font-medium">{m.league.name}</div>
-                    <div className="text-xs text-slate-600">Codice: {m.league.code} • Ruolo: {m.role}</div>
+                      <div className="font-medium">{m.league.name}</div>
+                      <div className="text-xs text-slate-600">Codice: {m.league.code} • Ruolo: {m.role}</div>
                     </div>
                   </div>
                   <Button
@@ -141,8 +116,6 @@ export default function OnboardingPage() {
                       const r = await api.createLeague(leagueName.trim());
                       await refreshMe();
                       setActiveLeague(r.league.id);
-                      setMsg(`Lega creata! Codice: ${r.league.code}`);
-                      // Go straight to the league admin area after creation.
                       nav("/admin");
                     } catch (e: any) {
                       setErr(e?.message || "Errore");

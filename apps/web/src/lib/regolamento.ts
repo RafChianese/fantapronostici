@@ -31,6 +31,40 @@ export function formatDateTimeIt(iso: string): string {
   }).format(d);
 }
 
+
+type DecodedLockConfig = {
+  mode: "LEGACY_MANUAL" | "AUTO";
+  predictionMode: "TOURNAMENT_PRE" | "MATCHDAY_BY_MATCHDAY";
+  lockOffsetMinutes: number;
+};
+
+/**
+ * Deploy-safe decoding: the backend encodes AUTO settings into lockUntil using a sentinel year (2099).
+ * - year !== 2099 => legacy/manual date stored as-is
+ * - year === 2099 => AUTO, with:
+ *    - day 1 => MATCHDAY_BY_MATCHDAY
+ *    - day 2 => TOURNAMENT_PRE
+ *    - hour/minute => lockOffsetMinutes (hour*60 + minute), clamped 0..120
+ */
+export function decodeLockConfigFromLockUntil(lockUntilIso: string): DecodedLockConfig {
+  const d = new Date(lockUntilIso);
+  if (Number.isNaN(d.getTime()) || d.getUTCFullYear() !== 2099) {
+    return { mode: "LEGACY_MANUAL", predictionMode: "MATCHDAY_BY_MATCHDAY", lockOffsetMinutes: 30 };
+  }
+  const predictionMode = d.getUTCDate() === 2 ? "TOURNAMENT_PRE" : "MATCHDAY_BY_MATCHDAY";
+  const mins = d.getUTCHours() * 60 + d.getUTCMinutes();
+  const lockOffsetMinutes = Math.max(0, Math.min(120, mins));
+  return { mode: "AUTO", predictionMode, lockOffsetMinutes };
+}
+
+function lockOffsetLabel(mins: number): string {
+  if (mins >= 60) return "1 ora";
+  if (mins === 30) return "30 minuti";
+  if (mins === 15) return "15 minuti";
+  if (mins === 0) return "al momento del calcio d'inizio";
+  return `${mins} minuti`;
+}
+
 function mixedCombos(r: LeagueRules): string[] {
   const combos: string[] = [];
   // Base categories are always available.
@@ -49,6 +83,7 @@ function mixedCombos(r: LeagueRules): string[] {
 }
 
 export function generateRegolamentoTemplate(rules: LeagueRules, settings: LeagueSettings): RegolamentoDoc {
+  const decodedLock = decodeLockConfigFromLockUntil(settings.lockUntil);
   const lockUntil = formatDateTimeIt(settings.lockUntil);
 
   const pointsBullets = [
@@ -120,10 +155,49 @@ export function generateRegolamentoTemplate(rules: LeagueRules, settings: League
         paragraphs: ["In questa lega il premio miglior giornata non è previsto."],
       };
 
+  const monetizationSection: RegolamentoSection | null = (() => {
+    const feeCents = typeof (rules as any).entryFeeCents === "number" ? (rules as any).entryFeeCents : null;
+    const prizes = Array.isArray((rules as any).prizesJson) ? (rules as any).prizesJson : null;
+
+    if (!feeCents && (!prizes || prizes.length === 0)) return null;
+
+    const paragraphs: string[] = [];
+    const bullets: string[] = [];
+
+    if (feeCents) {
+      const feeEuro = (feeCents / 100).toFixed(2).replace(".00", "");
+      paragraphs.push(`La quota di partecipazione è pari a ${feeEuro}€.`);
+    } else {
+      paragraphs.push("Non è prevista una quota di partecipazione.");
+    }
+
+    if (prizes && prizes.length > 0) {
+      paragraphs.push("Premi previsti:");
+      prizes
+        .slice()
+        .sort((a: any, b: any) => Number(a.position) - Number(b.position))
+        .forEach((p: any) => {
+          const euro = (Number(p.amountCents || 0) / 100).toFixed(2).replace(".00", "");
+          bullets.push(`${p.position}° posto: ${euro}€`);
+        });
+    }
+
+    return {
+      title: "Quota e premi",
+      paragraphs,
+      ...(bullets.length ? { bullets } : {}),
+    };
+  })();
+
   const lockSection: RegolamentoSection = {
     title: "Lock pronostici",
     paragraphs: [
-      `I pronostici sono modificabili fino al lock configurato dall'admin. In questa lega il lock è impostato su: ${lockUntil}.`,
+      decodedLock.mode === "LEGACY_MANUAL"
+        ? `I pronostici sono modificabili fino al lock configurato dall'admin. In questa lega il lock è impostato su: ${lockUntil}.`
+        : decodedLock.predictionMode === "TOURNAMENT_PRE"
+          ? `I pronostici si bloccano automaticamente ${lockOffsetLabel(decodedLock.lockOffsetMinutes)} prima dell'inizio della prima partita della prima giornata pronosticabile.`
+          : `Ogni giornata si blocca automaticamente ${lockOffsetLabel(decodedLock.lockOffsetMinutes)} prima dell'inizio del primo match della giornata. In caso di rinvii, si blocca solo la giornata interessata e le giornate successive restano pronosticabili fino al loro lock.`,
+
       settings.isForceLocked
         ? "Inoltre, l'admin ha attivato un lock forzato immediato: in questo momento i pronostici risultano bloccati anche se la data/ora non è ancora raggiunta."
         : "Il lock forzato immediato non è attivo.",
@@ -155,6 +229,7 @@ export function generateRegolamentoTemplate(rules: LeagueRules, settings: League
       scoringModeSection,
       underOverSection,
       awardsSection,
+      ...(monetizationSection ? [monetizationSection] : []),
       lockSection,
       rankingSection,
     ],

@@ -1,65 +1,74 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { useLoading } from "../../lib/loading";
 import { Alert, Badge, Button, Card, CardContent, CardHeader, Input } from "../../components/ui";
+import { LeagueAvatar } from "../../components/LeagueAvatar";
 
-type Tab = "customize" | "members" | "rules";
+type Tab = "members" | "rules" | "customize";
 
 export default function AdminDashboardPage() {
-  const [tab, setTab] = useState<Tab>("customize");
+  const [tab, setTab] = useState<Tab>("members");
 
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader title="Dashboard amministratore di lega" subtitle="Gestisci partecipanti e regole" />
+        <CardHeader title="Area admin" subtitle="Gestisci partecipanti e impostazioni" />
         <CardContent>
           <div data-tour="admin-tabs" className="flex flex-wrap gap-2">
-            <Button variant={tab === "customize" ? "primary" : "ghost"} onClick={() => setTab("customize")}>Personalizza</Button>
             <Button variant={tab === "members" ? "primary" : "ghost"} onClick={() => setTab("members")}>
               Partecipanti
             </Button>
             <Button variant={tab === "rules" ? "primary" : "ghost"} onClick={() => setTab("rules")}>
               Regole & Lock
             </Button>
+            <Button variant={tab === "customize" ? "primary" : "ghost"} onClick={() => setTab("customize")}>
+              Personalizza
+            </Button>
           </div>
         </CardContent>
       </Card>
 
-      {tab === "customize" ? <CustomizeTab /> : null}
       {tab === "members" ? <MembersTab /> : null}
       {tab === "rules" ? <RulesTab /> : null}
+      {tab === "customize" ? <CustomizeTab /> : null}
     </div>
   );
 }
 
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ""));
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
+function formatInviteLink(code: string) {
+  // Non imponiamo base URL: usiamo la location del browser.
+  try {
+    return `${window.location.origin}/?leagueCode=${encodeURIComponent(code)}`;
+  } catch {
+    return code;
+  }
 }
 
-function getLeagueLogoUrl(leagueId: string) {
-  const base = (import.meta as any).env?.VITE_SUPABASE_URL as string | undefined;
-  const bucket = ((import.meta as any).env?.VITE_SUPABASE_LEAGUE_LOGO_BUCKET as string | undefined) || "league-logos";
-  if (!base) return "";
-  return `${base.replace(/\/$/, "")}/storage/v1/object/public/${bucket}/${leagueId}.png`;
+async function fileToDataUrl(file: File): Promise<string> {
+  return await new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result || ""));
+    r.onerror = () => reject(new Error("Errore lettura file"));
+    r.readAsDataURL(file);
+  });
 }
 
 function CustomizeTab() {
   const { show, hide } = useLoading();
   const { memberships, activeLeagueId, refreshMe } = useAuth();
-  const league = memberships.find((m) => m.league.id === activeLeagueId)?.league;
+
+  const active = useMemo(() => memberships.find((m) => m.league.id === activeLeagueId), [memberships, activeLeagueId]);
+  const league = active?.league;
+  const isAdmin = active?.role === "ADMIN";
 
   const [name, setName] = useState(league?.name || "");
+  const [ok, setOk] = useState("");
+  const [err, setErr] = useState("");
+
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>("");
-  const [err, setErr] = useState("");
-  const [ok, setOk] = useState("");
-  const [imgBust, setImgBust] = useState(0);
+  const logoInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     setName(league?.name || "");
@@ -67,80 +76,147 @@ function CustomizeTab() {
 
   if (!league) return null;
 
-  const inviteCode = league.code;
-  const inviteLink = `${window.location.origin}/onboarding?code=${encodeURIComponent(inviteCode)}`;
-  const logoUrl = getLeagueLogoUrl(league.id);
-  const initials = (league.name || "L").trim().slice(0, 1).toUpperCase();
-
   return (
     <div className="grid gap-6 md:grid-cols-2">
       <Card>
-        <CardHeader title="Personalizza la lega" subtitle="Logo, nome e link di invito" />
+        <CardHeader title="Personalizza la lega" subtitle="Nome, logo e inviti" />
         <CardContent>
           {err ? <Alert tone="danger">{err}</Alert> : null}
           {ok ? <Alert tone="success">{ok}</Alert> : null}
 
           <div className="space-y-4">
             <div className="flex items-center gap-4">
-              <div className="h-14 w-14 overflow-hidden rounded-full border border-slate-200 bg-slate-100 flex items-center justify-center">
-                {logoPreview ? (
-                  <img src={logoPreview} className="h-full w-full object-cover" alt="logo preview" />
-                ) : logoUrl ? (
-                  <img
-                    key={imgBust}
-                    src={`${logoUrl}?v=${imgBust}`}
-                    className="h-full w-full object-cover"
-                    alt={league.name}
-                    onError={() => {
-                      // if bucket not public / logo missing, fallback to initials
-                      setImgBust((v) => v + 1);
+              <LeagueAvatar leagueId={league.id} leagueName={league.name} size={56} />
+              <div className="flex-1">
+                <div className="text-sm font-semibold text-slate-900">Logo lega</div>
+                <div className="text-xs text-slate-600">Facoltativo. Se non lo carichi, verrà mostrato un placeholder.</div>
+
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <input
+                    ref={logoInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0] || null;
+                      setLogoFile(f);
+                      if (!f) return setLogoPreview("");
+                      const url = URL.createObjectURL(f);
+                      setLogoPreview(url);
                     }}
                   />
-                ) : (
-                  <span className="text-lg font-semibold text-slate-600">{initials}</span>
-                )}
+
+                  <Button
+                    onClick={() => logoInputRef.current?.click()}
+                    className="!px-4"
+                  >
+                    {logoFile ? "Cambia logo" : "Carica logo"}
+                  </Button>
+
+                  {logoFile ? (
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        setLogoFile(null);
+                        setLogoPreview("");
+                        if (logoInputRef.current) logoInputRef.current.value = "";
+                      }}
+                      className="!px-4"
+                    >
+                      Rimuovi
+                    </Button>
+                  ) : null}
+
+                  <span className="text-xs text-slate-600">PNG/JPG/WebP • max ~1.5MB</span>
+                </div>
+
+                {logoPreview ? (
+                  <div className="mt-3">
+                    <img src={logoPreview} alt="Preview logo" className="h-16 w-16 rounded-full object-cover border border-slate-200" />
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 p-4 space-y-3">
+              <div>
+                <div className="text-sm font-semibold text-slate-900">Nome lega</div>
+                <div className="text-xs text-slate-600">Puoi cambiarlo in qualsiasi momento.</div>
+              </div>
+              <Input label="Nome" value={name} onChange={(e) => setName(e.target.value)} />
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  disabled={!isAdmin}
+                  onClick={async () => {
+                    try {
+                      setErr("");
+                      setOk("");
+                      show();
+                      await api.updateLeagueName(league.id, name.trim());
+                      await refreshMe();
+                      setOk("Nome lega aggiornato.");
+                    } catch (e: any) {
+                      setErr(e?.message || "Errore");
+                    } finally {
+                      hide();
+                    }
+                  }}
+                >
+                  Salva nome
+                </Button>
+
+                <Button
+                  disabled={!isAdmin || !logoFile}
+                  variant="ghost"
+                  className="!px-4"
+                  onClick={async () => {
+                    if (!logoFile) return;
+                    try {
+                      setErr("");
+                      setOk("");
+                      show();
+                      const dataUrl = await fileToDataUrl(logoFile);
+                      await api.uploadLeagueLogo(league.id, dataUrl);
+                      await refreshMe();
+                      setOk("Logo aggiornato.");
+                      setLogoFile(null);
+                      setLogoPreview("");
+                      if (logoInputRef.current) logoInputRef.current.value = "";
+                    } catch (e: any) {
+                      setErr(e?.message || "Errore upload logo");
+                    } finally {
+                      hide();
+                    }
+                  }}
+                >
+                  Salva logo
+                </Button>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 p-4 space-y-2">
+              <div className="text-sm font-semibold text-slate-900">Invita partecipanti</div>
+              <div className="text-xs text-slate-600">Condividi il codice oppure il link.</div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-xl border border-slate-200 p-3">
+                  <div className="text-xs text-slate-500">Codice lega</div>
+                  <div className="mt-1 font-semibold tracking-wider">{league.code}</div>
+                </div>
+                <div className="rounded-xl border border-slate-200 p-3">
+                  <div className="text-xs text-slate-500">Link invito</div>
+                  <div className="mt-1 truncate text-sm">{formatInviteLink(league.code)}</div>
+                </div>
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <input
-                  id="league-logo"
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={async (e) => {
-                    const f = e.target.files?.[0];
-                    setErr("");
-                    setOk("");
-                    if (!f) return;
-                    setLogoFile(f);
-                    setLogoPreview(await fileToDataUrl(f));
-                  }}
-                />
-                <Button
-                  onClick={() => {
-                    const el = document.getElementById("league-logo") as HTMLInputElement | null;
-                    el?.click();
-                  }}
-                >
-                  {logoPreview || logoUrl ? "Cambia logo" : "Carica logo"}
-                </Button>
-                {logoPreview ? (
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      setLogoFile(null);
-                      setLogoPreview("");
-                    }}
-                  >
-                    Rimuovi
-                  </Button>
-                ) : null}
                 <Button
                   variant="ghost"
+                  className="!px-4"
                   onClick={async () => {
                     try {
-                      await navigator.clipboard.writeText(inviteCode);
-                      setOk("Codice copiato");
+                      await navigator.clipboard.writeText(league.code);
+                      setOk("Codice copiato.");
                     } catch {
                       setOk("");
                     }
@@ -148,21 +224,13 @@ function CustomizeTab() {
                 >
                   Copia codice
                 </Button>
-              </div>
-            </div>
-
-            <Input label="Nome lega" value={name} onChange={(e) => setName(e.target.value)} />
-
-            <div className="rounded-xl border border-slate-200 p-3 space-y-2">
-              <div className="text-xs text-slate-500">Link invito</div>
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <div className="text-sm break-all flex-1">{inviteLink}</div>
                 <Button
                   variant="ghost"
+                  className="!px-4"
                   onClick={async () => {
                     try {
-                      await navigator.clipboard.writeText(inviteLink);
-                      setOk("Link copiato");
+                      await navigator.clipboard.writeText(formatInviteLink(league.code));
+                      setOk("Link copiato.");
                     } catch {
                       setOk("");
                     }
@@ -173,56 +241,13 @@ function CustomizeTab() {
               </div>
             </div>
 
-            <Button
-              className="w-full"
-              onClick={async () => {
-                setErr("");
-                setOk("");
-                show();
-                try {
-                  // 1) rename (optional)
-                  if (name.trim() && name.trim() !== league.name) {
-                    await api.adminUpdateLeague({ name: name.trim() });
-                  }
-                  // 2) upload logo (optional)
-                  if (logoFile) {
-                    const dataUrl = await fileToDataUrl(logoFile);
-                    await api.uploadLeagueLogo(league.id, dataUrl);
-                    setLogoFile(null);
-                    setLogoPreview("");
-                    setImgBust((v) => v + 1);
-                  }
-                  await refreshMe();
-                  setOk("Impostazioni salvate");
-                } catch (e: any) {
-                  setErr(e?.message || "Errore");
-                } finally {
-                  hide();
-                }
-              }}
-            >
-              Salva
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader title="Suggerimenti" subtitle="Funzioni utili per gestire la tua lega" />
-        <CardContent>
-          <div className="space-y-3 text-sm text-slate-700">
-            <div className="rounded-xl border border-slate-200 p-3">
-              <div className="font-medium">Condividi il codice invito</div>
-              <div className="text-xs text-slate-600">I partecipanti possono entrare dalla pagina Onboarding inserendo il codice.</div>
-              <div className="mt-2"><Badge>{inviteCode}</Badge></div>
-            </div>
-            <div className="rounded-xl border border-slate-200 p-3">
-              <div className="font-medium">Approva o rifiuta richieste</div>
-              <div className="text-xs text-slate-600">Vai su “Partecipanti” per gestire gli ingressi e assegnare admin.</div>
-            </div>
-            <div className="rounded-xl border border-slate-200 p-3">
-              <div className="font-medium">Regole, lock e premi</div>
-              <div className="text-xs text-slate-600">Configura punteggi, lock automatico e (facoltativo) quota/premi in “Regole & Lock”.</div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="text-sm font-semibold text-slate-900">Suggerimenti</div>
+              <ul className="mt-2 list-disc pl-5 text-xs text-slate-600 space-y-1">
+                <li>Configura quota e premi nella sezione <b>Regole & Lock</b> (facoltativo).</li>
+                <li>Imposta il lock automatico e la modalità pronostici per evitare modifiche a ridosso dei match.</li>
+                <li>Aggiungi almeno un secondo admin, così non rischi di restare l’unico gestore.</li>
+              </ul>
             </div>
           </div>
         </CardContent>
@@ -457,6 +482,77 @@ function RulesTab() {
                 </div>
               ) : null}
 
+              <div className="rounded-2xl border border-slate-200 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-semibold text-slate-900">Quota e premi (facoltativo)</div>
+                    <div className="text-xs text-slate-600">Questi valori appaiono nel regolamento. Se lasci vuoto, non verranno mostrati.</div>
+                  </div>
+                </div>
+
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <Input
+                    label="Quota di partecipazione (€)"
+                    type="number"
+                    value={rules.entryFeeCents ? String(Math.round(Number(rules.entryFeeCents) / 100)) : ""}
+                    placeholder="Es. 10"
+                    onChange={(e) => {
+                      const v = e.target.value.trim();
+                      if (!v) return setRules({ ...rules, entryFeeCents: null });
+                      const cents = Math.max(0, Math.round(Number(v) * 100));
+                      setRules({ ...rules, entryFeeCents: Number.isFinite(cents) ? cents : null });
+                    }}
+                  />
+
+                  <Input
+                    label="Numero posizioni a premio"
+                    type="number"
+                    min={0}
+                    max={50}
+                    value={String(Array.isArray(rules.prizesJson) ? rules.prizesJson.length : 0)}
+                    onChange={(e) => {
+                      const n = Math.max(0, Math.min(50, Number(e.target.value || 0)));
+                      const prev: any[] = Array.isArray(rules.prizesJson) ? rules.prizesJson : [];
+                      const next = Array.from({ length: n }).map((_, idx) => {
+                        const pos = idx + 1;
+                        const existing = prev.find((p) => p.position === pos);
+                        return existing ? existing : { position: pos, amountCents: 0 };
+                      });
+                      setRules({ ...rules, prizesJson: next });
+                    }}
+                  />
+                </div>
+
+                {Array.isArray(rules.prizesJson) && rules.prizesJson.length > 0 ? (
+                  <div className="mt-3 space-y-2">
+                    {rules.prizesJson.map((p: any, idx: number) => (
+                      <Input
+                        key={p.position ?? idx}
+                        label={`${p.position}° posto (€)`}
+                        type="number"
+                        value={String(Math.round(Number(p.amountCents || 0) / 100))}
+                        placeholder={p.position === 1 ? "Es. 200" : ""}
+                        onChange={(e) => {
+                          const v = e.target.value.trim();
+                          const cents = v ? Math.max(0, Math.round(Number(v) * 100)) : 0;
+                          const next = [...rules.prizesJson];
+                          next[idx] = { ...next[idx], amountCents: Number.isFinite(cents) ? cents : 0 };
+                          setRules({ ...rules, prizesJson: next });
+                        }}
+                      />
+                    ))}
+
+                    <Button
+                      variant="ghost"
+                      className="!px-4"
+                      onClick={() => setRules({ ...rules, prizesJson: [] })}
+                    >
+                      Rimuovi premi
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+
               <Button
                 onClick={async () => {
                   show();
@@ -474,6 +570,8 @@ function RulesTab() {
                       allowOutcomeWithExact: !!rules.allowOutcomeWithExact,
                       allowSumGoalsWithExact: !!rules.allowSumGoalsWithExact,
                       allowSumGoalsWithOutcome: !!rules.allowSumGoalsWithOutcome,
+                      ...(typeof rules.entryFeeCents === "number" ? { entryFeeCents: Number(rules.entryFeeCents) } : { entryFeeCents: null }),
+                      prizesJson: Array.isArray(rules.prizesJson) ? rules.prizesJson : null,
                     });
                     setOk("Regole salvate. Punteggi ricalcolati.");
                   } catch (e: any) {
