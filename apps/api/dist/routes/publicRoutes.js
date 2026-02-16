@@ -45,16 +45,7 @@ publicRouter.get("/lock", async (req, res) => {
     const rules = await prisma.rule.findUnique({ where: { leagueId: league.id } });
     const info = await getLockInfo(league.id);
     res.json({
-        lock: {
-            lockUntil: info.lockUntil,
-            isForceLocked: info.isForceLocked,
-            lockedByTime: info.lockedByTime,
-            isLocked: info.isLocked,
-            // Deploy-safe extras used by the UI to lock only the relevant matchdays.
-            lockAll: !!info?.auto?.lockAll,
-            lockedMatchdays: (info?.auto?.lockedMatchdays || []).map((x) => Number(x)),
-        },
-        leagueSettings: info.leagueSettings,
+        lock: { lockUntil: info.lockUntil, isForceLocked: info.isForceLocked, lockedByTime: info.lockedByTime, isLocked: info.isLocked },
         features: { underOver25: !!rules?.enableUnderOver25, matchdayAwards: !!rules?.enableMatchdayAwards },
     });
 });

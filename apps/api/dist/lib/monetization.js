@@ -9,6 +9,7 @@ function isMissingTableError(err) {
     return (typeof err === "object" &&
         err !== null &&
         "code" in err &&
+        // @ts-expect-error prisma error shape
         err.code === "P2021");
 }
 export async function getMonetizationConfig() {
