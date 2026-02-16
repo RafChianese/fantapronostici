@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from "react";
 import { getLeagueLogoUrl } from "../lib/leagueLogo";
 
-export function LeagueAvatar({ leagueId, leagueName, size = 40 }: { leagueId: string; leagueName: string; size?: number }) {
+export function LeagueAvatar({ leagueId, leagueName, logoSrc, size = 40 }: { leagueId: string; leagueName: string; logoSrc?: string | null; size?: number }) {
   const [broken, setBroken] = useState(false);
-  const url = useMemo(() => getLeagueLogoUrl(leagueId), [leagueId]);
+  const url = useMemo(() => logoSrc || getLeagueLogoUrl(leagueId), [leagueId, logoSrc]);
 
   const initials = useMemo(() => {
     const parts = (leagueName || "").trim().split(/\s+/).filter(Boolean);
@@ -17,7 +17,7 @@ export function LeagueAvatar({ leagueId, leagueName, size = 40 }: { leagueId: st
   if (url && !broken) {
     return (
       <img
-        src={`${url}?v=${encodeURIComponent(String(Date.now()))}`}
+        src={url.startsWith("data:") ? url : `${url}?v=${encodeURIComponent(String(Date.now()))}`}
         alt={leagueName}
         style={baseStyle}
         className="shrink-0 rounded-full object-cover border border-slate-200"

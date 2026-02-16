@@ -23,8 +23,8 @@ const UploadLogoSchema = z.object({
   dataUrl: z.string().min(20),
 });
 
-const UpdateLeagueSchema = z.object({
-  name: z.string().min(2).max(60),
+const PatchLeagueSchema = z.object({
+  name: z.string().trim().min(2).max(60).optional(),
 });
 
 function makeCode(len = 6) {
@@ -47,7 +47,7 @@ async function uniqueCode() {
 leaguesRouter.get("/mine", requireAuth, async (req: AuthedRequest, res) => {
   const memberships = await prisma.leagueMember.findMany({
     where: { userId: req.user!.id },
-    include: { league: true },
+    include: { league: { include: { branding: true } } },
     orderBy: { createdAt: "desc" },
   });
   return res.json({ memberships });
@@ -115,7 +115,7 @@ leaguesRouter.post("/", requireAuth, async (req: AuthedRequest, res) => {
   return res.status(201).json({ league });
 });
 
-// Admin-only: rename league (no destructive change)
+// Update league basic info (admin only)
 leaguesRouter.patch("/:leagueId", requireAuth, requireLeagueAdmin, async (req: AuthedRequest, res) => {
   const leagueIdFromParam = req.params.leagueId;
   const leagueId = (req.headers["x-league-id"] as string) || (req.query.leagueId as string) || leagueIdFromParam;
@@ -123,15 +123,12 @@ leaguesRouter.patch("/:leagueId", requireAuth, requireLeagueAdmin, async (req: A
     return res.status(400).json({ message: "leagueId mismatch" });
   }
 
-  const { name } = UpdateLeagueSchema.parse(req.body);
+  const patch = PatchLeagueSchema.parse(req.body);
+  if (!patch.name) return res.json({ ok: true });
 
+  let updated;
   try {
-    const league = await prisma.league.update({
-      where: { id: leagueId },
-      data: { name },
-      select: { id: true, name: true, code: true },
-    });
-    return res.json({ league });
+    updated = await prisma.league.update({ where: { id: leagueId }, data: { name: patch.name } });
   } catch (e: any) {
     if (e?.code === "P2002") {
       const target = Array.isArray(e?.meta?.target) ? e.meta.target.join(",") : String(e?.meta?.target || "");
@@ -139,6 +136,8 @@ leaguesRouter.patch("/:leagueId", requireAuth, requireLeagueAdmin, async (req: A
     }
     throw e;
   }
+
+  return res.json({ ok: true, league: { id: updated.id, name: updated.name, code: updated.code } });
 });
 
 const JoinSchema = z.object({ code: z.string().min(3).max(20) });
@@ -168,9 +167,42 @@ leaguesRouter.post("/:leagueId/logo", requireAuth, requireLeagueAdmin, async (re
 
   const objectPath = `${leagueId}.png`;
   const up = await uploadToSupabaseStorage(objectPath, mime, buf);
-  if (!up.ok) return res.status(501).json({ message: up.message });
 
-  return res.json({ ok: true, publicUrl: up.publicUrl });
+  // Deploy-safe behavior:
+  // - If Supabase Storage is configured, store a public URL.
+  // - Otherwise, fall back to storing a small data URL in DB (LeagueBranding).
+  if (up.ok) {
+    await prisma.leagueBranding.upsert({
+      where: { leagueId },
+      create: { leagueId, logoUrl: up.publicUrl, logoDataUrl: null },
+      update: { logoUrl: up.publicUrl, logoDataUrl: null },
+    });
+    return res.json({ ok: true, publicUrl: up.publicUrl });
+  }
+
+  await prisma.leagueBranding.upsert({
+    where: { leagueId },
+    create: { leagueId, logoUrl: null, logoDataUrl: dataUrl },
+    update: { logoUrl: null, logoDataUrl: dataUrl },
+  });
+
+  return res.json({ ok: true, publicUrl: null, storedInDb: true, message: up.message });
+});
+
+leaguesRouter.delete("/:leagueId/logo", requireAuth, requireLeagueAdmin, async (req: AuthedRequest, res) => {
+  const leagueIdFromParam = req.params.leagueId;
+  const leagueId = (req.headers["x-league-id"] as string) || (req.query.leagueId as string) || leagueIdFromParam;
+  if (!leagueId || leagueId !== leagueIdFromParam) {
+    return res.status(400).json({ message: "leagueId mismatch" });
+  }
+
+  await prisma.leagueBranding.upsert({
+    where: { leagueId },
+    create: { leagueId, logoUrl: null, logoDataUrl: null },
+    update: { logoUrl: null, logoDataUrl: null },
+  });
+
+  return res.json({ ok: true });
 });
 
 

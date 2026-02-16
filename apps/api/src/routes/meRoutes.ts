@@ -19,7 +19,7 @@ meRouter.get("/", async (req: AuthedRequest, res) => {
 
   const memberships = await prisma.leagueMember.findMany({
     where: { userId: req.user!.id },
-    include: { league: true },
+    include: { league: { include: { branding: true } } },
     orderBy: { createdAt: "desc" },
   });
 

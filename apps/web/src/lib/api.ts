@@ -5,7 +5,8 @@ export type LeagueRole = "MEMBER" | "ADMIN";
 export type MembershipStatus = "PENDING" | "APPROVED" | "REJECTED";
 
 export type User = { id: string; email: string; displayName: string; globalRole: GlobalRole };
-export type League = { id: string; name: string; code: string };
+export type LeagueBranding = { logoUrl?: string | null; logoDataUrl?: string | null };
+export type League = { id: string; name: string; code: string; branding?: LeagueBranding | null };
 export type Membership = {
   id: string;
   role: LeagueRole;
@@ -155,9 +156,10 @@ export const api = {
   myLeagues: () => request(`/api/leagues/mine`),
   createLeague: (name: string, opts?: { entryFeeCents?: number; prizes?: Array<{ position: number; amountCents: number }> }) =>
     request(`/api/leagues`, { method: "POST", body: JSON.stringify({ name, ...(opts || {}) }) }),
-  updateLeagueName: (leagueId: string, name: string) =>
-    request(`/api/leagues/${leagueId}`, { method: "PATCH", body: JSON.stringify({ name }) }),
+  updateLeague: (leagueId: string, patch: { name?: string }) =>
+    request(`/api/leagues/${leagueId}`, { method: "PATCH", body: JSON.stringify(patch) }),
   uploadLeagueLogo: (leagueId: string, dataUrl: string) => request(`/api/leagues/${leagueId}/logo`, { method: "POST", body: JSON.stringify({ dataUrl }) }),
+  removeLeagueLogo: (leagueId: string) => request(`/api/leagues/${leagueId}/logo`, { method: "DELETE" }),
   joinLeague: (code: string) => request(`/api/leagues/join`, { method: "POST", body: JSON.stringify({ code }) }),
 
   // public (league-scoped)

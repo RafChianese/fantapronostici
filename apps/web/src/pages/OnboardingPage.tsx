@@ -13,6 +13,7 @@ export default function OnboardingPage() {
   const pending = useMemo(() => memberships.filter((m) => m.status === "PENDING"), [memberships]);
 
   const [leagueName, setLeagueName] = useState("");
+  // Creation is intentionally minimal: name only (customization happens in Area admin)
 
   const [joinCode, setJoinCode] = useState("");
   const [msg, setMsg] = useState<string>("");
@@ -39,7 +40,12 @@ export default function OnboardingPage() {
               {approved.map((m) => (
                 <div key={m.id} className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3">
                   <div className="flex items-center gap-3">
-                    <LeagueAvatar leagueId={m.league.id} leagueName={m.league.name} size={44} />
+                    <LeagueAvatar
+                      leagueId={m.league.id}
+                      leagueName={m.league.name}
+                      logoSrc={m.league?.branding?.logoUrl || m.league?.branding?.logoDataUrl || null}
+                      size={44}
+                    />
                     <div>
                       <div className="font-medium">{m.league.name}</div>
                       <div className="text-xs text-slate-600">Codice: {m.league.code} • Ruolo: {m.role}</div>
@@ -116,6 +122,8 @@ export default function OnboardingPage() {
                       const r = await api.createLeague(leagueName.trim());
                       await refreshMe();
                       setActiveLeague(r.league.id);
+                      setMsg(`Lega creata! Codice: ${r.league.code}`);
+                      setLeagueName("");
                       nav("/admin");
                     } catch (e: any) {
                       setErr(e?.message || "Errore");

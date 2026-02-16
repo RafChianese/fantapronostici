@@ -1,9 +1,8 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { useLoading } from "../../lib/loading";
 import { Alert, Badge, Button, Card, CardContent, CardHeader, Input } from "../../components/ui";
-import { LeagueAvatar } from "../../components/LeagueAvatar";
 
 type Tab = "members" | "rules" | "customize";
 
@@ -31,22 +30,13 @@ export default function AdminDashboardPage() {
 
       {tab === "members" ? <MembersTab /> : null}
       {tab === "rules" ? <RulesTab /> : null}
-      {tab === "customize" ? <CustomizeTab /> : null}
+      {tab === "customize" ? <CustomizeTab goToRules={() => setTab("rules")} /> : null}
     </div>
   );
 }
 
-function formatInviteLink(code: string) {
-  // Non imponiamo base URL: usiamo la location del browser.
-  try {
-    return `${window.location.origin}/?leagueCode=${encodeURIComponent(code)}`;
-  } catch {
-    return code;
-  }
-}
-
-async function fileToDataUrl(file: File): Promise<string> {
-  return await new Promise((resolve, reject) => {
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
     const r = new FileReader();
     r.onload = () => resolve(String(r.result || ""));
     r.onerror = () => reject(new Error("Errore lettura file"));
@@ -54,205 +44,168 @@ async function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
-function CustomizeTab() {
-  const { show, hide } = useLoading();
+function CustomizeTab({ goToRules }: { goToRules: () => void }) {
   const { memberships, activeLeagueId, refreshMe } = useAuth();
+  const { show, hide } = useLoading();
 
-  const active = useMemo(() => memberships.find((m) => m.league.id === activeLeagueId), [memberships, activeLeagueId]);
-  const league = active?.league;
-  const isAdmin = active?.role === "ADMIN";
+  const activeMembership = memberships.find((m) => m.league?.id === activeLeagueId) as any;
+  const league = activeMembership?.league;
 
-  const [name, setName] = useState(league?.name || "");
-  const [ok, setOk] = useState("");
+  const [name, setName] = useState<string>(league?.name || "");
+  const [savingName, setSavingName] = useState(false);
+  const [logoBusy, setLogoBusy] = useState(false);
   const [err, setErr] = useState("");
-
-  const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [logoPreview, setLogoPreview] = useState<string>("");
-  const logoInputRef = useRef<HTMLInputElement | null>(null);
+  const [ok, setOk] = useState("");
 
   useEffect(() => {
     setName(league?.name || "");
   }, [league?.name]);
 
+  const logoSrc = league?.branding?.logoUrl || league?.branding?.logoDataUrl || null;
+
+  async function uploadLogo(file: File) {
+    if (!league?.id) return;
+    setErr("");
+    setOk("");
+    setLogoBusy(true);
+    show();
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      await api.uploadLeagueLogo(league.id, dataUrl);
+      await refreshMe();
+      setOk("Logo aggiornato");
+    } catch (e: any) {
+      setErr(e?.message || "Errore upload logo");
+    } finally {
+      setLogoBusy(false);
+      hide();
+    }
+  }
+
+  async function removeLogo() {
+    if (!league?.id) return;
+    setErr("");
+    setOk("");
+    setLogoBusy(true);
+    show();
+    try {
+      await api.removeLeagueLogo(league.id);
+      await refreshMe();
+      setOk("Logo rimosso");
+    } catch (e: any) {
+      setErr(e?.message || "Errore rimozione logo");
+    } finally {
+      setLogoBusy(false);
+      hide();
+    }
+  }
+
   if (!league) return null;
 
   return (
-    <div className="grid gap-6 md:grid-cols-2">
-      <Card>
-        <CardHeader title="Personalizza la lega" subtitle="Nome, logo e inviti" />
-        <CardContent>
-          {err ? <Alert tone="danger">{err}</Alert> : null}
-          {ok ? <Alert tone="success">{ok}</Alert> : null}
+    <Card>
+      <CardHeader title="Personalizza la lega" subtitle="Logo e informazioni principali" />
+      <CardContent className="space-y-6">
+        {err ? <Alert tone="danger">{err}</Alert> : null}
+        {ok ? <Alert tone="success">{ok}</Alert> : null}
 
-          <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              <LeagueAvatar leagueId={league.id} leagueName={league.name} size={56} />
-              <div className="flex-1">
-                <div className="text-sm font-semibold text-slate-900">Logo lega</div>
-                <div className="text-xs text-slate-600">Facoltativo. Se non lo carichi, verrà mostrato un placeholder.</div>
-
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <input
-                    ref={logoInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0] || null;
-                      setLogoFile(f);
-                      if (!f) return setLogoPreview("");
-                      const url = URL.createObjectURL(f);
-                      setLogoPreview(url);
-                    }}
-                  />
-
-                  <Button
-                    onClick={() => logoInputRef.current?.click()}
-                    className="!px-4"
-                  >
-                    {logoFile ? "Cambia logo" : "Carica logo"}
-                  </Button>
-
-                  {logoFile ? (
-                    <Button
-                      variant="ghost"
-                      onClick={() => {
-                        setLogoFile(null);
-                        setLogoPreview("");
-                        if (logoInputRef.current) logoInputRef.current.value = "";
-                      }}
-                      className="!px-4"
-                    >
-                      Rimuovi
-                    </Button>
-                  ) : null}
-
-                  <span className="text-xs text-slate-600">PNG/JPG/WebP • max ~1.5MB</span>
-                </div>
-
-                {logoPreview ? (
-                  <div className="mt-3">
-                    <img src={logoPreview} alt="Preview logo" className="h-16 w-16 rounded-full object-cover border border-slate-200" />
-                  </div>
-                ) : null}
-              </div>
+        <div className="flex flex-col items-center gap-3">
+          <div className="relative">
+            <div
+              className={`h-32 w-32 rounded-full border border-slate-200 bg-slate-100 overflow-hidden flex items-center justify-center ${logoBusy ? "opacity-70" : ""}`}
+            >
+              {logoSrc ? (
+                <img src={logoSrc} alt="Logo lega" className="h-full w-full object-cover" />
+              ) : (
+                <div className="text-slate-500 font-semibold text-2xl">{(league.name || "L").slice(0, 2).toUpperCase()}</div>
+              )}
             </div>
 
-            <div className="rounded-2xl border border-slate-200 p-4 space-y-3">
-              <div>
-                <div className="text-sm font-semibold text-slate-900">Nome lega</div>
-                <div className="text-xs text-slate-600">Puoi cambiarlo in qualsiasi momento.</div>
-              </div>
-              <Input label="Nome" value={name} onChange={(e) => setName(e.target.value)} />
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  disabled={!isAdmin}
-                  onClick={async () => {
-                    try {
-                      setErr("");
-                      setOk("");
-                      show();
-                      await api.updateLeagueName(league.id, name.trim());
-                      await refreshMe();
-                      setOk("Nome lega aggiornato.");
-                    } catch (e: any) {
-                      setErr(e?.message || "Errore");
-                    } finally {
-                      hide();
-                    }
-                  }}
-                >
-                  Salva nome
-                </Button>
+            {/* hidden file input */}
+            <input
+              id="league-logo-input"
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) uploadLogo(f);
+                // allow re-select same file
+                e.currentTarget.value = "";
+              }}
+            />
 
-                <Button
-                  disabled={!isAdmin || !logoFile}
-                  variant="ghost"
-                  className="!px-4"
-                  onClick={async () => {
-                    if (!logoFile) return;
-                    try {
-                      setErr("");
-                      setOk("");
-                      show();
-                      const dataUrl = await fileToDataUrl(logoFile);
-                      await api.uploadLeagueLogo(league.id, dataUrl);
-                      await refreshMe();
-                      setOk("Logo aggiornato.");
-                      setLogoFile(null);
-                      setLogoPreview("");
-                      if (logoInputRef.current) logoInputRef.current.value = "";
-                    } catch (e: any) {
-                      setErr(e?.message || "Errore upload logo");
-                    } finally {
-                      hide();
-                    }
-                  }}
-                >
-                  Salva logo
-                </Button>
-              </div>
-            </div>
+            {/* Camera / Edit button */}
+            <label
+              htmlFor="league-logo-input"
+              title={logoSrc ? "Modifica logo" : "Carica logo"}
+              className={`absolute -right-2 bottom-3 h-10 w-10 rounded-full border border-slate-200 bg-white shadow-sm flex items-center justify-center cursor-pointer hover:shadow transition ${logoBusy ? "pointer-events-none opacity-60" : ""}`}
+            >
+              {logoSrc ? (
+                // pencil
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 20h9" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                  <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
+                </svg>
+              ) : (
+                // camera
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M9 4L7.5 6H5a3 3 0 0 0-3 3v8a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3V9a3 3 0 0 0-3-3h-2.5L15 4H9Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
+                  <path d="M12 18a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" stroke="currentColor" strokeWidth="1.8"/>
+                </svg>
+              )}
+            </label>
 
-            <div className="rounded-2xl border border-slate-200 p-4 space-y-2">
-              <div className="text-sm font-semibold text-slate-900">Invita partecipanti</div>
-              <div className="text-xs text-slate-600">Condividi il codice oppure il link.</div>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-xl border border-slate-200 p-3">
-                  <div className="text-xs text-slate-500">Codice lega</div>
-                  <div className="mt-1 font-semibold tracking-wider">{league.code}</div>
-                </div>
-                <div className="rounded-xl border border-slate-200 p-3">
-                  <div className="text-xs text-slate-500">Link invito</div>
-                  <div className="mt-1 truncate text-sm">{formatInviteLink(league.code)}</div>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="ghost"
-                  className="!px-4"
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(league.code);
-                      setOk("Codice copiato.");
-                    } catch {
-                      setOk("");
-                    }
-                  }}
-                >
-                  Copia codice
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="!px-4"
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(formatInviteLink(league.code));
-                      setOk("Link copiato.");
-                    } catch {
-                      setOk("");
-                    }
-                  }}
-                >
-                  Copia link
-                </Button>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <div className="text-sm font-semibold text-slate-900">Suggerimenti</div>
-              <ul className="mt-2 list-disc pl-5 text-xs text-slate-600 space-y-1">
-                <li>Configura quota e premi nella sezione <b>Regole & Lock</b> (facoltativo).</li>
-                <li>Imposta il lock automatico e la modalità pronostici per evitare modifiche a ridosso dei match.</li>
-                <li>Aggiungi almeno un secondo admin, così non rischi di restare l’unico gestore.</li>
-              </ul>
-            </div>
+            {/* Remove button (X) */}
+            {logoSrc ? (
+              <button
+                type="button"
+                title="Rimuovi logo"
+                onClick={removeLogo}
+                className={`absolute -left-2 bottom-3 h-10 w-10 rounded-full border border-slate-200 bg-white shadow-sm flex items-center justify-center hover:shadow transition ${logoBusy ? "pointer-events-none opacity-60" : ""}`}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              </button>
+            ) : null}
           </div>
-        </CardContent>
-      </Card>
-    </div>
+          <div className="text-xs text-slate-600">PNG/JPG/WebP • max ~1.5MB • salvataggio automatico</div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+          <Input label="Nome lega" value={name} onChange={(e) => setName(e.target.value)} />
+          <Button
+            className="sm:mb-[2px]"
+            disabled={savingName || name.trim().length < 2 || name.trim() === league.name}
+            onClick={async () => {
+              setErr("");
+              setOk("");
+              setSavingName(true);
+              show();
+              try {
+                await api.updateLeague(league.id, { name: name.trim() });
+                await refreshMe();
+                setOk("Nome aggiornato");
+              } catch (e: any) {
+                setErr(e?.message || "Errore aggiornamento nome");
+              } finally {
+                setSavingName(false);
+                hide();
+              }
+            }}
+          >
+            Salva
+          </Button>
+        </div>
+
+        <div className="pt-2">
+          <Button className="w-full" variant="primary" onClick={goToRules}>
+            Configura regolamento
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

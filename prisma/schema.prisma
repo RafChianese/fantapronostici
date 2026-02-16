@@ -103,6 +103,25 @@ model League {
 
   // Optional monetization (entry fee + prizes)
   monetization LeagueMonetization?
+
+  // Optional branding (logo, display name tweaks, etc.)
+  branding LeagueBranding?
+}
+
+// Optional league branding (additive table; deploy-safe)
+model LeagueBranding {
+  id         String   @id @default(cuid())
+  leagueId   String   @unique
+  // If Supabase Storage is configured, we store a public URL here.
+  logoUrl    String?
+  // Fallback when Storage is not configured: store a small data URL.
+  logoDataUrl String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+
+  @@index([leagueId])
 }
 
 // Optional league monetization (additive table; deploy-safe)
