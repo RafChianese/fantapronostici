@@ -155,6 +155,40 @@ export function generateRegolamentoTemplate(rules: LeagueRules, settings: League
         paragraphs: ["In questa lega il premio miglior giornata non è previsto."],
       };
 
+  const monetizationSection: RegolamentoSection | null = (() => {
+    const feeCents = typeof (rules as any).entryFeeCents === "number" ? (rules as any).entryFeeCents : null;
+    const prizes = Array.isArray((rules as any).prizesJson) ? (rules as any).prizesJson : null;
+
+    if (!feeCents && (!prizes || prizes.length === 0)) return null;
+
+    const paragraphs: string[] = [];
+    const bullets: string[] = [];
+
+    if (feeCents) {
+      const feeEuro = (feeCents / 100).toFixed(2).replace(".00", "");
+      paragraphs.push(`La quota di partecipazione è pari a ${feeEuro}€.`);
+    } else {
+      paragraphs.push("Non è prevista una quota di partecipazione.");
+    }
+
+    if (prizes && prizes.length > 0) {
+      paragraphs.push("Premi previsti:");
+      prizes
+        .slice()
+        .sort((a: any, b: any) => Number(a.position) - Number(b.position))
+        .forEach((p: any) => {
+          const euro = (Number(p.amountCents || 0) / 100).toFixed(2).replace(".00", "");
+          bullets.push(`${p.position}° posto: ${euro}€`);
+        });
+    }
+
+    return {
+      title: "Quota e premi",
+      paragraphs,
+      ...(bullets.length ? { bullets } : {}),
+    };
+  })();
+
   const lockSection: RegolamentoSection = {
     title: "Lock pronostici",
     paragraphs: [
@@ -195,6 +229,7 @@ export function generateRegolamentoTemplate(rules: LeagueRules, settings: League
       scoringModeSection,
       underOverSection,
       awardsSection,
+      ...(monetizationSection ? [monetizationSection] : []),
       lockSection,
       rankingSection,
     ],

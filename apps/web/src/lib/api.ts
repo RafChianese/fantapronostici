@@ -27,6 +27,10 @@ export type LeagueRules = {
   allowOutcomeWithExact: boolean;
   allowSumGoalsWithExact: boolean;
   allowSumGoalsWithOutcome: boolean;
+
+  // Optional monetization (all optional)
+  entryFeeCents?: number | null;
+  prizesJson?: Array<{ position: number; amountCents: number }> | null;
 };
 
 export type LeagueSettings = {
@@ -149,7 +153,8 @@ export const api = {
 
   // leagues
   myLeagues: () => request(`/api/leagues/mine`),
-  createLeague: (name: string) => request(`/api/leagues`, { method: "POST", body: JSON.stringify({ name }) }),
+  createLeague: (name: string, opts?: { entryFeeCents?: number; prizes?: Array<{ position: number; amountCents: number }> }) =>
+    request(`/api/leagues`, { method: "POST", body: JSON.stringify({ name, ...(opts || {}) }) }),
   uploadLeagueLogo: (leagueId: string, dataUrl: string) => request(`/api/leagues/${leagueId}/logo`, { method: "POST", body: JSON.stringify({ dataUrl }) }),
   joinLeague: (code: string) => request(`/api/leagues/join`, { method: "POST", body: JSON.stringify({ code }) }),
 
