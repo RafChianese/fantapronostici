@@ -98,19 +98,6 @@ const RulesSchema = z.object({
   allowOutcomeWithExact: z.boolean(),
   allowSumGoalsWithExact: z.boolean(),
   allowSumGoalsWithOutcome: z.boolean(),
-
-  // Optional monetization
-  entryFeeCents: z.number().int().min(0).max(1_000_000_000).optional().nullable(),
-  prizesJson: z
-    .array(
-      z.object({
-        position: z.number().int().min(1).max(100),
-        amountCents: z.number().int().min(0).max(1_000_000_000),
-      })
-    )
-    .max(50)
-    .optional()
-    .nullable(),
 });
 
 adminRouter.put("/rules", async (req, res) => {

@@ -1,26 +1,14 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
-import { requireAuth, requireLeagueAdmin, AuthedRequest } from "../middleware/authMiddleware.js";
+import { requireAuth, AuthedRequest, requireLeagueAdmin } from "../middleware/authMiddleware.js";
 import { ensureLeagueConfig } from "../services/ensureLeagueConfig.js";
-import { uploadToSupabaseStorage } from "../lib/supabaseStorage.js";
+import { uploadToSupabaseStorage, UploadLogoSchema } from "../lib/supabaseStorage.js";
 
 export const leaguesRouter = Router();
 
-const PrizeSchema = z.object({
-  position: z.number().int().min(1).max(100),
-  amountCents: z.number().int().min(0).max(1_000_000_000),
-});
-
 const CreateLeagueSchema = z.object({
   name: z.string().min(2).max(60),
-  // Optional monetization (deploy-safe, stored on Rule)
-  entryFeeCents: z.number().int().min(0).max(1_000_000_000).optional(),
-  prizes: z.array(PrizeSchema).max(50).optional(),
-});
-
-const UploadLogoSchema = z.object({
-  dataUrl: z.string().min(20),
 });
 
 function makeCode(len = 6) {
@@ -50,7 +38,7 @@ leaguesRouter.get("/mine", requireAuth, async (req: AuthedRequest, res) => {
 });
 
 leaguesRouter.post("/", requireAuth, async (req: AuthedRequest, res) => {
-  const { name, entryFeeCents, prizes } = CreateLeagueSchema.parse(req.body);
+  const { name } = CreateLeagueSchema.parse(req.body);
   const code = await uniqueCode();
 
   let league;
@@ -59,8 +47,7 @@ leaguesRouter.post("/", requireAuth, async (req: AuthedRequest, res) => {
       data: {
         name,
         code,
-        // Store optional entry fee / prizes on Rule (non-destructive DB change, defaults otherwise)
-        rules: { create: { ...(typeof entryFeeCents === "number" ? { entryFeeCents } : {}), ...(prizes ? { prizesJson: prizes } : {}) } },
+        rules: { create: {} },
         settings: { create: { lockUntil: new Date(Date.now() + 7 * 24 * 3600 * 1000) } },
         members: {
           create: {

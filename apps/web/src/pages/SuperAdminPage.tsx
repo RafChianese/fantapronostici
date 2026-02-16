@@ -94,7 +94,7 @@ export default function SuperAdminPage() {
         <CardContent>{!footballData ? null : <FootballDataSyncPanel />}</CardContent>
       </Card>
       <Card>
-        <CardHeader title="Area Admin - Leghe" subtitle="Gestisci leghe e admin" />
+        <CardHeader title="Dashboard Superadmin - Leghe" subtitle="Gestisci leghe e admin" />
         <CardContent>
           {err ? <Alert tone="danger">{err}</Alert> : null}
           <div className="space-y-2">
