@@ -325,6 +325,7 @@ function MembersTab() {
   );
 }
 
+
 function RulesTab() {
   const { show, hide } = useLoading();
   const [loading, setLoading] = useState(true);
@@ -351,161 +352,120 @@ function RulesTab() {
 
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (loading) return null;
 
+  const prizes: any[] = Array.isArray(rules?.prizesJson) ? rules.prizesJson : [];
+
+  const entryFeeEuro = (() => {
+    const cents = rules?.entryFeeCents;
+    if (typeof cents !== "number" || !Number.isFinite(cents) || cents <= 0) return "";
+    return String(Math.round(cents / 100));
+  })();
+
   return (
-    <div className="grid gap-6 md:grid-cols-2">
-      <Card>
-        <CardHeader title="Regole punteggi" subtitle="Modifica e ricalcolo immediato" />
-        <CardContent>
-          {err ? <Alert tone="danger">{err}</Alert> : null}
-          {ok ? <Alert tone="success">{ok}</Alert> : null}
+    <div className="space-y-6">
+      {err ? <Alert tone="danger">{err}</Alert> : null}
+      {ok ? <Alert tone="success">{ok}</Alert> : null}
 
-          {rules ? (
-            <div className="space-y-3">
-              <Input
-                label="Punti Risultato Esatto"
-                type="number"
-                value={String(rules.pointsExact)}
-                onChange={(e) => setRules({ ...rules, pointsExact: Number(e.target.value) })}
-              />
-              <Input
-                label="Punti Pronostico (1X2)"
-                type="number"
-                value={String(rules.pointsOutcome)}
-                onChange={(e) => setRules({ ...rules, pointsOutcome: Number(e.target.value) })}
-              />
-              <Input
-                label="Punti Somma Gol"
-                type="number"
-                value={String(rules.pointsSumGoals)}
-                onChange={(e) => setRules({ ...rules, pointsSumGoals: Number(e.target.value) })}
-              />
-
-              <div className="space-y-2 rounded-xl border border-slate-200 p-3">
-                <ToggleRow
-                  label="Abilita Under/Over 2.5"
-                  checked={!!rules.enableUnderOver25}
-                  onChange={(v) => setRules({ ...rules, enableUnderOver25: v })}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* RULES */}
+        <Card>
+          <CardHeader title="Regole" subtitle="Punteggi e opzioni della lega" />
+          <CardContent className="space-y-5">
+            {/* Base scoring */}
+            <Section title="Punteggi base" hint="Imposta i punti assegnati per risultato esatto, esito (1X2) e somma gol. Questi valori vengono usati per calcolare la classifica.">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Input
+                  label="Esatto"
+                  type="number"
+                  value={String(rules?.pointsExact ?? 0)}
+                  onChange={(e) => setRules({ ...rules, pointsExact: Number(e.target.value) })}
                 />
                 <Input
-                  label="Punti Under/Over 2.5"
+                  label="Esito (1X2)"
                   type="number"
-                  disabled={!rules.enableUnderOver25}
-                  value={String(rules.pointsUnderOver25 ?? 1)}
-                  onChange={(e) => setRules({ ...rules, pointsUnderOver25: Number(e.target.value) })}
+                  value={String(rules?.pointsOutcome ?? 0)}
+                  onChange={(e) => setRules({ ...rules, pointsOutcome: Number(e.target.value) })}
                 />
-                <ToggleRow
-                  label="Abilita miglior risultato di giornata (🥇)"
-                  checked={!!rules.enableMatchdayAwards}
+                <Input
+                  label="Somma gol"
+                  type="number"
+                  value={String(rules?.pointsSumGoals ?? 0)}
+                  onChange={(e) => setRules({ ...rules, pointsSumGoals: Number(e.target.value) })}
+                />
+              </div>
+            </Section>
+
+            {/* Extra features */}
+            <Section title="Funzioni extra" hint="Attiva opzioni aggiuntive come Under/Over 2.5 e premio giornata. Puoi anche impostare i punti relativi.">
+              <div className="space-y-3">
+                <SwitchRow
+                  label="Abilita Under/Over 2.5"
+                  hint="Permette di pronosticare Under/Over 2.5 per ogni partita (se la feature è attiva nella lega)."
+                  checked={!!rules?.enableUnderOver25}
+                  onChange={(v) => setRules({ ...rules, enableUnderOver25: v })}
+                />
+                <div className="pl-1">
+                  <Input
+                    label="Punti Under/Over 2.5"
+                    type="number"
+                    disabled={!rules?.enableUnderOver25}
+                    value={String(rules?.pointsUnderOver25 ?? 1)}
+                    onChange={(e) => setRules({ ...rules, pointsUnderOver25: Number(e.target.value) })}
+                  />
+                </div>
+
+                <SwitchRow
+                  label="Abilita premio giornata (🥇)"
+                  hint="Assegna un badge/premio a chi ottiene il punteggio migliore nella singola giornata (se abilitato)."
+                  checked={!!rules?.enableMatchdayAwards}
                   onChange={(v) => setRules({ ...rules, enableMatchdayAwards: v })}
                 />
               </div>
+            </Section>
 
-              <label className="text-sm font-medium text-slate-700">Modalità punteggio</label>
-              <select
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
-                value={rules.scoringMode}
-                onChange={(e) => setRules({ ...rules, scoringMode: e.target.value })}
-              >
-                <option value="CUMULATIVE">Cumulativo (Esatto + 1X2 + SommaGol)</option>
-                <option value="BEST_ONLY">Solo punteggio più alto</option>
-                <option value="MIXED">Misto (configurabile)</option>
-              </select>
+            {/* Scoring mode */}
+            <Section title="Modalità punteggio" hint="Scegli come combinare i punteggi (cumulativo, solo il migliore, oppure misto configurabile).">
+              <div className="space-y-3">
+                <select
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                  value={rules?.scoringMode || "CUMULATIVE"}
+                  onChange={(e) => setRules({ ...rules, scoringMode: e.target.value })}
+                >
+                  <option value="CUMULATIVE">Cumulativo (Esatto + 1X2 + SommaGol)</option>
+                  <option value="BEST_ONLY">Solo punteggio più alto</option>
+                  <option value="MIXED">Misto (configurabile)</option>
+                </select>
 
-              {rules.scoringMode === "MIXED" ? (
-                <div className="space-y-2 rounded-xl border border-slate-200 p-3">
-                  <ToggleRow
-                    label="Se prendo Esatto sommo anche 1X2"
-                    checked={!!rules.allowOutcomeWithExact}
-                    onChange={(v) => setRules({ ...rules, allowOutcomeWithExact: v })}
-                  />
-                  <ToggleRow
-                    label="Se prendo Esatto sommo anche Somma Gol"
-                    checked={!!rules.allowSumGoalsWithExact}
-                    onChange={(v) => setRules({ ...rules, allowSumGoalsWithExact: v })}
-                  />
-                  <ToggleRow
-                    label="Se prendo 1X2 sommo anche Somma Gol"
-                    checked={!!rules.allowSumGoalsWithOutcome}
-                    onChange={(v) => setRules({ ...rules, allowSumGoalsWithOutcome: v })}
-                  />
-                </div>
-              ) : null}
-
-              <div className="rounded-2xl border border-slate-200 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className="text-sm font-semibold text-slate-900">Quota e premi (facoltativo)</div>
-                    <div className="text-xs text-slate-600">Questi valori appaiono nel regolamento. Se lasci vuoto, non verranno mostrati.</div>
-                  </div>
-                </div>
-
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <Input
-                    label="Quota di partecipazione (€)"
-                    type="number"
-                    value={rules.entryFeeCents ? String(Math.round(Number(rules.entryFeeCents) / 100)) : ""}
-                    placeholder="Es. 10"
-                    onChange={(e) => {
-                      const v = e.target.value.trim();
-                      if (!v) return setRules({ ...rules, entryFeeCents: null });
-                      const cents = Math.max(0, Math.round(Number(v) * 100));
-                      setRules({ ...rules, entryFeeCents: Number.isFinite(cents) ? cents : null });
-                    }}
-                  />
-
-                  <Input
-                    label="Numero posizioni a premio"
-                    type="number"
-                    min={0}
-                    max={50}
-                    value={String(Array.isArray(rules.prizesJson) ? rules.prizesJson.length : 0)}
-                    onChange={(e) => {
-                      const n = Math.max(0, Math.min(50, Number(e.target.value || 0)));
-                      const prev: any[] = Array.isArray(rules.prizesJson) ? rules.prizesJson : [];
-                      const next = Array.from({ length: n }).map((_, idx) => {
-                        const pos = idx + 1;
-                        const existing = prev.find((p) => p.position === pos);
-                        return existing ? existing : { position: pos, amountCents: 0 };
-                      });
-                      setRules({ ...rules, prizesJson: next });
-                    }}
-                  />
-                </div>
-
-                {Array.isArray(rules.prizesJson) && rules.prizesJson.length > 0 ? (
-                  <div className="mt-3 space-y-2">
-                    {rules.prizesJson.map((p: any, idx: number) => (
-                      <Input
-                        key={p.position ?? idx}
-                        label={`${p.position}° posto (€)`}
-                        type="number"
-                        value={String(Math.round(Number(p.amountCents || 0) / 100))}
-                        placeholder={p.position === 1 ? "Es. 200" : ""}
-                        onChange={(e) => {
-                          const v = e.target.value.trim();
-                          const cents = v ? Math.max(0, Math.round(Number(v) * 100)) : 0;
-                          const next = [...rules.prizesJson];
-                          next[idx] = { ...next[idx], amountCents: Number.isFinite(cents) ? cents : 0 };
-                          setRules({ ...rules, prizesJson: next });
-                        }}
-                      />
-                    ))}
-
-                    <Button
-                      variant="ghost"
-                      className="!px-4"
-                      onClick={() => setRules({ ...rules, prizesJson: [] })}
-                    >
-                      Rimuovi premi
-                    </Button>
+                {rules?.scoringMode === "MIXED" ? (
+                  <div className="rounded-2xl border border-slate-200 p-4 space-y-3">
+                    <div className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+                      Regole modalità mista <HelpHint text="Definisci quali punti si sommano quando prendi un risultato esatto o un esito (1X2)." />
+                    </div>
+                    <SwitchRow
+                      label="Se prendo Esatto sommo anche 1X2"
+                      checked={!!rules?.allowOutcomeWithExact}
+                      onChange={(v) => setRules({ ...rules, allowOutcomeWithExact: v })}
+                    />
+                    <SwitchRow
+                      label="Se prendo Esatto sommo anche Somma gol"
+                      checked={!!rules?.allowSumGoalsWithExact}
+                      onChange={(v) => setRules({ ...rules, allowSumGoalsWithExact: v })}
+                    />
+                    <SwitchRow
+                      label="Se prendo 1X2 sommo anche Somma gol"
+                      checked={!!rules?.allowSumGoalsWithOutcome}
+                      onChange={(v) => setRules({ ...rules, allowSumGoalsWithOutcome: v })}
+                    />
                   </div>
                 ) : null}
               </div>
+            </Section>
 
+            <div className="flex items-center gap-2">
               <Button
                 onClick={async () => {
                   show();
@@ -536,101 +496,154 @@ function RulesTab() {
               >
                 Salva regole
               </Button>
+              <span className="text-xs text-slate-600">Le modifiche ricalcolano la classifica.</span>
             </div>
-          ) : null}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader title="Lock pronostici" subtitle="Blocco automatico gestito dal calendario" />
-        <CardContent>
-          {settings ? (
-            <div className="space-y-4">
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
-                <div className="font-medium">Come funziona</div>
-                <ul className="mt-1 list-disc space-y-1 pl-5 text-xs text-slate-600">
-                  <li>
-                    Il lock è <b>sempre automatico</b>: parte X minuti prima del primo match rilevante.
-                  </li>
-                  <li>
-                    In modalità <b>giornata per giornata</b> si sblocca quando la giornata è conclusa (con fallback).
-                  </li>
-                  <li>
-                    In modalità <b>tutti prima del torneo</b> il lock si riferisce alla prima partita della prima giornata.
-                  </li>
+        {/* RIGHT COLUMN */}
+        <div className="space-y-6">
+          {/* Monetization */}
+          <Card>
+            <CardHeader title="Quota & premi" subtitle="Opzionale (visibile nel regolamento)" />
+            <CardContent className="space-y-4">
+              <div className="text-sm text-slate-700 flex items-center gap-2">
+                Impostazioni facoltative <HelpHint text="Se lasci vuoto, nel regolamento non verrà mostrata alcuna quota/premio." />
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Input
+                  label="Quota (€)"
+                  type="number"
+                  value={entryFeeEuro}
+                  placeholder="Es. 10"
+                  onChange={(e) => {
+                    const v = e.target.value.trim();
+                    if (!v) return setRules({ ...rules, entryFeeCents: null });
+                    const cents = Math.max(0, Math.round(Number(v) * 100));
+                    setRules({ ...rules, entryFeeCents: Number.isFinite(cents) ? cents : null });
+                  }}
+                />
+                <div className="rounded-xl border border-slate-200 p-3">
+                  <div className="text-xs text-slate-500">Posizioni a premio</div>
+                  <div className="text-sm font-semibold">{prizes.length}</div>
+                  <div className="text-xs text-slate-500 mt-1">Aggiungi/rimuovi sotto</div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                {prizes.map((p: any, idx: number) => (
+                  <div key={p.position ?? idx} className="flex items-end gap-2">
+                    <div className="flex-1">
+                      <Input
+                        label={`${p.position}° posto (€)`}
+                        type="number"
+                        value={String(Math.round(Number(p.amountCents || 0) / 100))}
+                        placeholder={p.position === 1 ? "Es. 200" : ""}
+                        onChange={(e) => {
+                          const v = e.target.value.trim();
+                          const cents = v ? Math.max(0, Math.round(Number(v) * 100)) : 0;
+                          const next = [...prizes];
+                          next[idx] = { ...next[idx], amountCents: Number.isFinite(cents) ? cents : 0 };
+                          setRules({ ...rules, prizesJson: next });
+                        }}
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      className="mb-[6px] h-10 w-10 rounded-xl border border-slate-200 bg-white hover:shadow-sm transition flex items-center justify-center"
+                      title="Rimuovi premio"
+                      onClick={() => {
+                        const next = prizes.filter((_, i) => i !== idx).map((x, i) => ({ ...x, position: i + 1 }));
+                        setRules({ ...rules, prizesJson: next });
+                      }}
+                    >
+                      {/* trash */}
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M3 6h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                        <path d="M8 6V4h8v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                        <path d="M7 6l1 14h8l1-14" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
+                        <path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+
+                <Button
+                  variant="ghost"
+                  className="!px-4"
+                  onClick={() => {
+                    const next = [...prizes];
+                    next.push({ position: next.length + 1, amountCents: 0 });
+                    setRules({ ...rules, prizesJson: next });
+                  }}
+                >
+                  + Aggiungi premio
+                </Button>
+              </div>
+
+              <div className="text-xs text-slate-600">
+                Suggerimento: imposta importi in € (l'app salva in centesimi).
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Lock */}
+          <Card>
+            <CardHeader title="Lock pronostici" subtitle="Blocco automatico gestito dal calendario" />
+            <CardContent className="space-y-4">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="text-sm font-semibold flex items-center gap-2">
+                  Come funziona <HelpHint text="Il lock è automatico: parte X minuti prima del match rilevante. In modalità 'giornata per giornata' il lock è per-matchday (solo la giornata interessata), così i rinvii non bloccano le giornate successive." />
+                </div>
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-slate-600">
+                  <li>Automatico con anticipo configurabile.</li>
+                  <li>Con rinvii: si blocca solo la matchday in lock, non tutta la lega.</li>
                 </ul>
               </div>
 
-              <div>
-                <div className="text-sm font-medium text-slate-700">Modalità inserimento pronostici</div>
-                <div className="mt-2 grid gap-2">
-                  <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 ${
-                    (settings.predictionMode || "MATCHDAY_BY_MATCHDAY") === "TOURNAMENT_PRE"
-                      ? "border-slate-300 bg-white"
-                      : "border-slate-200 bg-white/60"
-                  }`}>
-                    <input
-                      type="radio"
-                      name="predictionMode"
-                      checked={(settings.predictionMode || "MATCHDAY_BY_MATCHDAY") === "TOURNAMENT_PRE"}
-                      onChange={() => setSettings({ ...settings, predictionMode: "TOURNAMENT_PRE" })}
-                    />
-                    <div>
-                      <div className="font-medium">Tutti prima del torneo</div>
-                      <div className="text-xs text-slate-600">I partecipanti inseriscono tutti i pronostici prima dell'inizio.</div>
-                    </div>
-                  </label>
-
-                  <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 ${
-                    (settings.predictionMode || "MATCHDAY_BY_MATCHDAY") === "MATCHDAY_BY_MATCHDAY"
-                      ? "border-slate-300 bg-white"
-                      : "border-slate-200 bg-white/60"
-                  }`}>
-                    <input
-                      type="radio"
-                      name="predictionMode"
-                      checked={(settings.predictionMode || "MATCHDAY_BY_MATCHDAY") === "MATCHDAY_BY_MATCHDAY"}
-                      onChange={() => setSettings({ ...settings, predictionMode: "MATCHDAY_BY_MATCHDAY" })}
-                    />
-                    <div>
-                      <div className="font-medium">Giornata per giornata</div>
-                      <div className="text-xs text-slate-600">Si pronostica la giornata in corso (se rinvii) + la prossima che deve iniziare.</div>
-                    </div>
-                  </label>
+              <Section
+                title="Modalità inserimento pronostici"
+                hint="Scegli se i partecipanti inseriscono tutti i pronostici prima dell'inizio del torneo oppure giornata per giornata."
+              >
+                <div className="grid gap-2">
+                  <RadioCard
+                    checked={(settings?.predictionMode || "MATCHDAY_BY_MATCHDAY") === "TOURNAMENT_PRE"}
+                    title="Tutti prima del torneo"
+                    subtitle="I partecipanti inseriscono tutti i pronostici prima dell'inizio."
+                    onSelect={() => setSettings({ ...settings, predictionMode: "TOURNAMENT_PRE" })}
+                  />
+                  <RadioCard
+                    checked={(settings?.predictionMode || "MATCHDAY_BY_MATCHDAY") === "MATCHDAY_BY_MATCHDAY"}
+                    title="Giornata per giornata"
+                    subtitle="Si pronostica la giornata in corso (se rinvii) + la prossima che deve iniziare."
+                    onSelect={() => setSettings({ ...settings, predictionMode: "MATCHDAY_BY_MATCHDAY" })}
+                  />
                 </div>
-              </div>
+              </Section>
 
-              <div>
-                <div className="text-sm font-medium text-slate-700">Quando bloccare i pronostici</div>
-                <div className="mt-2">
-                  <select
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
-                    value={String(settings.lockOffsetMinutes ?? 30)}
-                    onChange={(e) => setSettings({ ...settings, lockOffsetMinutes: Number(e.target.value) })}
-                  >
-                    <option value="60">1 ora prima</option>
-                    <option value="30">30 minuti prima</option>
-                    <option value="15">15 minuti prima</option>
-                    <option value="0">All'inizio della partita (0 min)</option>
-                  </select>
-                  <div className="mt-1 text-xs text-slate-600">
-                    Esempio: primo match alle 20:45 con 30 minuti → lock dalle 20:15.
-                  </div>
-                </div>
-              </div>
+              <Section title="Anticipo lock" hint="Quanto tempo prima del primo match rilevante bloccare i pronostici.">
+                <select
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                  value={String(settings?.lockOffsetMinutes ?? 30)}
+                  onChange={(e) => setSettings({ ...settings, lockOffsetMinutes: Number(e.target.value) })}
+                >
+                  <option value="60">1 ora prima</option>
+                  <option value="30">30 minuti prima</option>
+                  <option value="15">15 minuti prima</option>
+                  <option value="0">All'inizio della partita (0 min)</option>
+                </select>
+                <div className="mt-1 text-xs text-slate-600">Esempio: primo match 20:45 con 30 min → lock dalle 20:15.</div>
+              </Section>
 
-              <div className="flex items-center justify-between rounded-xl border border-slate-200 p-3">
-                <div>
-                  <div className="font-medium">Lock forzato</div>
-                  <div className="text-xs text-slate-600">Blocca subito i pronostici indipendentemente dalla data.</div>
-                </div>
-                <input
-                  type="checkbox"
-                  className="h-5 w-5"
-                  checked={!!settings.isForceLocked}
-                  onChange={(e) => setSettings({ ...settings, isForceLocked: e.target.checked })}
+              <Section title="Lock forzato" hint="Blocca subito i pronostici indipendentemente dal calendario. Usa questa opzione solo in emergenza.">
+                <SwitchRow
+                  label="Attiva lock forzato"
+                  checked={!!settings?.isForceLocked}
+                  onChange={(v) => setSettings({ ...settings, isForceLocked: v })}
                 />
-              </div>
+              </Section>
 
               <div className="flex flex-wrap gap-2">
                 <Button
@@ -648,7 +661,7 @@ function RulesTab() {
                         tieBreak3: settings.tieBreak3,
                       });
                       await load();
-                      setOk("Impostazioni lock salvate.");
+                      setOk("Impostazioni salvate.");
                     } catch (e: any) {
                       setErr(e?.message || "Errore");
                     } finally {
@@ -656,10 +669,10 @@ function RulesTab() {
                     }
                   }}
                 >
-                  Salva
+                  Salva lock
                 </Button>
 
-                {!settings.isForceLocked ? (
+                {!settings?.isForceLocked ? (
                   <Button
                     variant="ghost"
                     onClick={async () => {
@@ -677,7 +690,7 @@ function RulesTab() {
                       }
                     }}
                   >
-                    Blocca ora (forzato)
+                    Blocca ora
                   </Button>
                 ) : (
                   <Button
@@ -708,36 +721,25 @@ function RulesTab() {
                   </Button>
                 )}
               </div>
-            </div>
-          ) : null}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
-      <Card className="md:col-span-2">
+      {/* TIEBREAKERS (unchanged, but with a hint) */}
+      <Card>
         <CardHeader title="Criteri classifica" subtitle="Ordine di spareggio a parità di punti" />
         <CardContent>
           {settings ? (
             <div className="space-y-3">
-              <div className="text-sm text-slate-600">
-                La classifica è sempre ordinata per <b>punti totali</b>. Se due utenti hanno gli stessi punti, vengono
-                applicati questi criteri in ordine.
+              <div className="text-sm text-slate-600 flex items-center gap-2">
+                La classifica è ordinata per <b>punti totali</b>. A parità di punti si applicano questi criteri.
+                <HelpHint text="Questi criteri vengono usati solo quando due utenti hanno gli stessi punti totali. Consiglio: scegli criteri diversi tra loro." />
               </div>
 
-              <TieBreakerRow
-                label="1° spareggio"
-                value={settings.tieBreak1 || "EXACT"}
-                onChange={(v) => setSettings({ ...settings, tieBreak1: v })}
-              />
-              <TieBreakerRow
-                label="2° spareggio"
-                value={settings.tieBreak2 || "OUTCOME"}
-                onChange={(v) => setSettings({ ...settings, tieBreak2: v })}
-              />
-              <TieBreakerRow
-                label="3° spareggio"
-                value={settings.tieBreak3 || "SUM_GOALS"}
-                onChange={(v) => setSettings({ ...settings, tieBreak3: v })}
-              />
+              <TieBreakerRow label="1° spareggio" value={settings.tieBreak1 || "EXACT"} onChange={(v) => setSettings({ ...settings, tieBreak1: v })} />
+              <TieBreakerRow label="2° spareggio" value={settings.tieBreak2 || "OUTCOME"} onChange={(v) => setSettings({ ...settings, tieBreak2: v })} />
+              <TieBreakerRow label="3° spareggio" value={settings.tieBreak3 || "SUM_GOALS"} onChange={(v) => setSettings({ ...settings, tieBreak3: v })} />
 
               <Button
                 onClick={async () => {
@@ -746,7 +748,6 @@ function RulesTab() {
                     setErr("");
                     setOk("");
                     await api.adminSaveSettings({
-                      // Keep lock options untouched while saving tie-breakers
                       isForceLocked: !!settings.isForceLocked,
                       lockOffsetMinutes: Number(settings.lockOffsetMinutes ?? 30),
                       predictionMode: settings.predictionMode || "MATCHDAY_BY_MATCHDAY",
@@ -764,10 +765,6 @@ function RulesTab() {
               >
                 Salva criteri
               </Button>
-
-              <div className="text-xs text-slate-600">
-                Suggerimento: evita duplicati (es. tutti EXACT). In caso di duplicati, l'app usa comunque l'ordine indicato.
-              </div>
             </div>
           ) : null}
         </CardContent>
@@ -775,6 +772,7 @@ function RulesTab() {
     </div>
   );
 }
+
 
 function TieBreakerRow({
   label,
@@ -803,5 +801,120 @@ function ToggleRow({ label, checked, onChange }: { label: string; checked: boole
       <span className="text-slate-700">{label}</span>
       <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
     </label>
+  );
+}
+
+
+function HelpHint({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <span className="relative inline-flex">
+      <button
+        type="button"
+        aria-label="Aiuto"
+        className="h-5 w-5 rounded-full border border-slate-200 bg-white text-slate-600 hover:shadow-sm transition inline-flex items-center justify-center"
+        onClick={() => setOpen((v) => !v)}
+      >
+        ?
+      </button>
+
+      {open ? (
+        <div className="absolute z-30 top-7 right-0 w-72 rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-700 shadow-lg">
+          <div className="whitespace-pre-wrap">{text}</div>
+          <div className="mt-2 flex justify-end">
+            <button type="button" className="text-xs text-slate-500 hover:text-slate-700" onClick={() => setOpen(false)}>
+              Chiudi
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </span>
+  );
+}
+
+function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-sm font-semibold text-slate-900">{title}</div>
+          {hint ? <div className="mt-1 text-xs text-slate-600">{hint}</div> : null}
+        </div>
+        {hint ? <HelpHint text={hint} /> : null}
+      </div>
+      <div className="mt-3">{children}</div>
+    </div>
+  );
+}
+
+function SwitchRow({
+  label,
+  hint,
+  checked,
+  onChange,
+}: {
+  label: string;
+  hint?: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div className="min-w-0">
+        <div className="text-sm text-slate-700 flex items-center gap-2">
+          <span className="truncate">{label}</span>
+          {hint ? <HelpHint text={hint} /> : null}
+        </div>
+      </div>
+
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={`relative inline-flex h-6 w-11 items-center rounded-full border transition ${
+          checked ? "bg-slate-900 border-slate-900" : "bg-slate-200 border-slate-200"
+        }`}
+      >
+        <span
+          className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition ${
+            checked ? "translate-x-5" : "translate-x-1"
+          }`}
+        />
+      </button>
+    </div>
+  );
+}
+
+function RadioCard({
+  checked,
+  title,
+  subtitle,
+  onSelect,
+}: {
+  checked: boolean;
+  title: string;
+  subtitle: string;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`text-left rounded-2xl border p-4 transition ${
+        checked ? "border-slate-300 bg-white shadow-sm" : "border-slate-200 bg-white/70 hover:bg-white"
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        <div className={`mt-0.5 h-4 w-4 rounded-full border ${checked ? "border-slate-900" : "border-slate-300"} flex items-center justify-center`}>
+          {checked ? <div className="h-2 w-2 rounded-full bg-slate-900" /> : null}
+        </div>
+        <div>
+          <div className="text-sm font-semibold text-slate-900">{title}</div>
+          <div className="text-xs text-slate-600">{subtitle}</div>
+        </div>
+      </div>
+    </button>
   );
 }
