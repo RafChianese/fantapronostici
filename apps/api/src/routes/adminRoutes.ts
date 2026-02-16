@@ -4,6 +4,7 @@ import { prisma } from "../lib/prisma.js";
 import { requireAuth, requireLeagueAdmin, requireSuperAdmin, resolveLeagueId, AuthedRequest } from "../middleware/authMiddleware.js";
 import { recalcAllScoresForLeague } from "../lib/scoring.js";
 import { clearMatchdayAwardsForLeague } from "../lib/matchdayAwards.js";
+import { Prisma } from "@prisma/client";
 import { runSyncOnce } from "../jobs/syncJob.js";
 import { ensureLeagueConfig } from "../services/ensureLeagueConfig.js";
 import { buildAutoLockSentinel, decodeLeagueSettings } from "../lib/leagueConfigEncoding.js";
@@ -141,10 +142,20 @@ adminRouter.put("/rules", async (req, res) => {
 
   const data = RulesSchema.parse(req.body);
 
+  // Prisma JSON fields do not accept plain `null` in TS typings.
+  // If admin leaves prizes empty, we omit the field.
+  const sanitized = {
+    ...data,
+    prizesJson:
+      data.prizesJson === null || typeof data.prizesJson === "undefined"
+        ? undefined
+        : (data.prizesJson as Prisma.InputJsonValue),
+  };
+
   const rules = await prisma.rule.upsert({
     where: { leagueId },
-    create: { leagueId, ...data },
-    update: { ...data },
+    create: { leagueId, ...sanitized },
+    update: { ...sanitized },
   });
 
   // --- Monetization additive table (source of truth) ---
@@ -178,10 +189,6 @@ adminRouter.put("/rules", async (req, res) => {
   }
 
   // If awards are disabled, clear stored awards for consistency.
-  if (!rules.enableMatchdayAwards) {
-    await clearMatchdayAwardsForLeague(leagueId);
-  }
-
   if (!rules.enableMatchdayAwards) {
     await clearMatchdayAwardsForLeague(leagueId);
   }
