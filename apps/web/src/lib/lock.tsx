@@ -9,8 +9,6 @@ export type LockResponse = {
     isForceLocked: boolean;
     lockedByTime: boolean;
     isLocked: boolean;
-    lockAll?: boolean;
-    lockedMatchdays?: number[];
   };
   leagueSettings?: {
     lockMode?: "MANUAL" | "AUTO";
@@ -106,22 +104,12 @@ export function LockProvider({ children }: { children: React.ReactNode }) {
 
         // Only update React state if something relevant actually changed.
         // This avoids heavy rerenders (and losing in-progress edits) while we poll.
-        const prevMds = (prev?.lock as any)?.lockedMatchdays ?? [];
-        const nextMds = (next?.lock as any)?.lockedMatchdays ?? [];
-        const sameMds =
-          Array.isArray(prevMds) &&
-          Array.isArray(nextMds) &&
-          prevMds.length === nextMds.length &&
-          [...prevMds].sort().every((v: any, i: number) => Number(v) === Number([...nextMds].sort()[i]));
-
         const sameLock =
           !!prev &&
           prev.lock.isLocked === next.lock.isLocked &&
           prev.lock.lockUntil === next.lock.lockUntil &&
           prev.lock.isForceLocked === next.lock.isForceLocked &&
           prev.lock.lockedByTime === next.lock.lockedByTime &&
-          (prev.lock as any).lockAll === (next.lock as any).lockAll &&
-          sameMds &&
           (prev.leagueSettings?.lockMode ?? null) === (next.leagueSettings?.lockMode ?? null) &&
           (prev.leagueSettings?.lockOffsetMinutes ?? null) === (next.leagueSettings?.lockOffsetMinutes ?? null) &&
           (prev.leagueSettings?.predictionMode ?? null) === (next.leagueSettings?.predictionMode ?? null);

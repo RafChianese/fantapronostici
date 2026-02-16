@@ -23,27 +23,16 @@ export function LockBanner() {
 
   const showCountdown = isFutureLock;
 
-  const lockedMatchdays = Array.isArray((lock as any).lockedMatchdays)
-    ? (lock as any).lockedMatchdays.map((x: any) => Number(x)).filter((n: any) => Number.isFinite(n))
-    : [];
-  const isPartial = !!lock.isLocked && !(lock as any).lockAll && lockedMatchdays.length > 0;
-
   const containerCls = lock.isLocked ? "bg-rose-50 border-rose-200" : "bg-sky-50 border-sky-200";
-  const title = lock.isLocked ? (isPartial ? "LOCK PARZIALE" : "LOCK") : "OPEN";
-  const subtitle = isPartial
-    ? `Giornate bloccate: ${lockedMatchdays.sort((a: number, b: number) => a - b).join(", ")}`
-    : showCountdown
-    ? `${lock.isLocked ? "Sblocco" : "Lock"} il ${formatLocal(lock.lockUntil)}`
-    : lock.isLocked
-    ? "Pronostici non modificabili"
-    : "Pronostici modificabili";
+  const title = lock.isLocked ? "LOCK" : "OPEN";
+  const subtitle = showCountdown ? `${lock.isLocked ? "Sblocco" : "Lock"} il ${formatLocal(lock.lockUntil)}` : (lock.isLocked ? "Pronostici non modificabili" : "Pronostici modificabili");
 
   return (
     <div className={`border-t ${containerCls}`}>
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2">
         <div className="min-w-0 flex items-center gap-2">
           <Lock className="h-4 w-4 text-slate-700" aria-hidden="true" />
-          {lock.isLocked ? <Badge tone={isPartial ? "amber" : "rose"}>{title}</Badge> : <Badge tone="blue">{title}</Badge>}
+          {lock.isLocked ? <Badge tone="rose">{title}</Badge> : <Badge tone="blue">{title}</Badge>}
           <div className="min-w-0 truncate text-xs text-slate-700">{subtitle}</div>
         </div>
 

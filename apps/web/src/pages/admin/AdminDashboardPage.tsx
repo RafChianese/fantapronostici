@@ -4,17 +4,18 @@ import { useAuth } from "../../lib/auth";
 import { useLoading } from "../../lib/loading";
 import { Alert, Badge, Button, Card, CardContent, CardHeader, Input } from "../../components/ui";
 
-type Tab = "members" | "rules";
+type Tab = "customize" | "members" | "rules";
 
 export default function AdminDashboardPage() {
-  const [tab, setTab] = useState<Tab>("members");
+  const [tab, setTab] = useState<Tab>("customize");
 
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader title="Area admin" subtitle="Gestisci partecipanti e impostazioni" />
+        <CardHeader title="Dashboard amministratore di lega" subtitle="Gestisci partecipanti e regole" />
         <CardContent>
           <div data-tour="admin-tabs" className="flex flex-wrap gap-2">
+            <Button variant={tab === "customize" ? "primary" : "ghost"} onClick={() => setTab("customize")}>Personalizza</Button>
             <Button variant={tab === "members" ? "primary" : "ghost"} onClick={() => setTab("members")}>
               Partecipanti
             </Button>
@@ -25,8 +26,207 @@ export default function AdminDashboardPage() {
         </CardContent>
       </Card>
 
+      {tab === "customize" ? <CustomizeTab /> : null}
       {tab === "members" ? <MembersTab /> : null}
       {tab === "rules" ? <RulesTab /> : null}
+    </div>
+  );
+}
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function getLeagueLogoUrl(leagueId: string) {
+  const base = (import.meta as any).env?.VITE_SUPABASE_URL as string | undefined;
+  const bucket = ((import.meta as any).env?.VITE_SUPABASE_LEAGUE_LOGO_BUCKET as string | undefined) || "league-logos";
+  if (!base) return "";
+  return `${base.replace(/\/$/, "")}/storage/v1/object/public/${bucket}/${leagueId}.png`;
+}
+
+function CustomizeTab() {
+  const { show, hide } = useLoading();
+  const { memberships, activeLeagueId, refreshMe } = useAuth();
+  const league = memberships.find((m) => m.league.id === activeLeagueId)?.league;
+
+  const [name, setName] = useState(league?.name || "");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string>("");
+  const [err, setErr] = useState("");
+  const [ok, setOk] = useState("");
+  const [imgBust, setImgBust] = useState(0);
+
+  useEffect(() => {
+    setName(league?.name || "");
+  }, [league?.name]);
+
+  if (!league) return null;
+
+  const inviteCode = league.code;
+  const inviteLink = `${window.location.origin}/onboarding?code=${encodeURIComponent(inviteCode)}`;
+  const logoUrl = getLeagueLogoUrl(league.id);
+  const initials = (league.name || "L").trim().slice(0, 1).toUpperCase();
+
+  return (
+    <div className="grid gap-6 md:grid-cols-2">
+      <Card>
+        <CardHeader title="Personalizza la lega" subtitle="Logo, nome e link di invito" />
+        <CardContent>
+          {err ? <Alert tone="danger">{err}</Alert> : null}
+          {ok ? <Alert tone="success">{ok}</Alert> : null}
+
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <div className="h-14 w-14 overflow-hidden rounded-full border border-slate-200 bg-slate-100 flex items-center justify-center">
+                {logoPreview ? (
+                  <img src={logoPreview} className="h-full w-full object-cover" alt="logo preview" />
+                ) : logoUrl ? (
+                  <img
+                    key={imgBust}
+                    src={`${logoUrl}?v=${imgBust}`}
+                    className="h-full w-full object-cover"
+                    alt={league.name}
+                    onError={() => {
+                      // if bucket not public / logo missing, fallback to initials
+                      setImgBust((v) => v + 1);
+                    }}
+                  />
+                ) : (
+                  <span className="text-lg font-semibold text-slate-600">{initials}</span>
+                )}
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <input
+                  id="league-logo"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const f = e.target.files?.[0];
+                    setErr("");
+                    setOk("");
+                    if (!f) return;
+                    setLogoFile(f);
+                    setLogoPreview(await fileToDataUrl(f));
+                  }}
+                />
+                <Button
+                  onClick={() => {
+                    const el = document.getElementById("league-logo") as HTMLInputElement | null;
+                    el?.click();
+                  }}
+                >
+                  {logoPreview || logoUrl ? "Cambia logo" : "Carica logo"}
+                </Button>
+                {logoPreview ? (
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setLogoFile(null);
+                      setLogoPreview("");
+                    }}
+                  >
+                    Rimuovi
+                  </Button>
+                ) : null}
+                <Button
+                  variant="ghost"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(inviteCode);
+                      setOk("Codice copiato");
+                    } catch {
+                      setOk("");
+                    }
+                  }}
+                >
+                  Copia codice
+                </Button>
+              </div>
+            </div>
+
+            <Input label="Nome lega" value={name} onChange={(e) => setName(e.target.value)} />
+
+            <div className="rounded-xl border border-slate-200 p-3 space-y-2">
+              <div className="text-xs text-slate-500">Link invito</div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div className="text-sm break-all flex-1">{inviteLink}</div>
+                <Button
+                  variant="ghost"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(inviteLink);
+                      setOk("Link copiato");
+                    } catch {
+                      setOk("");
+                    }
+                  }}
+                >
+                  Copia link
+                </Button>
+              </div>
+            </div>
+
+            <Button
+              className="w-full"
+              onClick={async () => {
+                setErr("");
+                setOk("");
+                show();
+                try {
+                  // 1) rename (optional)
+                  if (name.trim() && name.trim() !== league.name) {
+                    await api.adminUpdateLeague({ name: name.trim() });
+                  }
+                  // 2) upload logo (optional)
+                  if (logoFile) {
+                    const dataUrl = await fileToDataUrl(logoFile);
+                    await api.uploadLeagueLogo(league.id, dataUrl);
+                    setLogoFile(null);
+                    setLogoPreview("");
+                    setImgBust((v) => v + 1);
+                  }
+                  await refreshMe();
+                  setOk("Impostazioni salvate");
+                } catch (e: any) {
+                  setErr(e?.message || "Errore");
+                } finally {
+                  hide();
+                }
+              }}
+            >
+              Salva
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader title="Suggerimenti" subtitle="Funzioni utili per gestire la tua lega" />
+        <CardContent>
+          <div className="space-y-3 text-sm text-slate-700">
+            <div className="rounded-xl border border-slate-200 p-3">
+              <div className="font-medium">Condividi il codice invito</div>
+              <div className="text-xs text-slate-600">I partecipanti possono entrare dalla pagina Onboarding inserendo il codice.</div>
+              <div className="mt-2"><Badge>{inviteCode}</Badge></div>
+            </div>
+            <div className="rounded-xl border border-slate-200 p-3">
+              <div className="font-medium">Approva o rifiuta richieste</div>
+              <div className="text-xs text-slate-600">Vai su “Partecipanti” per gestire gli ingressi e assegnare admin.</div>
+            </div>
+            <div className="rounded-xl border border-slate-200 p-3">
+              <div className="font-medium">Regole, lock e premi</div>
+              <div className="text-xs text-slate-600">Configura punteggi, lock automatico e (facoltativo) quota/premi in “Regole & Lock”.</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -257,77 +457,6 @@ function RulesTab() {
                 </div>
               ) : null}
 
-              <div className="rounded-2xl border border-slate-200 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className="text-sm font-semibold text-slate-900">Quota e premi (facoltativo)</div>
-                    <div className="text-xs text-slate-600">Questi valori appaiono nel regolamento. Se lasci vuoto, non verranno mostrati.</div>
-                  </div>
-                </div>
-
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <Input
-                    label="Quota di partecipazione (€)"
-                    type="number"
-                    value={rules.entryFeeCents ? String(Math.round(Number(rules.entryFeeCents) / 100)) : ""}
-                    placeholder="Es. 10"
-                    onChange={(e) => {
-                      const v = e.target.value.trim();
-                      if (!v) return setRules({ ...rules, entryFeeCents: null });
-                      const cents = Math.max(0, Math.round(Number(v) * 100));
-                      setRules({ ...rules, entryFeeCents: Number.isFinite(cents) ? cents : null });
-                    }}
-                  />
-
-                  <Input
-                    label="Numero posizioni a premio"
-                    type="number"
-                    min={0}
-                    max={50}
-                    value={String(Array.isArray(rules.prizesJson) ? rules.prizesJson.length : 0)}
-                    onChange={(e) => {
-                      const n = Math.max(0, Math.min(50, Number(e.target.value || 0)));
-                      const prev: any[] = Array.isArray(rules.prizesJson) ? rules.prizesJson : [];
-                      const next = Array.from({ length: n }).map((_, idx) => {
-                        const pos = idx + 1;
-                        const existing = prev.find((p) => p.position === pos);
-                        return existing ? existing : { position: pos, amountCents: 0 };
-                      });
-                      setRules({ ...rules, prizesJson: next });
-                    }}
-                  />
-                </div>
-
-                {Array.isArray(rules.prizesJson) && rules.prizesJson.length > 0 ? (
-                  <div className="mt-3 space-y-2">
-                    {rules.prizesJson.map((p: any, idx: number) => (
-                      <Input
-                        key={p.position ?? idx}
-                        label={`${p.position}° posto (€)`}
-                        type="number"
-                        value={String(Math.round(Number(p.amountCents || 0) / 100))}
-                        placeholder={p.position === 1 ? "Es. 200" : ""}
-                        onChange={(e) => {
-                          const v = e.target.value.trim();
-                          const cents = v ? Math.max(0, Math.round(Number(v) * 100)) : 0;
-                          const next = [...rules.prizesJson];
-                          next[idx] = { ...next[idx], amountCents: Number.isFinite(cents) ? cents : 0 };
-                          setRules({ ...rules, prizesJson: next });
-                        }}
-                      />
-                    ))}
-
-                    <Button
-                      variant="ghost"
-                      className="!px-4"
-                      onClick={() => setRules({ ...rules, prizesJson: [] })}
-                    >
-                      Rimuovi premi
-                    </Button>
-                  </div>
-                ) : null}
-              </div>
-
               <Button
                 onClick={async () => {
                   show();
@@ -345,8 +474,6 @@ function RulesTab() {
                       allowOutcomeWithExact: !!rules.allowOutcomeWithExact,
                       allowSumGoalsWithExact: !!rules.allowSumGoalsWithExact,
                       allowSumGoalsWithOutcome: !!rules.allowSumGoalsWithOutcome,
-                      ...(typeof rules.entryFeeCents === "number" ? { entryFeeCents: Number(rules.entryFeeCents) } : { entryFeeCents: null }),
-                      prizesJson: Array.isArray(rules.prizesJson) ? rules.prizesJson : null,
                     });
                     setOk("Regole salvate. Punteggi ricalcolati.");
                   } catch (e: any) {

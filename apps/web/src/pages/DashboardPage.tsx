@@ -272,6 +272,9 @@ export default function DashboardPage() {
   const runAutosave = async () => {
     if (autosaveInitializedRef.current === false) autosaveInitializedRef.current = true;
 
+    const locked = isLockedRef.current;
+    if (locked) return;
+
     const snapshot = predsRef.current;
     const matchMap = matchByIdRef.current;
 
@@ -312,6 +315,7 @@ export default function DashboardPage() {
   };
 
   const scheduleAutosave = () => {
+    if (isLocked) return;
     if (autosaveTimerRef.current) window.clearTimeout(autosaveTimerRef.current);
     autosaveTimerRef.current = window.setTimeout(() => {
       runAutosave();
@@ -493,16 +497,12 @@ export default function DashboardPage() {
               <CardContent className="space-y-3">
                 {ms.map((m) => {
                   const p = preds[m.id];
-                  const lockedForThisMatch = isMatchLocked(m);
-                  const canEdit = !lockedForThisMatch;
-                  const lockReason =
-                    m.status !== "NOT_STARTED"
-                      ? "Non modificabile: partita iniziata/terminata"
-                      : (config?.lock as any)?.isForceLocked
-                      ? "Non modificabile: lock forzato"
-                      : ((config?.leagueSettings?.predictionMode as any) === "TOURNAMENT_PRE" && (config?.lock as any)?.isLocked)
-                      ? "Non modificabile: lock torneo"
-                      : "Non modificabile: lock giornata";
+                  const canEdit = !isLocked && m.status === "NOT_STARTED";
+                  const lockReason = isLocked
+                    ? "Lock lega attivo"
+                    : m.status !== "NOT_STARTED"
+                    ? "Partita già iniziata"
+                    : "";
                   
                   const real = m.homeScore !== null && m.awayScore !== null ? `${m.homeScore}-${m.awayScore}` : "—";
 

@@ -27,10 +27,6 @@ export type LeagueRules = {
   allowOutcomeWithExact: boolean;
   allowSumGoalsWithExact: boolean;
   allowSumGoalsWithOutcome: boolean;
-
-  // Optional monetization (all optional)
-  entryFeeCents?: number | null;
-  prizesJson?: Array<{ position: number; amountCents: number }> | null;
 };
 
 export type LeagueSettings = {
@@ -45,17 +41,7 @@ export type RegolamentoConfigResponse = {
   league: League;
   rules: LeagueRules;
   settings: LeagueSettings;
-  lock: {
-    lockUntil: string;
-    isForceLocked: boolean;
-    lockedByTime: boolean;
-    /** True if any lock window is currently active. */
-    isLocked: boolean;
-    /** When true, lock applies to all matchdays (e.g. TOURNAMENT_PRE). */
-    lockAll?: boolean;
-    /** Matchdays currently locked (scoped lock). */
-    lockedMatchdays?: number[];
-  };
+  lock: { lockUntil: string; isForceLocked: boolean; lockedByTime: boolean; isLocked: boolean };
 };
 
 export function getToken() {
@@ -82,10 +68,8 @@ async function request(path: string, opts: RequestInit = {}) {
   const token = getToken();
   const leagueId = getActiveLeagueId();
 
-  const isForm = typeof FormData !== "undefined" && opts.body instanceof FormData;
-
   const headers: Record<string, string> = {
-    ...(isForm ? {} : { "Content-Type": "application/json" }),
+    "Content-Type": "application/json",
     ...(opts.headers as any),
   };
 
@@ -153,9 +137,7 @@ export const api = {
 
   // leagues
   myLeagues: () => request(`/api/leagues/mine`),
-  createLeague: (name: string, opts?: { entryFeeCents?: number; prizes?: Array<{ position: number; amountCents: number }> }) =>
-    request(`/api/leagues`, { method: "POST", body: JSON.stringify({ name, ...(opts || {}) }) }),
-  uploadLeagueLogo: (leagueId: string, dataUrl: string) => request(`/api/leagues/${leagueId}/logo`, { method: "POST", body: JSON.stringify({ dataUrl }) }),
+  createLeague: (name: string) => request(`/api/leagues`, { method: "POST", body: JSON.stringify({ name }) }),
   joinLeague: (code: string) => request(`/api/leagues/join`, { method: "POST", body: JSON.stringify({ code }) }),
 
   // public (league-scoped)
@@ -197,6 +179,10 @@ export const api = {
   adminSettings: (leagueId?: string) => {
     const q = leagueId ? `?leagueId=${encodeURIComponent(leagueId)}` : "";
     return request(`/api/admin/settings${q}`);
+  },
+  adminUpdateLeague: (patch: { name?: string }, leagueId?: string) => {
+    const q = leagueId ? `?leagueId=${encodeURIComponent(leagueId)}` : "";
+    return request(`/api/admin/league${q}`, { method: "PUT", body: JSON.stringify(patch) });
   },
   adminSaveSettings: (settings: any, leagueId?: string) => {
     const q = leagueId ? `?leagueId=${encodeURIComponent(leagueId)}` : "";

@@ -1,9 +1,35 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { Alert, Button, Card, CardContent, CardHeader, Input } from "../components/ui";
-import { LeagueAvatar } from "../components/LeagueAvatar";
+
+function getLeagueLogoUrl(leagueId: string) {
+  const base = (import.meta as any).env?.VITE_SUPABASE_URL as string | undefined;
+  const bucket = ((import.meta as any).env?.VITE_SUPABASE_LEAGUE_LOGO_BUCKET as string | undefined) || "league-logos";
+  if (!base) return "";
+  return `${base.replace(/\/$/, "")}/storage/v1/object/public/${bucket}/${leagueId}.png`;
+}
+
+function LeagueAvatar({ leagueId, name }: { leagueId: string; name: string }) {
+  const [broken, setBroken] = useState(false);
+  const url = getLeagueLogoUrl(leagueId);
+  const initials = (name || "L").trim().slice(0, 1).toUpperCase();
+  return (
+    <div className="h-10 w-10 overflow-hidden rounded-full border border-slate-200 bg-slate-100 flex items-center justify-center">
+      {!broken && url ? (
+        <img
+          src={url}
+          alt={name}
+          className="h-full w-full object-cover"
+          onError={() => setBroken(true)}
+        />
+      ) : (
+        <span className="text-sm font-semibold text-slate-600">{initials}</span>
+      )}
+    </div>
+  );
+}
 
 export default function OnboardingPage() {
   const { memberships, refreshMe, setActiveLeague } = useAuth();
@@ -13,24 +39,6 @@ export default function OnboardingPage() {
   const pending = useMemo(() => memberships.filter((m) => m.status === "PENDING"), [memberships]);
 
   const [leagueName, setLeagueName] = useState("");
-  const [leagueLogoFile, setLeagueLogoFile] = useState<File | null>(null);
-  const [leagueLogoPreview, setLeagueLogoPreview] = useState<string>("");
-  const logoInputRef = useRef<HTMLInputElement | null>(null);
-
-  // Optional monetization
-  const [entryFeeEuro, setEntryFeeEuro] = useState<string>("");
-  const [prizeCount, setPrizeCount] = useState<number>(0);
-  const [prizeEuros, setPrizeEuros] = useState<Record<number, string>>({});
-
-  async function fileToDataUrl(file: File): Promise<string> {
-    return await new Promise((resolve, reject) => {
-      const r = new FileReader();
-      r.onload = () => resolve(String(r.result || ""));
-      r.onerror = () => reject(new Error("Errore lettura file"));
-      r.readAsDataURL(file);
-    });
-  }
-
   const [joinCode, setJoinCode] = useState("");
   const [msg, setMsg] = useState<string>("");
   const [err, setErr] = useState<string>("");
@@ -56,10 +64,10 @@ export default function OnboardingPage() {
               {approved.map((m) => (
                 <div key={m.id} className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3">
                   <div className="flex items-center gap-3">
-                    <LeagueAvatar leagueId={m.league.id} leagueName={m.league.name} size={44} />
+                    <LeagueAvatar leagueId={m.league.id} name={m.league.name} />
                     <div>
-                      <div className="font-medium">{m.league.name}</div>
-                      <div className="text-xs text-slate-600">Codice: {m.league.code} • Ruolo: {m.role}</div>
+                    <div className="font-medium">{m.league.name}</div>
+                    <div className="text-xs text-slate-600">Codice: {m.league.code} • Ruolo: {m.role}</div>
                     </div>
                   </div>
                   <Button
@@ -125,143 +133,17 @@ export default function OnboardingPage() {
             <CardContent>
               <div className="space-y-3">
                 <Input label="Nome lega" value={leagueName} onChange={(e) => setLeagueName(e.target.value)} placeholder="Es. Amici del Bar" />
-                <div className="flex items-center gap-3">
-                  <div className="shrink-0">
-                    {leagueLogoPreview ? (
-                      <img src={leagueLogoPreview} alt="Logo lega" className="h-12 w-12 rounded-full object-cover border border-slate-200" />
-                    ) : (
-                      <div className="h-12 w-12 rounded-full border border-slate-200 bg-slate-100 flex items-center justify-center text-slate-600 font-semibold">
-                        {leagueName.trim() ? leagueName.trim().slice(0, 2).toUpperCase() : "LG"}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-slate-800">Logo lega (facoltativo)</label>
-                    <div className="mt-1 flex flex-wrap items-center gap-2">
-                      <input
-                        ref={logoInputRef}
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          const f = e.target.files?.[0] || null;
-                          setLeagueLogoFile(f);
-                          if (!f) return setLeagueLogoPreview("");
-                          const url = URL.createObjectURL(f);
-                          setLeagueLogoPreview(url);
-                        }}
-                      />
-
-                      <Button
-                        variant="ghost"
-                        onClick={() => logoInputRef.current?.click()}
-                        className="!px-4"
-                      >
-                        Carica logo
-                      </Button>
-
-                      {leagueLogoFile ? (
-                        <Button
-                          variant="ghost"
-                          onClick={() => {
-                            setLeagueLogoFile(null);
-                            setLeagueLogoPreview("");
-                            if (logoInputRef.current) logoInputRef.current.value = "";
-                          }}
-                          className="!px-4"
-                        >
-                          Rimuovi
-                        </Button>
-                      ) : null}
-
-                      <span className="text-xs text-slate-600">PNG/JPG/WebP • max ~1.5MB</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-slate-200 p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-sm font-semibold">Quota e premi (facoltativo)</div>
-                      <div className="text-xs text-slate-600">Questi valori appariranno nel regolamento e saranno modificabili in Area admin.</div>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <Input
-                      label="Quota di partecipazione (€)"
-                      type="number"
-                      value={entryFeeEuro}
-                      placeholder="Es. 10"
-                      onChange={(e) => setEntryFeeEuro(e.target.value)}
-                    />
-                    <Input
-                      label="Numero posizioni a premio"
-                      type="number"
-                      value={String(prizeCount)}
-                      min={0}
-                      max={50}
-                      onChange={(e) => {
-                        const v = Math.max(0, Math.min(50, Number(e.target.value || 0)));
-                        setPrizeCount(v);
-                      }}
-                    />
-                  </div>
-
-                  {prizeCount > 0 ? (
-                    <div className="space-y-2">
-                      {Array.from({ length: prizeCount }).map((_, idx) => {
-                        const pos = idx + 1;
-                        return (
-                          <Input
-                            key={pos}
-                            label={`${pos}° posto (€)`}
-                            type="number"
-                            value={prizeEuros[pos] || ""}
-                            placeholder={pos === 1 ? "Es. 200" : ""}
-                            onChange={(e) => setPrizeEuros((p) => ({ ...p, [pos]: e.target.value }))}
-                          />
-                        );
-                      })}
-                    </div>
-                  ) : null}
-                </div>
-
                 <Button
                   className="w-full"
                   onClick={async () => {
                     try {
                       setErr(""); setMsg("");
-                      const entryFee = entryFeeEuro.trim() ? Math.round(Number(entryFeeEuro) * 100) : undefined;
-                      const prizes = prizeCount > 0
-                        ? Array.from({ length: prizeCount }).map((_, idx) => {
-                            const pos = idx + 1;
-                            const amount = prizeEuros[pos]?.trim() ? Math.round(Number(prizeEuros[pos]) * 100) : 0;
-                            return { position: pos, amountCents: amount };
-                          })
-                        : undefined;
-                      const r = await api.createLeague(leagueName.trim(), {
-                        ...(typeof entryFee === "number" && !Number.isNaN(entryFee) ? { entryFeeCents: Math.max(0, entryFee) } : {}),
-                        ...(prizes ? { prizes } : {}),
-                      });
-                      // Optional logo upload (non-blocking)
-                      try {
-                        if (leagueLogoFile) {
-                          const dataUrl = await fileToDataUrl(leagueLogoFile);
-                          await api.uploadLeagueLogo(r.league.id, dataUrl);
-                        }
-                      } catch (e) {
-                        // ignore upload errors (logo is optional)
-                      }
+                      const r = await api.createLeague(leagueName.trim());
                       await refreshMe();
                       setActiveLeague(r.league.id);
                       setMsg(`Lega creata! Codice: ${r.league.code}`);
-                      setLeagueLogoFile(null);
-                      setLeagueLogoPreview("");
-                      setEntryFeeEuro("");
-                      setPrizeCount(0);
-                      setPrizeEuros({});
-                      nav("/");
+                      // Go straight to the league admin area after creation.
+                      nav("/admin");
                     } catch (e: any) {
                       setErr(e?.message || "Errore");
                     }
