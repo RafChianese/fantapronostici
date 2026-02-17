@@ -11,7 +11,7 @@ function Icon({
   name,
   active,
 }: {
-  name: "leaderboard" | "predictions" | "leagues" | "menu";
+  name: "dashboard" | "leaderboard" | "predictions" | "leagues" | "menu";
   active?: boolean;
 }) {
   const stroke = active ? "#2EC4B6" : "#64748b"; // slate-500
@@ -26,7 +26,17 @@ function Icon({
     strokeLinejoin: "round" as const,
   };
 
-  if (name === "menu") {
+  
+  if (name === "dashboard") {
+    return (
+      <svg {...common} aria-hidden="true">
+        <path d="M3 10.5L12 3l9 7.5" />
+        <path d="M5 10v10h5v-6h4v6h5V10" />
+      </svg>
+    );
+  }
+
+if (name === "menu") {
     return (
       <svg {...common} aria-hidden="true">
         <path d="M4 6h16" />
@@ -150,7 +160,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         id: "tabs",
         target: '[data-tour="bottom-tabs"]',
         title: "Navigazione principale",
-        body: "Qui trovi le sezioni principali: Classifica, Pronostici, Leghe e Menu.",
+        body: "Qui trovi le sezioni principali: Home, Classifica, Pronostici, Leghe e Menu.",
       },
       {
         id: "predictions",
@@ -312,8 +322,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
           {/* Desktop nav */}
           <nav className="hidden items-center gap-2 md:flex">
             <NavItem to="/leaderboard" tourId="tab-leaderboard">Classifica</NavItem>
-            {user && activeMembership ? <NavItem to="/" tourId="tab-predictions">I miei pronostici</NavItem> : null}
+            {user && activeMembership ? <NavItem to="/predictions" tourId="tab-predictions">I miei pronostici</NavItem> : null}
             {user && activeMembership ? <NavItem to="/regolamento">Regolamento</NavItem> : null}
+            {user && activeMembership ? <NavItem to="/league-stats">Statistiche di lega</NavItem> : null}
             {user ? <NavItem to="/onboarding" tourId="tab-leagues">Leghe</NavItem> : null}
             {user && (isLeagueAdmin || isSuperAdmin) ? (
               <NavItem to="/admin" tourId="admin-dashboard-link">Area admin</NavItem>
@@ -416,9 +427,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 </NavItem>
 
                 {activeMembership ? (
-                  <NavItem to="/regolamento" onClick={() => setDrawerOpen(false)}>
-                    Regolamento
-                  </NavItem>
+                  <>
+                    <NavItem to="/regolamento" onClick={() => setDrawerOpen(false)}>
+                      Regolamento
+                    </NavItem>
+                    <NavItem to="/league-stats" onClick={() => setDrawerOpen(false)}>
+                      Statistiche di lega
+                    </NavItem>
+                  </>
                 ) : null}
 
                 <div className="mt-3 border-t border-slate-100 pt-3">
@@ -461,7 +477,24 @@ export function Layout({ children }: { children: React.ReactNode }) {
             data-tour="bottom-tabs"
             className="mx-auto flex max-w-6xl items-stretch gap-2 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3"
           >
+            
             <NavLink
+              to="/"
+              data-tour="tab-dashboard"
+              className={({ isActive }) =>
+                `flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-3 py-2 text-[11px] font-semibold ${
+                  isActive ? "bg-[#E9FBF9] text-[#0F766E]" : "text-slate-600 hover:bg-slate-50"
+                }`
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <Icon name="dashboard" active={isActive} />
+                  <span>Home</span>
+                </>
+              )}
+            </NavLink>
+<NavLink
               to="/leaderboard"
               data-tour="tab-leaderboard"
               className={({ isActive }) =>
@@ -478,7 +511,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               )}
             </NavLink>
             <NavLink
-              to="/"
+              to="/predictions"
               data-tour="tab-predictions"
               className={({ isActive }) =>
                 `flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-3 py-2 text-[11px] font-semibold ${

@@ -253,6 +253,8 @@ export const api = {
     return request(`/api/super/external/leagues?${params.toString()}`);
   },
   superImportFixtures: () => request(`/api/super/external/import-fixtures`, { method: "POST" }),
+  // league stats
+  leagueStats: () => request(`/api/league/stats`),
 };
 
 export function apiUrl() {

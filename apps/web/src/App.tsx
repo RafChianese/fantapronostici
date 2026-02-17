@@ -13,6 +13,8 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import AccountPage from "./pages/AccountPage";
 import OnboardingPage from "./pages/OnboardingPage";
 import DashboardPage from "./pages/DashboardPage";
+import PredictionsPage from "./pages/PredictionsPage";
+import LeagueStatsPage from "./pages/LeagueStatsPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import UserSummaryPage from "./pages/UserSummaryPage";
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
@@ -122,7 +124,17 @@ export default function App() {
             }
           />
 
+          
+
           <Route
+            path="/predictions"
+            element={
+              <RequireLeague>
+                <PredictionsPage />
+              </RequireLeague>
+            }
+          />
+<Route
             path="/leaderboard"
             element={
               <RequireLeague>
@@ -136,6 +148,15 @@ export default function App() {
             element={
               <RequireLeague>
                 <RegolamentoPage />
+              </RequireLeague>
+            }
+          />
+
+          <Route
+            path="/league-stats"
+            element={
+              <RequireLeague>
+                <LeagueStatsPage />
               </RequireLeague>
             }
           />

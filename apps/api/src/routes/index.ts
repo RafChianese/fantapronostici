@@ -6,6 +6,7 @@ import { adminRouter } from "./adminRoutes.js";
 import { apiFootballAdminRouter } from "./apiFootballAdmin.js";
 import { footballDataAdminRouter } from "./footballDataAdmin.js";
 import { leaguesRouter } from "./leaguesRoutes.js";
+import { leagueRouter } from "./leagueRoutes.js";
 import { superRouter } from "./superRoutes.js";
 
 export const apiRouter = Router();
@@ -15,6 +16,7 @@ apiRouter.use("/", publicRouter);
 
 apiRouter.use("/me", meRouter);
 apiRouter.use("/leagues", leaguesRouter);
+apiRouter.use("/league", leagueRouter);
 
 // League admin (scoped by x-league-id / leagueId)
 // SuperAdmin (global) API-FOOTBALL endpoints (must come before /admin)
