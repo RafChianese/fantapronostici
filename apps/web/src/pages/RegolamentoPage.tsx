@@ -91,7 +91,6 @@ export default function RegolamentoPage() {
                 ))}
               </div>
 
-              
               {/* Quota & Premi */}
               {data?.monetization && (Number(data.monetization.entryFeeCents || 0) > 0 || (data.monetization.prizes || []).length > 0) ? (
                 <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4">

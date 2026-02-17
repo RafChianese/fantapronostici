@@ -115,6 +115,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   const [switchingLeague, setSwitchingLeague] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [desktopMenuOpen, setDesktopMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setDesktopMenuOpen(false);
+  }, [location.pathname]);
   const [copied, setCopied] = useState(false);
 
   const approved = useMemo(() => memberships.filter((m) => m.status === "APPROVED"), [memberships]);
@@ -320,17 +325,67 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </div>
 
           {/* Desktop nav */}
-          <nav className="hidden items-center gap-2 md:flex">
-            <NavItem to="/leaderboard" tourId="tab-leaderboard">Classifica</NavItem>
-            {user && activeMembership ? <NavItem to="/predictions" tourId="tab-predictions">I miei pronostici</NavItem> : null}
-            {user && activeMembership ? <NavItem to="/regolamento">Regolamento</NavItem> : null}
-            {user && activeMembership ? <NavItem to="/league-stats">Statistiche di lega</NavItem> : null}
-            {user ? <NavItem to="/onboarding" tourId="tab-leagues">Leghe</NavItem> : null}
-            {user && (isLeagueAdmin || isSuperAdmin) ? (
-              <NavItem to="/admin" tourId="admin-dashboard-link">Area admin</NavItem>
+        <nav className="hidden items-center gap-2 md:flex">
+          <NavLink
+            to="/"
+            className={({ isActive }) =>
+              `rounded-2xl px-3 py-2 text-sm font-semibold ${isActive ? "bg-[#E9FBF9] text-[#0F766E]" : "text-slate-700 hover:bg-slate-50"}`
+            }
+          >
+            Home
+          </NavLink>
+
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setDesktopMenuOpen((v) => !v)}
+              className="inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              aria-haspopup="menu"
+              aria-expanded={desktopMenuOpen ? "true" : "false"}
+            >
+              Menu
+              <span className="text-slate-400">▾</span>
+            </button>
+
+            {desktopMenuOpen ? (
+              <div
+                role="menu"
+                className="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg"
+              >
+                <div className="p-2">
+                  <NavItem to="/leaderboard" onClick={() => setDesktopMenuOpen(false)}>
+                    Classifica
+                  </NavItem>
+                  <NavItem to="/predictions" onClick={() => setDesktopMenuOpen(false)}>
+                    Pronostici
+                  </NavItem>
+                  <NavItem to="/leagues" onClick={() => setDesktopMenuOpen(false)}>
+                    Leghe
+                  </NavItem>
+                  {user && activeMembership ? (
+                    <>
+                      <NavItem to="/regolamento" onClick={() => setDesktopMenuOpen(false)}>
+                        Regolamento
+                      </NavItem>
+                      <NavItem to="/league-stats" onClick={() => setDesktopMenuOpen(false)}>
+                        Statistiche di lega
+                      </NavItem>
+                    </>
+                  ) : null}
+                  <div className="my-2 h-px bg-slate-100" />
+                  <NavItem to="/account" onClick={() => setDesktopMenuOpen(false)}>
+                    Account
+                  </NavItem>
+                  {user && activeMembership?.role === "ADMIN" ? (
+                    <NavItem to="/admin" onClick={() => setDesktopMenuOpen(false)}>
+                      Admin
+                    </NavItem>
+                  ) : null}
+                </div>
+              </div>
             ) : null}
-            {user && isSuperAdmin ? <NavItem to="/super">Area Admin</NavItem> : null}
-          </nav>
+          </div>
+        </nav>
 
           <div className="flex items-center gap-2">
             {user ? (

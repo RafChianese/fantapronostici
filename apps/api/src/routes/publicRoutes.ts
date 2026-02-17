@@ -87,6 +87,13 @@ publicRouter.get("/regolamento-config", async (req, res) => {
   if (!rules || !settings) return res.status(500).json({ message: "Missing league config" });
 
   res.json({
+    monetization: monetization
+      ? {
+          entryFeeCents: monetization.entryFeeCents,
+          prizes: (monetization.prizes || []).map((p: any) => ({ position: p.position, amountCents: p.amountCents })),
+        }
+      : { entryFeeCents: 0, prizes: [] },
+
     league: { id: league.id, name: league.name, code: league.code },
     rules: {
       pointsExact: rules.pointsExact,
@@ -107,12 +114,6 @@ publicRouter.get("/regolamento-config", async (req, res) => {
       tieBreak2: settings.tieBreak2,
       tieBreak3: settings.tieBreak3,
     },
-    monetization: monetization
-      ? {
-          entryFeeCents: monetization.entryFeeCents,
-          prizes: (monetization.prizes || []).map((p: any) => ({ position: p.position, amountCents: p.amountCents })),
-        }
-      : { entryFeeCents: 0, prizes: [] },
     lock: {
       lockUntil: lockInfo.lockUntil,
       isForceLocked: lockInfo.isForceLocked,

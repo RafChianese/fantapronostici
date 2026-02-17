@@ -255,12 +255,46 @@ function MembersTab() {
               className="flex flex-col gap-2 rounded-xl border border-slate-200 p-4 md:flex-row md:items-center md:justify-between"
             >
               <div>
-                <div className="font-medium">{m.user.displayName}</div>
+                <div className="flex items-center gap-2">
+                  <div className="font-medium">{m.user.displayName}</div>
+                  {m.status === "APPROVED" ? (
+                    m.predictionCheck?.required ? (
+                      m.predictionCheck.complete ? (
+                        <span className="inline-flex items-center justify-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-extrabold text-emerald-700" title="Ha inserito tutti i pronostici delle giornate pronosticabili">
+                          ✔
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center justify-center rounded-full bg-rose-100 px-2 py-0.5 text-xs font-extrabold text-rose-700" title={`Pronostici mancanti: ${m.predictionCheck.missing}`}>
+                          ⚠
+                        </span>
+                      )
+                    ) : (
+                      <span className="inline-flex items-center justify-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-extrabold text-slate-600" title="Nessuna giornata pronosticabile al momento">
+                        —
+                      </span>
+                    )
+                  ) : null}
+                </div>
                 <div className="text-xs text-slate-600">{m.user.email}</div>
                 <div className="mt-1 flex gap-2">
                   <Badge>{m.status}</Badge>
                   <Badge>{m.role}</Badge>
                 </div>
+                {m.status === "APPROVED" ? (
+                  m.predictionCheck?.required ? (
+                    !m.predictionCheck.complete ? (
+                      <div className="mt-1 text-xs font-semibold text-rose-700">
+                        Mancano {m.predictionCheck.missing} pronostici (su {m.predictionCheck.required})
+                      </div>
+                    ) : (
+                      <div className="mt-1 text-xs font-semibold text-emerald-700">
+                        Pronostici completi ({m.predictionCheck.done}/{m.predictionCheck.required})
+                      </div>
+                    )
+                  ) : (
+                    <div className="mt-1 text-xs font-semibold text-slate-600">Nessuna giornata pronosticabile</div>
+                  )
+                ) : null}
               </div>
 
               <div className="flex flex-wrap gap-2">
@@ -583,9 +617,38 @@ function RulesTab() {
                 </Button>
               </div>
 
-              <div className="text-xs text-slate-600">
-                Suggerimento: imposta importi in € (l'app salva in centesimi).
-              </div>
+             <div className="flex items-center gap-2">
+              <Button
+                onClick={async () => {
+                  show();
+                  try {
+                    setErr("");
+                    setOk("");
+                    await api.adminSaveRules({
+                      pointsExact: Number(rules.pointsExact),
+                      pointsOutcome: Number(rules.pointsOutcome),
+                      pointsSumGoals: Number(rules.pointsSumGoals),
+                      enableUnderOver25: !!rules.enableUnderOver25,
+                      pointsUnderOver25: Number(rules.pointsUnderOver25 ?? 1),
+                      enableMatchdayAwards: !!rules.enableMatchdayAwards,
+                      scoringMode: rules.scoringMode,
+                      allowOutcomeWithExact: !!rules.allowOutcomeWithExact,
+                      allowSumGoalsWithExact: !!rules.allowSumGoalsWithExact,
+                      allowSumGoalsWithOutcome: !!rules.allowSumGoalsWithOutcome,
+                      ...(typeof rules.entryFeeCents === "number" ? { entryFeeCents: Number(rules.entryFeeCents) } : { entryFeeCents: null }),
+                      prizesJson: Array.isArray(rules.prizesJson) ? rules.prizesJson : null,
+                    });
+                    setOk("Regole salvate. Punteggi ricalcolati.");
+                  } catch (e: any) {
+                    setErr(e?.message || "Errore");
+                  } finally {
+                    hide();
+                  }
+                }}
+              >
+                Salva regole
+              </Button>
+            </div>
             </CardContent>
           </Card>
 

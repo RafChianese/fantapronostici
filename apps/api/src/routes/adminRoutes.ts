@@ -34,36 +34,28 @@ adminRouter.get("/members", async (req, res) => {
     orderBy: [{ status: "asc" }, { createdAt: "desc" }],
   });
 
-  // --- Server-side check: pronostici inseriti per TUTTE le partite pronosticabili ---
-  // Pronosticabile = match NOT_STARTED e matchday NON bloccata dalla lock logic corrente.
-  // Questo rispetta MATCHDAY_BY_MATCHDAY / TOURNAMENT_PRE e LOCK (force lock / lockAll) tramite getLockInfo.
   const lockInfo: any = await getLockInfo(leagueId);
+  const lockedSet = new Set<number>((lockInfo?.auto?.lockedMatchdays || []).map((x: any) => Number(x)));
 
-  const baseMemberJson = (m: any) => ({
-    id: m.id,
-    role: m.role,
-    status: m.status,
-    user: {
-      id: m.user.id,
-      email: m.user.email,
-      displayName: m.user.displayName,
-      isActive: m.user.isActive,
-      globalRole: m.user.globalRole,
-    },
-    createdAt: m.createdAt,
-  });
-
-  // If forced lock or tournament-pre lockAll, nothing is editable -> still mark complete (no required)
+  // If force locked or lockAll, there are no editable predictions
   if (lockInfo?.isForceLocked || lockInfo?.auto?.lockAll) {
     return res.json({
       members: members.map((m: any) => ({
-        ...baseMemberJson(m),
+        id: m.id,
+        role: m.role,
+        status: m.status,
         predictionCheck: { required: 0, done: 0, missing: 0, complete: true },
+        user: {
+          id: m.user.id,
+          email: m.user.email,
+          displayName: m.user.displayName,
+          isActive: m.user.isActive,
+          globalRole: m.user.globalRole,
+        },
+        createdAt: m.createdAt,
       })),
     });
   }
-
-  const lockedSet = new Set<number>((lockInfo?.auto?.lockedMatchdays || []).map((x: any) => Number(x)));
 
   const matches = await prisma.match.findMany({
     orderBy: [{ matchday: "asc" }, { kickoffAt: "asc" }],
@@ -93,10 +85,20 @@ adminRouter.get("/members", async (req, res) => {
       const done = required ? countByUser.get(String(m.userId)) || 0 : 0;
       const missing = required ? Math.max(0, required - done) : 0;
       return {
-        ...baseMemberJson(m),
+        id: m.id,
+        role: m.role,
+        status: m.status,
         predictionCheck: required
           ? { required, done, missing, complete: missing === 0 }
           : { required: 0, done: 0, missing: 0, complete: true },
+        user: {
+          id: m.user.id,
+          email: m.user.email,
+          displayName: m.user.displayName,
+          isActive: m.user.isActive,
+          globalRole: m.user.globalRole,
+        },
+        createdAt: m.createdAt,
       };
     }),
   });

@@ -5,6 +5,14 @@ import { useAuth } from "../lib/auth";
 import { useLock } from "../lib/lock";
 import { Button, Card, CardContent, CardHeader, Skeleton, Badge } from "../components/ui";
 
+function getInitials(name: string) {
+  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+  const a = parts[0]?.[0] || "L";
+  const b = parts.length > 1 ? parts[1][0] : (parts[0]?.[1] || "G");
+  return (a + b).toUpperCase();
+}
+
+
 type LeaderRow = { userId: string; totalPoints: number };
 
 function useCountdown(targetIso?: string) {
@@ -41,7 +49,6 @@ function pillTone(kind: "green" | "yellow" | "orange" | "red" | "grey") {
   return "bg-rose-500";
 }
 
-}
 
 export default function DashboardPage() {
   const { user, memberships, activeLeagueId, setActiveLeague } = useAuth();
@@ -208,7 +215,8 @@ export default function DashboardPage() {
   }, [matchdays, byMatchday]);
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 pb-28 pt-4">
+    <div className="min-h-[calc(100dvh-64px)] bg-gradient-to-b from-slate-50 via-white to-slate-50">
+      <div className="mx-auto w-full max-w-2xl px-4 pb-28 pt-4">
       {/* 1) League select */}
       <div className="mb-3">
         <label className="mb-1 block text-xs font-semibold text-slate-600">Lega</label>
@@ -224,6 +232,19 @@ export default function DashboardPage() {
               </option>
             ))}
           </select>
+        </div>
+      </div>
+
+      {/* League hero */}
+      <div className="mb-4 rounded-3xl border border-slate-200 bg-white/70 p-4 shadow-sm backdrop-blur">
+        <div className="flex items-center gap-3">
+          <div className="grid h-14 w-14 place-items-center rounded-2xl bg-slate-900 text-white">
+            <div className="text-lg font-extrabold">{getInitials(activeMembership?.league.name || "Lega")}</div>
+          </div>
+          <div className="min-w-0">
+            <div className="truncate text-xs font-bold uppercase tracking-wide text-slate-500">Lega attiva</div>
+            <div className="truncate text-lg font-extrabold text-slate-900">{activeMembership?.league.name}</div>
+          </div>
         </div>
       </div>
 
@@ -382,6 +403,7 @@ export default function DashboardPage() {
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 }
