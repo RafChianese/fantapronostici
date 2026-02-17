@@ -255,28 +255,12 @@ function MembersTab() {
               className="flex flex-col gap-2 rounded-xl border border-slate-200 p-4 md:flex-row md:items-center md:justify-between"
             >
               <div>
-                <div className="flex items-center gap-2">
-                  <div className="font-medium">{m.user.displayName}</div>
-                  {m.status === "APPROVED" && m.predictionCheck?.required > 0 ? (
-                    m.predictionCheck.complete ? (
-                      <span className="inline-flex items-center justify-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-extrabold text-emerald-700" title="Ha inserito tutti i pronostici delle giornate pronosticabili">
-                        ✔
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center justify-center rounded-full bg-rose-100 px-2 py-0.5 text-xs font-extrabold text-rose-700" title={`Pronostici mancanti: ${m.predictionCheck.missing}`}>
-                        ⚠
-                      </span>
-                    )
-                  ) : null}
-                </div>
+                <div className="font-medium">{m.user.displayName}</div>
                 <div className="text-xs text-slate-600">{m.user.email}</div>
                 <div className="mt-1 flex gap-2">
                   <Badge>{m.status}</Badge>
                   <Badge>{m.role}</Badge>
                 </div>
-                {m.status === "APPROVED" && m.predictionCheck?.required > 0 && !m.predictionCheck.complete ? (
-                  <div className="mt-1 text-xs font-semibold text-rose-700">Mancano {m.predictionCheck.missing} pronostici (su {m.predictionCheck.required})</div>
-                ) : null}
               </div>
 
               <div className="flex flex-wrap gap-2">

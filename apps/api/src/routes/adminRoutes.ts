@@ -8,7 +8,6 @@ import { Prisma } from "@prisma/client";
 import { runSyncOnce } from "../jobs/syncJob.js";
 import { ensureLeagueConfig } from "../services/ensureLeagueConfig.js";
 import { buildAutoLockSentinel, decodeLeagueSettings } from "../lib/leagueConfigEncoding.js";
-import { assertPredictionsEditableForMatches } from "../lib/lock.js";
 
 export const adminRouter = Router();
 
@@ -34,72 +33,14 @@ adminRouter.get("/members", async (req, res) => {
     orderBy: [{ status: "asc" }, { createdAt: "desc" }],
   });
 
-  // --- Server-side check: has the user inserted ALL predictions for editable (pronosticabili) matchdays? ---
-  // This respects:
-  // - MATCHDAY_BY_MATCHDAY / TOURNAMENT_PRE (via existing lock logic)
-  // - LOCK active / force lock
-  // No client-only logic.
-  const matches = await prisma.match.findMany({
-    orderBy: [{ matchday: "asc" }, { kickoffAt: "asc" }],
-    select: { id: true, matchday: true, kickoffAt: true, status: true },
-  });
-
-  const byMd = new Map<number, typeof matches>();
-  for (const mx of matches) {
-    const md = Number(mx.matchday || 1);
-    if (!byMd.has(md)) byMd.set(md, [] as any);
-    (byMd.get(md) as any).push(mx);
-  }
-
-  const editableMatchIds: string[] = [];
-  for (const [md, arr] of Array.from(byMd.entries()).sort((a, b) => a[0] - b[0])) {
-    try {
-      // throws if not editable (locked / not in window / etc.)
-      await assertPredictionsEditableForMatches(leagueId, arr as any);
-      for (const mx of arr) editableMatchIds.push(mx.id);
-    } catch {
-      // not editable -> ignore
-    }
-  }
-
-  const required = editableMatchIds.length;
-
-  const userIds = members.map((m) => m.userId);
-  const counts = required
-    ? await prisma.prediction.groupBy({
-        by: ["userId"],
-        where: { leagueId, userId: { in: userIds }, matchId: { in: editableMatchIds } },
-        _count: { _all: true },
-      })
-    : [];
-
-  const countByUser = new Map<string, number>();
-  for (const row of counts as any[]) countByUser.set(row.userId, Number(row._count?._all ?? 0));
-
   res.json({
-    members: members.map((m) => {
-      const done = required ? countByUser.get(m.userId) || 0 : 0;
-      const missing = required ? Math.max(0, required - done) : 0;
-      const predictionCheck =
-        required > 0
-          ? { required, done, missing, complete: missing === 0 }
-          : { required: 0, done: 0, missing: 0, complete: true };
-
-      return {
-        id: m.id,
-        role: m.role,
-        status: m.status,
-        predictionCheck,
-        user: {
-          id: m.user.id,
-          email: m.user.email,
-          displayName: m.user.displayName,
-          isActive: m.user.isActive,
-          globalRole: m.user.globalRole,
-        },
-        createdAt: m.createdAt,
-      };
-    }),
+    members: members.map((m) => ({
+      id: m.id,
+      role: m.role,
+      status: m.status,
+      user: { id: m.user.id, email: m.user.email, displayName: m.user.displayName, isActive: m.user.isActive, globalRole: m.user.globalRole },
+      createdAt: m.createdAt,
+    })),
   });
 });
 
