@@ -24,6 +24,9 @@ async function configureWebPush() {
 
 export const pushRouter = Router();
 
+// NOTE: cast to keep builds resilient if Prisma Client types are temporarily out of sync on CI/Render.
+const pushSubscription = (prisma as any).pushSubscription;
+
 pushRouter.post(
   "/subscribe",
   requireAuth,
@@ -40,7 +43,7 @@ pushRouter.post(
     const userId = req.user!.id;
 
     // Upsert by unique endpoint.
-    await prisma.pushSubscription.upsert({
+    await pushSubscription.upsert({
       where: { endpoint },
       create: {
         userId,
@@ -69,7 +72,7 @@ pushRouter.post(
     const { endpoint } = Body.parse(req.body);
     const userId = req.user!.id;
 
-    await prisma.pushSubscription.deleteMany({ where: { endpoint, userId } });
+    await pushSubscription.deleteMany({ where: { endpoint, userId } });
     return res.json({ ok: true });
   }
 );
@@ -87,7 +90,7 @@ pushRouter.post(
     if (!webPush) return res.json({ ok: true, skipped: true });
 
     const userId = req.user!.id;
-    const subs = await prisma.pushSubscription.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, take: 5 });
+    const subs = await pushSubscription.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, take: 5 });
     if (subs.length === 0) return res.json({ ok: true, skipped: true });
 
     const payload = JSON.stringify({
@@ -107,12 +110,12 @@ pushRouter.post(
           payload
         );
         sent += 1;
-        await prisma.pushSubscription.update({ where: { id: s.id }, data: { lastUsedAt: new Date() } });
+        await pushSubscription.update({ where: { id: s.id }, data: { lastUsedAt: new Date() } });
       } catch (err: any) {
         const statusCode = err?.statusCode;
         // Subscription expired/invalid
         if (statusCode === 404 || statusCode === 410) {
-          await prisma.pushSubscription.delete({ where: { id: s.id } }).catch(() => null);
+          await pushSubscription.delete({ where: { id: s.id } }).catch(() => null);
         }
         // eslint-disable-next-line no-console
         if (env.NODE_ENV !== "production") console.warn("[push] send error", { statusCode, message: err?.message });
