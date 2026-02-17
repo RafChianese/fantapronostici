@@ -88,9 +88,19 @@ authRouter.post("/register", async (req, res) => {
   `;
   const text = `Verifica la tua email. Codice (valido 10 minuti): ${code}`;
 
-  await sendEmail({ to: email, subject, html, text });
+  const sendRes = await sendEmail({ to: email, subject, html, text });
 
-  if (!env.RESEND_API_KEY && !env.SENDGRID_API_KEY && env.NODE_ENV !== "production") {
+  if (!sendRes?.ok) {
+    // eslint-disable-next-line no-console
+    console.error("[auth] Verification email send failed", {
+      to: email,
+      provider: env.RESEND_API_KEY ? "resend" : env.SENDGRID_API_KEY ? "sendgrid" : "none",
+      skipped: (sendRes as any)?.skipped,
+    });
+  }
+
+  // In development, always log the OTP if the email could not be sent (or no provider is configured).
+  if (env.NODE_ENV !== "production" && (!sendRes?.ok || (!env.RESEND_API_KEY && !env.SENDGRID_API_KEY))) {
     // eslint-disable-next-line no-console
     console.log(`[auth] DEV email verification code for ${email}: ${code}`);
   }
@@ -163,9 +173,18 @@ authRouter.post("/resend-verification", async (req, res) => {
     </div>
   `;
   const text = `Nuovo codice di verifica (valido 10 minuti): ${code}`;
-  await sendEmail({ to: email, subject, html, text });
+  const sendRes = await sendEmail({ to: email, subject, html, text });
 
-  if (!env.RESEND_API_KEY && !env.SENDGRID_API_KEY && env.NODE_ENV !== "production") {
+  if (!sendRes?.ok) {
+    // eslint-disable-next-line no-console
+    console.error("[auth] Resend verification email send failed", {
+      to: email,
+      provider: env.RESEND_API_KEY ? "resend" : env.SENDGRID_API_KEY ? "sendgrid" : "none",
+      skipped: (sendRes as any)?.skipped,
+    });
+  }
+
+  if (env.NODE_ENV !== "production" && (!sendRes?.ok || (!env.RESEND_API_KEY && !env.SENDGRID_API_KEY))) {
     // eslint-disable-next-line no-console
     console.log(`[auth] DEV resend verification code for ${email}: ${code}`);
   }
