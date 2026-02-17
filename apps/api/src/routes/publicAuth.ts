@@ -83,19 +83,20 @@ authRouter.post("/register", async (req, res) => {
   ]);
 
   const verifyUrl = `${env.WEB_ORIGIN}/verify-email?email=${encodeURIComponent(email)}`;
-  const subject = "Completa la registrazione - Fanta Pronostici";
+  // Keep the same "shape" of the password-reset email to improve deliverability (esp. Outlook/Hotmail).
+  const subject = "Verifica email - Fanta Pronostici";
   const html = `
-    <div style="font-family:Arial,sans-serif;line-height:1.5">
-      <h2>Completa la registrazione</h2>
-      <p>Hai creato un account su Fanta Pronostici.</p>
-      <p>Inserisci questo codice per verificare la tua email (valido 10 minuti):</p>
-      <div style="font-size:28px;font-weight:700;letter-spacing:4px;margin:16px 0">${code}</div>
-      <p>Apri la pagina di verifica (opzionale):</p>
-      <p><a href="${verifyUrl}">${verifyUrl}</a></p>
-      <p>Se non sei stato tu, puoi ignorare questa email.</p>
-    </div>
-  `;
-  const text = `Completa la registrazione su Fanta Pronostici.\n\nCodice di verifica (valido 10 minuti): ${code}\n\nApri la pagina di verifica (opzionale): ${verifyUrl}`;
+      <div style="font-family:Arial,sans-serif;line-height:1.5">
+        <h2>Verifica email</h2>
+        <p>Hai creato un account su Fanta Pronostici.</p>
+        <p>Inserisci questo codice per verificare la tua email (valido 10 minuti):</p>
+        <p style="font-size:28px;font-weight:700;letter-spacing:4px;margin:16px 0">${code}</p>
+        <p>Puoi anche aprire questa pagina e inserire il codice:</p>
+        <p><a href="${verifyUrl}">${verifyUrl}</a></p>
+        <p>Se non sei stato tu, puoi ignorare questa email.</p>
+      </div>
+    `;
+  const text = `Verifica email. Inserisci questo codice (valido 10 minuti): ${code}\n\nApri questa pagina e inserisci il codice: ${verifyUrl}`;
 
   const sendRes = await sendEmail({ to: email, subject, html, text });
 
@@ -178,17 +179,17 @@ authRouter.post("/resend-verification", async (req, res) => {
   const verifyUrl = `${env.WEB_ORIGIN}/verify-email?email=${encodeURIComponent(email)}`;
   const subject = "Nuovo codice di verifica - Fanta Pronostici";
   const html = `
-    <div style="font-family:Arial,sans-serif;line-height:1.5">
-      <h2>Nuovo codice di verifica</h2>
-      <p>Hai richiesto un nuovo codice per verificare la tua email.</p>
-      <p>Inserisci questo codice (valido 10 minuti):</p>
-      <div style="font-size:28px;font-weight:700;letter-spacing:4px;margin:16px 0">${code}</div>
-      <p>Apri la pagina di verifica (opzionale):</p>
-      <p><a href="${verifyUrl}">${verifyUrl}</a></p>
-      <p>Se non sei stato tu, puoi ignorare questa email.</p>
-    </div>
-  `;
-  const text = `Nuovo codice di verifica (valido 10 minuti): ${code}\n\nApri la pagina di verifica (opzionale): ${verifyUrl}`;
+      <div style="font-family:Arial,sans-serif;line-height:1.5">
+        <h2>Nuovo codice di verifica</h2>
+        <p>Hai richiesto un nuovo codice per verificare la tua email.</p>
+        <p>Inserisci questo codice (valido 10 minuti):</p>
+        <p style="font-size:28px;font-weight:700;letter-spacing:4px;margin:16px 0">${code}</p>
+        <p>Puoi anche aprire questa pagina e inserire il codice:</p>
+        <p><a href="${verifyUrl}">${verifyUrl}</a></p>
+        <p>Se non sei stato tu, puoi ignorare questa email.</p>
+      </div>
+    `;
+  const text = `Nuovo codice di verifica (valido 10 minuti): ${code}\n\nApri questa pagina e inserisci il codice: ${verifyUrl}`;
   const sendRes = await sendEmail({ to: email, subject, html, text });
 
   if (!sendRes?.ok) {
