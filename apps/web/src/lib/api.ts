@@ -123,6 +123,11 @@ export const api = {
   register: (email: string, displayName: string, password: string) =>
     request(`/api/auth/register`, { method: "POST", body: JSON.stringify({ email, displayName, password }) }),
 
+  verifyEmail: (email: string, code: string) =>
+    request(`/api/auth/verify-email`, { method: "POST", body: JSON.stringify({ email, code }) }),
+  resendVerification: (email: string) =>
+    request(`/api/auth/resend-verification`, { method: "POST", body: JSON.stringify({ email }) }),
+
   forgotPassword: (email: string) =>
     request(`/api/auth/forgot-password`, { method: "POST", body: JSON.stringify({ email }) }),
   resetPassword: (email: string, token: string, newPassword: string) =>
@@ -237,6 +242,13 @@ export const api = {
   superLeagueDetail: (id: string) => request(`/api/super/leagues/${id}`),
   superPatchMember: (leagueId: string, memberId: string, patch: any) =>
     request(`/api/super/leagues/${leagueId}/members/${memberId}`, { method: "PATCH", body: JSON.stringify(patch) }),
+
+  // push
+  pushSubscribe: (sub: { endpoint: string; keys: { p256dh: string; auth: string } }) =>
+    request(`/api/push/subscribe`, { method: "POST", body: JSON.stringify(sub) }),
+  pushUnsubscribe: (endpoint: string) =>
+    request(`/api/push/unsubscribe`, { method: "POST", body: JSON.stringify({ endpoint }) }),
+  pushTest: () => request(`/api/push/test`, { method: "POST" }),
 
   // super admin monetization
   superMonetization: () => request(`/api/super/monetization`),

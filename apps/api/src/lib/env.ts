@@ -25,8 +25,14 @@ const EnvSchema = z.object({
 
   // Email (SendGrid)
   SENDGRID_API_KEY: z.string().optional().default(""),
+  // Email (Resend)
+  RESEND_API_KEY: z.string().optional().default(""),
   EMAIL_FROM: z.string().optional().default(""),
   EMAIL_REPLY_TO: z.string().optional().default(""),
+
+  // Web Push (VAPID)
+  VAPID_PUBLIC_KEY: z.string().optional().default(""),
+  VAPID_PRIVATE_KEY: z.string().optional().default(""),
 });
 
 

@@ -42,6 +42,11 @@ export default function LoginPage() {
                   await login(email.trim(), password);
                   nav("/");
                 } catch (e: any) {
+                  const code = e?.data?.code;
+                  if (e?.status === 403 && code === "EMAIL_NOT_VERIFIED") {
+                    nav(`/verify-email?email=${encodeURIComponent(email.trim())}`);
+                    return;
+                  }
                   setError(e.message);
                 } finally {
                   setLoading(false);

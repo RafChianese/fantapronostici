@@ -8,11 +8,14 @@ import { footballDataAdminRouter } from "./footballDataAdmin.js";
 import { leaguesRouter } from "./leaguesRoutes.js";
 import { leagueRouter } from "./leagueRoutes.js";
 import { superRouter } from "./superRoutes.js";
+import { pushRouter } from "./pushRoutes.js";
 
 export const apiRouter = Router();
 
 apiRouter.use("/auth", authRouter);
 apiRouter.use("/", publicRouter);
+
+apiRouter.use("/push", pushRouter);
 
 apiRouter.use("/me", meRouter);
 apiRouter.use("/leagues", leaguesRouter);

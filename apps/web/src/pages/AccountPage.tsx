@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import { useToast } from "../lib/toast";
 import { Alert, Button, Card, CardContent, CardHeader, Input } from "../components/ui";
 import { LeagueAvatar } from "../components/LeagueAvatar";
 
 export default function AccountPage() {
   const { user, memberships, refreshMe, activeLeagueId } = useAuth();
+  const toast = useToast();
 
   const activeLeague = useMemo(() => memberships.find((m) => m.league.id === activeLeagueId)?.league, [memberships, activeLeagueId]);
 
@@ -26,6 +28,21 @@ export default function AccountPage() {
   useEffect(() => {
     if (user?.displayName) setDisplayName(user.displayName);
   }, [user?.displayName]);
+
+  // Push notifications
+  const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined;
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushError, setPushError] = useState<string | null>(null);
+  const [pushOk, setPushOk] = useState<string | null>(null);
+
+  function urlBase64ToUint8Array(base64String: string) {
+    const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+    return outputArray;
+  }
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -120,6 +137,71 @@ export default function AccountPage() {
             }}
           >
             Aggiorna password
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader title="Notifiche push" subtitle="Ricevi promemoria e aggiornamenti direttamente dal browser." />
+        <CardContent className="space-y-4">
+          {pushError ? <Alert tone="danger">{pushError}</Alert> : null}
+          {pushOk ? <Alert tone="success">{pushOk}</Alert> : null}
+
+          {!VAPID_PUBLIC_KEY ? (
+            <Alert tone="info">Le notifiche push non sono configurate su questo ambiente.</Alert>
+          ) : null}
+
+          <Button
+            disabled={pushBusy || !VAPID_PUBLIC_KEY}
+            onClick={async () => {
+              setPushError(null);
+              setPushOk(null);
+              if (!VAPID_PUBLIC_KEY) {
+                setPushError("Notifiche push non disponibili: manca la chiave pubblica VAPID.");
+                return;
+              }
+              if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+                setPushError("Questo browser non supporta le notifiche push.");
+                return;
+              }
+
+              setPushBusy(true);
+              try {
+                const perm = await Notification.requestPermission();
+                if (perm !== "granted") {
+                  setPushError("Permesso notifiche negato.");
+                  return;
+                }
+
+                const reg = await navigator.serviceWorker.ready;
+                const sub = await reg.pushManager.subscribe({
+                  userVisibleOnly: true,
+                  applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+                });
+
+                const json: any = sub.toJSON();
+                if (!json?.endpoint || !json?.keys?.p256dh || !json?.keys?.auth) {
+                  throw new Error("Subscription non valida");
+                }
+
+                await api.pushSubscribe({ endpoint: json.endpoint, keys: { p256dh: json.keys.p256dh, auth: json.keys.auth } });
+                const r = await api.pushTest();
+
+                if (r?.skipped) {
+                  setPushOk("Notifiche abilitate. (Test non disponibile: VAPID non configurato sul server)");
+                } else {
+                  setPushOk("Notifiche abilitate! Ti abbiamo inviato una notifica di test.");
+                }
+                toast.push({ tone: "success", msg: "Notifiche push configurate" });
+              } catch (e: any) {
+                setPushError(e?.message || "Errore durante la configurazione");
+                toast.push({ tone: "danger", msg: "Errore notifiche push" });
+              } finally {
+                setPushBusy(false);
+              }
+            }}
+          >
+            Attiva e invia test
           </Button>
         </CardContent>
       </Card>

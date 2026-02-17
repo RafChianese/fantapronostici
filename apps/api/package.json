@@ -33,6 +33,7 @@
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
     "node-cron": "^3.0.3",
+    "web-push": "^3.6.7",
     "zod": "^3.23.8",
     "@sendgrid/mail": "^8.1.1"
   },

@@ -8,7 +8,9 @@ type AuthState = {
   token: string;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, displayName: string, password: string) => Promise<void>;
+  register: (email: string, displayName: string, password: string) => Promise<{ ok: boolean; requiresVerification: boolean; email: string }>;
+  verifyEmail: (email: string, code: string) => Promise<void>;
+  resendVerification: (email: string) => Promise<void>;
   refreshMe: () => Promise<void>;
   setActiveLeague: (leagueId: string) => void;
   logout: () => void;
@@ -77,9 +79,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
       register: async (email, displayName, password) => {
         const data = await api.register(email, displayName, password);
+        // No token until email is verified.
+        return data;
+      },
+      verifyEmail: async (email: string, code: string) => {
+        const data = await api.verifyEmail(email, code);
         setToken(data.token);
         setTok(data.token);
         setUser(data.user);
+      },
+      resendVerification: async (email: string) => {
+        await api.resendVerification(email);
       },
       refreshMe,
       setActiveLeague: (leagueId: string) => {

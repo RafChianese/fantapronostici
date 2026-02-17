@@ -47,8 +47,12 @@ export default function RegisterPage() {
                   setErr("");
                   setNameErr("");
                   if (!isValidEmail(email)) { throw new Error("Inserisci una email valida"); }
-                  await register(email.trim(), displayName.trim(), password);
-                  nav("/onboarding");
+                  const out = await register(email.trim(), displayName.trim(), password);
+                  if (out?.requiresVerification) {
+                    nav(`/verify-email?email=${encodeURIComponent(out.email)}`);
+                  } else {
+                    nav("/onboarding");
+                  }
                 } catch (e: any) {
                   const msg = e?.message || "Errore";
                   if (typeof msg === "string" && msg.toLowerCase().includes("nome")) {

@@ -617,38 +617,9 @@ function RulesTab() {
                 </Button>
               </div>
 
-             <div className="flex items-center gap-2">
-              <Button
-                onClick={async () => {
-                  show();
-                  try {
-                    setErr("");
-                    setOk("");
-                    await api.adminSaveRules({
-                      pointsExact: Number(rules.pointsExact),
-                      pointsOutcome: Number(rules.pointsOutcome),
-                      pointsSumGoals: Number(rules.pointsSumGoals),
-                      enableUnderOver25: !!rules.enableUnderOver25,
-                      pointsUnderOver25: Number(rules.pointsUnderOver25 ?? 1),
-                      enableMatchdayAwards: !!rules.enableMatchdayAwards,
-                      scoringMode: rules.scoringMode,
-                      allowOutcomeWithExact: !!rules.allowOutcomeWithExact,
-                      allowSumGoalsWithExact: !!rules.allowSumGoalsWithExact,
-                      allowSumGoalsWithOutcome: !!rules.allowSumGoalsWithOutcome,
-                      ...(typeof rules.entryFeeCents === "number" ? { entryFeeCents: Number(rules.entryFeeCents) } : { entryFeeCents: null }),
-                      prizesJson: Array.isArray(rules.prizesJson) ? rules.prizesJson : null,
-                    });
-                    setOk("Regole salvate. Punteggi ricalcolati.");
-                  } catch (e: any) {
-                    setErr(e?.message || "Errore");
-                  } finally {
-                    hide();
-                  }
-                }}
-              >
-                Salva regole
-              </Button>
-            </div>
+              <div className="text-xs text-slate-600">
+                Suggerimento: imposta importi in € (l'app salva in centesimi).
+              </div>
             </CardContent>
           </Card>
 
