@@ -53,6 +53,8 @@ model User {
   email        String       @unique
   displayName  String       @unique
   passwordHash String
+  // Email verification gating
+  emailVerifiedAt DateTime?
   globalRole   GlobalRole   @default(USER)
   isActive     Boolean      @default(true)
   createdAt    DateTime     @default(now())
@@ -70,6 +72,41 @@ model User {
 
   // Password reset
   passwordResetTokens PasswordResetToken[]
+
+  // Email verification OTPs
+  emailVerificationTokens EmailVerificationToken[]
+
+  // Web Push subscriptions
+  pushSubscriptions PushSubscription[]
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  codeHash  String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([usedAt])
+}
+
+model PushSubscription {
+  id         String   @id @default(cuid())
+  userId     String
+  endpoint   String   @unique
+  p256dh     String
+  auth       String
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model PasswordResetToken {
