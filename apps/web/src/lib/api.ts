@@ -46,6 +46,7 @@ export type RegolamentoConfigResponse = {
   league: League;
   rules: LeagueRules;
   settings: LeagueSettings;
+  monetization: { entryFeeCents: number; prizes: Array<{ position: number; amountCents: number }> };
   lock: {
     lockUntil: string;
     isForceLocked: boolean;

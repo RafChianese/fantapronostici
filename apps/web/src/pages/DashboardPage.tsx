@@ -41,6 +41,7 @@ function pillTone(kind: "green" | "yellow" | "orange" | "red" | "grey") {
   return "bg-rose-500";
 }
 
+}
 
 export default function DashboardPage() {
   const { user, memberships, activeLeagueId, setActiveLeague } = useAuth();
