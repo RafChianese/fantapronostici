@@ -55,6 +55,8 @@ model User {
   passwordHash String
   globalRole   GlobalRole   @default(USER)
   isActive     Boolean      @default(true)
+  emailVerifiedAt DateTime?
+
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
@@ -67,6 +69,12 @@ model User {
   // Rewarded-ad gating (global across all leagues)
   adUnlock     AdUnlock?
   adUnlockLogs AdUnlockLog[]
+
+  // Email verification
+  emailVerificationTokens EmailVerificationToken[]
+
+  // Push subscriptions
+  pushSubscriptions PushSubscription[]
 
   // Password reset
   passwordResetTokens PasswordResetToken[]
@@ -110,12 +118,14 @@ model League {
 
 // Optional league branding (additive table; deploy-safe)
 model LeagueBranding {
-  id          String   @id @default(cuid())
-  leagueId    String   @unique
-  logoUrl     String?
+  id         String   @id @default(cuid())
+  leagueId   String   @unique
+  // If Supabase Storage is configured, we store a public URL here.
+  logoUrl    String?
+  // Fallback when Storage is not configured: store a small data URL.
   logoDataUrl String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
 
@@ -324,3 +334,33 @@ model AdUnlockLog {
   @@index([userId])
   @@index([createdAt])
 }
+
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  codeHash  String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model PushSubscription {
+  id         String   @id @default(cuid())
+  userId     String
+  endpoint   String   @unique
+  p256dh     String
+  auth       String
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
