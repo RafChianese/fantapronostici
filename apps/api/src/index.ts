@@ -1,5 +1,5 @@
 import express from "express";
-import cors from "cors";
+import cors, { type CorsOptions } from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import path from "path";
@@ -21,22 +21,42 @@ const allowedOrigins = new Set(
     .map((s) => s.trim())
     .filter(Boolean)
 );
+
+// If you provide only one of the two, automatically allow both apex and www.
+// Example: https://www.example.com -> also allow https://example.com (same scheme), and vice versa.
+for (const origin of Array.from(allowedOrigins)) {
+  try {
+    const u = new URL(origin);
+    if (u.hostname.startsWith("www.")) {
+      allowedOrigins.add(`${u.protocol}//${u.hostname.replace(/^www\./, "")}`);
+    } else {
+      allowedOrigins.add(`${u.protocol}//www.${u.hostname}`);
+    }
+  } catch {
+    // ignore invalid origin strings
+  }
+}
+
 allowedOrigins.add("http://localhost:5173");
 allowedOrigins.add("https://localhost");
 allowedOrigins.add("http://localhost");
 allowedOrigins.add("capacitor://localhost");
 
-app.use(
-  cors({
-    origin: (origin, cb) => {
-      // Allow non-browser clients (no Origin header)
-      if (!origin) return cb(null, true);
-      if (allowedOrigins.has(origin)) return cb(null, true);
-      return cb(new Error(`CORS blocked origin: ${origin}`));
-    },
-    credentials: true,
-  })
-);
+const corsOptions: CorsOptions = {
+  origin: (origin, cb) => {
+    // Allow non-browser clients (no Origin header)
+    if (!origin) return cb(null, true);
+    if (allowedOrigins.has(origin)) return cb(null, true);
+    return cb(new Error(`CORS blocked origin: ${origin}`));
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
+
+app.use(cors(corsOptions));
+// Important: handle preflight for all routes
+app.options("*", cors(corsOptions));
 app.use(express.json({ limit: "1mb" }));
 app.use(morgan("dev"));
 
