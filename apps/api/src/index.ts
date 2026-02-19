@@ -1,5 +1,5 @@
 import express from "express";
-import cors, { type CorsOptions } from "cors";
+import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import path from "path";
@@ -13,7 +13,8 @@ import { bootstrapDefaults } from "./bootstrapDefaults.js";
 const app = express();
 app.use(helmet());
 // CORS
-// WEB_ORIGIN can be a comma-separated allowlist (useful for prod web domains too).
+// WEB_ORIGIN can be a comma-separated allowlist.
+// Example: WEB_ORIGIN=https://fantapronosticiapp.it,https://www.fantapronosticiapp.it
 // Always allow local dev + Capacitor origins.
 const allowedOrigins = new Set(
   (env.WEB_ORIGIN || "")
@@ -42,7 +43,7 @@ allowedOrigins.add("https://localhost");
 allowedOrigins.add("http://localhost");
 allowedOrigins.add("capacitor://localhost");
 
-const corsOptions: CorsOptions = {
+const corsOptions: import("cors").CorsOptions = {
   origin: (origin, cb) => {
     // Allow non-browser clients (no Origin header)
     if (!origin) return cb(null, true);
@@ -51,11 +52,13 @@ const corsOptions: CorsOptions = {
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  // IMPORTANT: include custom headers used by the frontend (triggers preflight)
+  allowedHeaders: ["Content-Type", "Authorization", "X-League-Id"],
+  optionsSuccessStatus: 204,
 };
 
 app.use(cors(corsOptions));
-// Important: handle preflight for all routes
+// Handle preflight for all routes
 app.options("*", cors(corsOptions));
 app.use(express.json({ limit: "1mb" }));
 app.use(morgan("dev"));
