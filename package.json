@@ -15,8 +15,7 @@
     "start": "npm run build && npm --workspace apps/api run start",
     "db:migrate": "npm --workspace apps/api run db:migrate",
     "db:seed": "npm --workspace apps/api run db:seed",
-    "db:studio": "npm --workspace apps/api run db:studio",
-    "postinstall": "npm --workspace apps/api run prisma:generate"
+    "db:studio": "npm --workspace apps/api run db:studio"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
