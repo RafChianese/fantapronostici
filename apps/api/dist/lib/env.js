@@ -20,7 +20,12 @@ const EnvSchema = z.object({
     API_FOOTBALL_CACHE_TTL_MS: z.coerce.number().int().positive().default(10 * 60 * 1000),
     // Email (SendGrid)
     SENDGRID_API_KEY: z.string().optional().default(""),
+    // Email (Resend)
+    RESEND_API_KEY: z.string().optional().default(""),
     EMAIL_FROM: z.string().optional().default(""),
     EMAIL_REPLY_TO: z.string().optional().default(""),
+    // Web Push (VAPID)
+    VAPID_PUBLIC_KEY: z.string().optional().default(""),
+    VAPID_PRIVATE_KEY: z.string().optional().default(""),
 });
 export const env = EnvSchema.parse(process.env);

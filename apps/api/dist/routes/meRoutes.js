@@ -2,10 +2,12 @@ import { Router } from "express";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { prisma } from "../lib/prisma.js";
+import { ensureLeagueConfig } from "../services/ensureLeagueConfig.js";
 import { requireAuth, requireLeagueMember, resolveLeagueId } from "../middleware/authMiddleware.js";
-import { assertPredictionsEditable, getLockInfo } from "../lib/lock.js";
+import { assertPredictionsEditableForMatches, getLockInfo } from "../lib/lock.js";
 import { recalcAllScoresForLeague } from "../lib/scoring.js";
 import { getMonetizationConfig } from "../lib/monetization.js";
+import { extractEventsFromMatchDetail, extractScorersFromMatchDetail, fetchCompetitionScorers, fetchCompetitionTeams, fetchMatchDetail, } from "../services/footballDataService.js";
 export const meRouter = Router();
 meRouter.use(requireAuth);
 meRouter.get("/", async (req, res) => {
@@ -15,7 +17,7 @@ meRouter.get("/", async (req, res) => {
     });
     const memberships = await prisma.leagueMember.findMany({
         where: { userId: req.user.id },
-        include: { league: true },
+        include: { league: { include: { branding: true } } },
         orderBy: { createdAt: "desc" },
     });
     res.json({ user, memberships });
@@ -49,7 +51,16 @@ meRouter.get("/lock", async (req, res) => {
     if (!leagueId)
         return res.status(400).json({ message: "Missing leagueId" });
     const info = await getLockInfo(leagueId);
-    res.json({ lock: { lockUntil: info.lockUntil, isForceLocked: info.isForceLocked, lockedByTime: info.lockedByTime, isLocked: info.isLocked } });
+    res.json({
+        lock: {
+            lockUntil: info.lockUntil,
+            isForceLocked: info.isForceLocked,
+            lockedByTime: info.lockedByTime,
+            isLocked: info.isLocked,
+            lockAll: !!info?.auto?.lockAll,
+            lockedMatchdays: (info?.auto?.lockedMatchdays || []).map((x) => Number(x)),
+        },
+    });
 });
 meRouter.get("/predictions", requireLeagueMember, async (req, res) => {
     const leagueId = resolveLeagueId(req);
@@ -59,6 +70,164 @@ meRouter.get("/predictions", requireLeagueMember, async (req, res) => {
         orderBy: { match: { kickoffAt: "asc" } },
     });
     res.json({ predictions });
+});
+// Match detail (lineups + events) + scorer pick
+meRouter.get("/matches/:matchId/detail", requireLeagueMember, async (req, res) => {
+    const leagueId = resolveLeagueId(req);
+    const matchId = String(req.params.matchId || "");
+    if (!matchId)
+        return res.status(400).json({ message: "Missing matchId" });
+    const [match, rules, pick] = await Promise.all([
+        prisma.match.findUnique({ where: { id: matchId } }),
+        prisma.rule.findUnique({ where: { leagueId } }),
+        prisma.scorerPick.findUnique({ where: { userId_leagueId_matchId: { userId: req.user.id, leagueId, matchId } } }).catch(() => null),
+    ]);
+    if (!match)
+        return res.status(404).json({ message: "Match non trovato" });
+    const scorerEnabled = !!rules?.enableScorer;
+    const pointsScorer = Number(rules?.pointsScorer ?? 3) || 3;
+    // football-data.org does not provide real lineups. We expose squads (if available) as a "lineup-like" list.
+    const fdMatchId = match?.footballDataMatchId ? Number(match.footballDataMatchId) : null;
+    const competitionCode = String(match?.footballDataCompetitionCode || "").trim();
+    let events = [];
+    let goalScorers = [];
+    if (fdMatchId) {
+        try {
+            const detail = await fetchMatchDetail({ matchId: fdMatchId });
+            events = extractEventsFromMatchDetail(detail);
+            goalScorers = extractScorersFromMatchDetail(detail);
+        }
+        catch (e) {
+            // best-effort
+            events = [];
+            goalScorers = [];
+        }
+    }
+    // Build pseudo-lineups from squads (if football-data returns squads for competition teams).
+    let lineups = [];
+    try {
+        if (competitionCode) {
+            const teams = await fetchCompetitionTeams({ competitionCode });
+            const htId = Number(match?.footballDataHomeTeamId);
+            const atId = Number(match?.footballDataAwayTeamId);
+            const homeTeam = teams.find((t) => Number(t?.id) === htId);
+            const awayTeam = teams.find((t) => Number(t?.id) === atId);
+            const mapSquad = (t) => {
+                const tid = Number(t?.id) || null;
+                const logo = tid && tid === Number(htId)
+                    ? match?.homeLogo ?? null
+                    : tid && tid === Number(atId)
+                        ? match?.awayLogo ?? null
+                        : t?.crest ?? null;
+                const squad = Array.isArray(t?.squad) ? t.squad : [];
+                return {
+                    team: { id: tid, name: String(t?.shortName || t?.name || "").trim() || "Team", logo },
+                    startXI: squad.map((p) => ({ id: Number(p?.id) || null, name: String(p?.name || "").trim() })),
+                    substitutes: [],
+                };
+            };
+            if (homeTeam)
+                lineups.push(mapSquad(homeTeam));
+            if (awayTeam)
+                lineups.push(mapSquad(awayTeam));
+        }
+    }
+    catch {
+        lineups = [];
+    }
+    const lineupAvailable = Array.isArray(lineups) && lineups.some((t) => (t.startXI?.length || 0) > 0 || (t.substitutes?.length || 0) > 0);
+    // Can pick scorer only if feature enabled, lineup available, and match editable.
+    let canPickScorer = false;
+    if (scorerEnabled && lineupAvailable) {
+        try {
+            await assertPredictionsEditableForMatches(leagueId, [matchId]);
+            canPickScorer = match.status === "NOT_STARTED";
+        }
+        catch {
+            canPickScorer = false;
+        }
+    }
+    res.json({
+        match,
+        lineupAvailable,
+        lineups,
+        events,
+        goalScorers,
+        scorer: pick ? { playerExternalId: pick.playerExternalId, playerName: pick.playerName } : null,
+        scorerEnabled,
+        pointsScorer,
+        canPickScorer,
+    });
+});
+const PutScorerSchema = z.object({
+    playerId: z.number().int().positive().nullable(),
+    playerName: z.string().trim().min(1).max(120).nullable().optional(),
+});
+meRouter.put("/matches/:matchId/scorer", requireLeagueMember, async (req, res) => {
+    const leagueId = resolveLeagueId(req);
+    const matchId = String(req.params.matchId || "");
+    if (!matchId)
+        return res.status(400).json({ message: "Missing matchId" });
+    const data = PutScorerSchema.parse(req.body);
+    const [match, rules] = await Promise.all([
+        prisma.match.findUnique({ where: { id: matchId } }),
+        prisma.rule.findUnique({ where: { leagueId } }),
+    ]);
+    if (!match)
+        return res.status(404).json({ message: "Match non trovato" });
+    if (!(rules?.enableScorer)) {
+        return res.status(400).json({ message: "Funzionalità marcatore non attiva", reason: "SCORER_DISABLED" });
+    }
+    // Editable gate (lock + started)
+    try {
+        await assertPredictionsEditableForMatches(leagueId, [matchId]);
+    }
+    catch (e) {
+        if (e?.status)
+            return res.status(e.status).json(e.payload ?? { message: e.message });
+        return res.status(400).json({ message: "Non modificabile" });
+    }
+    if (match.status !== "NOT_STARTED") {
+        return res.status(400).json({ message: "Non modificabile: partita iniziata/terminata", reason: "MATCH_STARTED" });
+    }
+    const competitionCode = String(match?.footballDataCompetitionCode || "").trim();
+    if (!competitionCode) {
+        return res.status(400).json({ message: "Rosa non disponibile per questo match", reason: "NO_SQUAD_PROVIDER" });
+    }
+    // Clear
+    if (data.playerId === null) {
+        await prisma.scorerPick.deleteMany({ where: { userId: req.user.id, leagueId, matchId } });
+        await recalcAllScoresForLeague(leagueId);
+        return res.json({ ok: true, scorer: null });
+    }
+    const teams = await fetchCompetitionTeams({ competitionCode });
+    const htId = Number(match?.footballDataHomeTeamId);
+    const atId = Number(match?.footballDataAwayTeamId);
+    const homeTeam = teams.find((t) => Number(t?.id) === htId);
+    const awayTeam = teams.find((t) => Number(t?.id) === atId);
+    const allPlayers = [];
+    for (const t of [homeTeam, awayTeam]) {
+        const squad = Array.isArray(t?.squad) ? t.squad : [];
+        for (const p of squad)
+            allPlayers.push({ id: Number(p.id), name: String(p.name) });
+    }
+    if (!allPlayers.length) {
+        return res.status(400).json({ message: "Lista giocatori non disponibile per questo match", reason: "NO_SQUAD" });
+    }
+    const pid = Number(data.playerId);
+    const hit = allPlayers.find((x) => Number(x.id) === pid);
+    if (!hit) {
+        return res.status(400).json({ message: "Giocatore non valido (non presente nella rosa)", reason: "INVALID_PLAYER" });
+    }
+    const playerExternalId = `fdp:${pid}`;
+    const playerName = String(data.playerName || hit.name).trim().slice(0, 120);
+    const pick = await prisma.scorerPick.upsert({
+        where: { userId_leagueId_matchId: { userId: req.user.id, leagueId, matchId } },
+        create: { userId: req.user.id, leagueId, matchId, playerExternalId, playerName },
+        update: { playerExternalId, playerName },
+    });
+    await recalcAllScoresForLeague(leagueId);
+    res.json({ ok: true, scorer: { playerExternalId: pick.playerExternalId, playerName: pick.playerName } });
 });
 const PredictionInput = z.object({
     matchId: z.string().min(1),
@@ -71,15 +240,15 @@ const PutPredictionsSchema = z.object({
 });
 meRouter.put("/predictions", requireLeagueMember, async (req, res) => {
     const leagueId = resolveLeagueId(req);
+    const { predictions } = PutPredictionsSchema.parse(req.body);
     try {
-        await assertPredictionsEditable(leagueId);
+        await assertPredictionsEditableForMatches(leagueId, predictions.map((p) => p.matchId));
     }
     catch (e) {
         if (e?.status)
             return res.status(e.status).json(e.payload ?? { message: e.message });
         throw e;
     }
-    const { predictions } = PutPredictionsSchema.parse(req.body);
     if (!predictions.length) {
         return res.status(400).json({ message: "Nessun pronostico da salvare.", reason: "EMPTY_PREDICTIONS" });
     }
@@ -114,6 +283,140 @@ meRouter.post("/ad-unlock", async (req, res) => {
     // Log unlock for stats
     await prisma.adUnlockLog.create({ data: { userId: req.user.id, minutes } });
     res.json({ unlocked: true, expiresAt: row.expiresAt });
+});
+// --- Competition predictions (winner + top scorer) ---
+const PutCompetitionPredictionsSchema = z.object({
+    winnerTeamId: z.number().int().positive().nullable().optional(),
+    winnerTeamName: z.string().trim().min(1).max(200).nullable().optional(),
+    topScorerPlayerId: z.number().int().positive().nullable().optional(),
+    topScorerPlayerName: z.string().trim().min(1).max(200).nullable().optional(),
+});
+meRouter.get("/competition-predictions", requireLeagueMember, async (req, res) => {
+    const leagueId = resolveLeagueId(req);
+    await ensureLeagueConfig(leagueId);
+    const [rules, settings, picks, superSetting] = await Promise.all([
+        prisma.rule.findUnique({ where: { leagueId } }),
+        prisma.setting.findUnique({ where: { leagueId } }),
+        prisma.competitionPick.findMany({ where: { leagueId, userId: req.user.id } }),
+        prisma.superSetting.findFirst({ orderBy: { createdAt: "asc" } }).catch(() => null),
+    ]);
+    const deadline = settings?.competitionPredictionsDeadline
+        ? new Date(settings.competitionPredictionsDeadline)
+        : (await prisma.match.findFirst({ orderBy: { kickoffAt: "asc" }, select: { kickoffAt: true } }))?.kickoffAt ?? null;
+    const deadlineMs = deadline ? new Date(deadline).getTime() : NaN;
+    const canEdit = !deadline || !Number.isFinite(deadlineMs) ? true : Date.now() < deadlineMs;
+    const enableWinner = !!rules?.enableCompetitionWinner;
+    const enableTop = !!rules?.enableCompetitionTopScorer;
+    const provider = String(superSetting?.provider || "FOOTBALL_DATA").toUpperCase();
+    const competitionCode = String(superSetting?.footballDataCompetitionCode || "").trim();
+    const season = superSetting?.footballDataSeason ?? null;
+    let teams = [];
+    let scorers = [];
+    if (provider === "FOOTBALL_DATA" && competitionCode) {
+        try {
+            teams = await fetchCompetitionTeams({ competitionCode });
+        }
+        catch {
+            teams = [];
+        }
+        try {
+            const resp = await fetchCompetitionScorers({ competitionCode, ...(season ? { season } : {}), limit: 50 });
+            scorers = Array.isArray(resp?.scorers) ? resp.scorers : [];
+        }
+        catch {
+            scorers = [];
+        }
+    }
+    const pickWinner = picks.find((p) => p.type === "WINNER") || null;
+    const pickTop = picks.find((p) => p.type === "TOP_SCORER") || null;
+    res.json({
+        enabled: { winner: enableWinner, topScorer: enableTop },
+        points: {
+            winner: rules?.pointsCompetitionWinner ?? 15,
+            topScorer: rules?.pointsCompetitionTopScorer ?? 12,
+        },
+        deadline: deadline ? new Date(deadline).toISOString() : null,
+        canEdit,
+        picks: {
+            winner: pickWinner
+                ? { teamExternalId: pickWinner.teamExternalId, teamName: pickWinner.teamName, pointsAwarded: pickWinner.pointsAwarded }
+                : null,
+            topScorer: pickTop
+                ? { playerExternalId: pickTop.playerExternalId, playerName: pickTop.playerName, pointsAwarded: pickTop.pointsAwarded }
+                : null,
+        },
+        options: {
+            teams: teams
+                .map((t) => ({ id: Number(t.id), name: String(t.shortName || t.name || "").trim(), crest: t.crest ?? null }))
+                .filter((t) => Number.isFinite(t.id) && t.name),
+            scorers: scorers
+                .map((s) => ({
+                id: Number(s?.player?.id ?? s?.id),
+                name: String(s?.player?.name ?? s?.name ?? "").trim(),
+                teamName: String(s?.team?.name ?? "").trim() || null,
+                goals: Number(s?.goals ?? s?.numberOfGoals ?? 0) || 0,
+            }))
+                .filter((p) => Number.isFinite(p.id) && p.name),
+        },
+    });
+});
+meRouter.put("/competition-predictions", requireLeagueMember, async (req, res) => {
+    const leagueId = resolveLeagueId(req);
+    const body = PutCompetitionPredictionsSchema.parse(req.body);
+    await ensureLeagueConfig(leagueId);
+    const [rules, settings] = await Promise.all([
+        prisma.rule.findUnique({ where: { leagueId } }),
+        prisma.setting.findUnique({ where: { leagueId } }),
+    ]);
+    const deadline = settings?.competitionPredictionsDeadline
+        ? new Date(settings.competitionPredictionsDeadline)
+        : (await prisma.match.findFirst({ orderBy: { kickoffAt: "asc" }, select: { kickoffAt: true } }))?.kickoffAt ?? null;
+    if (deadline) {
+        const ms = new Date(deadline).getTime();
+        if (Number.isFinite(ms) && Date.now() >= ms) {
+            return res.status(400).json({ message: "Deadline scaduta: pronostici competizione bloccati", reason: "DEADLINE" });
+        }
+    }
+    const enableWinner = !!rules?.enableCompetitionWinner;
+    const enableTop = !!rules?.enableCompetitionTopScorer;
+    if (enableWinner) {
+        if (body.winnerTeamId === null) {
+            await prisma.competitionPick.deleteMany({ where: { leagueId, userId: req.user.id, type: "WINNER" } });
+        }
+        else if (typeof body.winnerTeamId === "number") {
+            await prisma.competitionPick.upsert({
+                where: { userId_leagueId_type: { userId: req.user.id, leagueId, type: "WINNER" } },
+                create: {
+                    userId: req.user.id,
+                    leagueId,
+                    type: "WINNER",
+                    teamExternalId: body.winnerTeamId,
+                    teamName: body.winnerTeamName ?? null,
+                },
+                update: { teamExternalId: body.winnerTeamId, teamName: body.winnerTeamName ?? null },
+            });
+        }
+    }
+    if (enableTop) {
+        if (body.topScorerPlayerId === null) {
+            await prisma.competitionPick.deleteMany({ where: { leagueId, userId: req.user.id, type: "TOP_SCORER" } });
+        }
+        else if (typeof body.topScorerPlayerId === "number") {
+            await prisma.competitionPick.upsert({
+                where: { userId_leagueId_type: { userId: req.user.id, leagueId, type: "TOP_SCORER" } },
+                create: {
+                    userId: req.user.id,
+                    leagueId,
+                    type: "TOP_SCORER",
+                    playerExternalId: body.topScorerPlayerId,
+                    playerName: body.topScorerPlayerName ?? null,
+                },
+                update: { playerExternalId: body.topScorerPlayerId, playerName: body.topScorerPlayerName ?? null },
+            });
+        }
+    }
+    const picks = await prisma.competitionPick.findMany({ where: { leagueId, userId: req.user.id } });
+    res.json({ picks });
 });
 // Change password (logged-in)
 const ChangePasswordSchema = z.object({

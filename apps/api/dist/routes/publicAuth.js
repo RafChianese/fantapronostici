@@ -19,6 +19,11 @@ authRouter.post("/login", async (req, res) => {
     const ok = await bcrypt.compare(password, user.passwordHash);
     if (!ok)
         return res.status(401).json({ message: "Credenziali non valide" });
+    // NOTE: keep builds resilient if Prisma Client types are temporarily out of sync on CI/Render.
+    const emailVerifiedAt = user.emailVerifiedAt;
+    if (!emailVerifiedAt) {
+        return res.status(403).json({ code: "EMAIL_NOT_VERIFIED", message: "Email non verificata" });
+    }
     const token = signToken({ sub: user.id });
     return res.json({ token, user: { id: user.id, email: user.email, displayName: user.displayName, globalRole: user.globalRole } });
 });
@@ -40,7 +45,9 @@ authRouter.post("/register", async (req, res) => {
     const passwordHash = await bcrypt.hash(password, 10);
     let user;
     try {
-        user = await prisma.user.create({ data: { email, displayName, passwordHash, globalRole: "USER", isActive: true } });
+        user = await prisma.user.create({
+            data: { email, displayName, passwordHash, globalRole: "USER", isActive: true, ...{ emailVerifiedAt: null } },
+        });
     }
     catch (e) {
         // Prisma unique constraint (race condition safe)
@@ -54,8 +61,129 @@ authRouter.post("/register", async (req, res) => {
         }
         throw e;
     }
+    // Generate and email a 6-digit OTP (valid 10 minutes)
+    const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, "0");
+    const codeHash = await bcrypt.hash(code, 10);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    const emailVerificationToken = prisma.emailVerificationToken;
+    await prisma.$transaction([
+        // Invalidate previous pending tokens
+        emailVerificationToken.updateMany({
+            where: { userId: user.id, usedAt: null },
+            data: { usedAt: new Date() },
+        }),
+        emailVerificationToken.create({
+            data: { userId: user.id, codeHash, expiresAt },
+        }),
+    ]);
+    const verifyUrl = `${env.WEB_ORIGIN}/verify-email?email=${encodeURIComponent(email)}`;
+    const subject = "Completa la registrazione - Fanta Pronostici";
+    const html = `
+    <div style="font-family:Arial,sans-serif;line-height:1.5">
+      <h2>Completa la registrazione</h2>
+      <p>Hai creato un account su Fanta Pronostici.</p>
+      <p>Inserisci questo codice per verificare la tua email (valido 10 minuti):</p>
+      <div style="font-size:28px;font-weight:700;letter-spacing:4px;margin:16px 0">${code}</div>
+      <p>Apri la pagina di verifica (opzionale):</p>
+      <p><a href="${verifyUrl}">${verifyUrl}</a></p>
+      <p>Se non sei stato tu, puoi ignorare questa email.</p>
+    </div>
+  `;
+    const text = `Completa la registrazione su Fanta Pronostici.\n\nCodice di verifica (valido 10 minuti): ${code}\n\nApri la pagina di verifica (opzionale): ${verifyUrl}`;
+    const sendRes = await sendEmail({ to: email, subject, html, text });
+    if (!sendRes?.ok) {
+        // eslint-disable-next-line no-console
+        console.error("[auth] Verification email send failed", {
+            to: email,
+            provider: env.RESEND_API_KEY ? "resend" : env.SENDGRID_API_KEY ? "sendgrid" : "none",
+            skipped: sendRes?.skipped,
+        });
+    }
+    // In development, always log the OTP if the email could not be sent (or no provider is configured).
+    if (env.NODE_ENV !== "production" && (!sendRes?.ok || (!env.RESEND_API_KEY && !env.SENDGRID_API_KEY))) {
+        // eslint-disable-next-line no-console
+        console.log(`[auth] DEV email verification code for ${email}: ${code}`);
+    }
+    return res.status(201).json({ ok: true, requiresVerification: true, email });
+});
+const VerifyEmailSchema = z.object({
+    email: z.string().email(),
+    code: z.string().regex(/^\d{6}$/),
+});
+authRouter.post("/verify-email", async (req, res) => {
+    const { email, code } = VerifyEmailSchema.parse(req.body);
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user || !user.isActive)
+        return res.status(400).json({ message: "Codice non valido o scaduto" });
+    const now = new Date();
+    const emailVerificationToken = prisma.emailVerificationToken;
+    const candidates = await emailVerificationToken.findMany({
+        where: { userId: user.id, usedAt: null, expiresAt: { gt: now } },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+    });
+    let matched = null;
+    for (const c of candidates) {
+        const ok = await bcrypt.compare(code, c.codeHash);
+        if (ok) {
+            matched = { id: c.id };
+            break;
+        }
+    }
+    if (!matched)
+        return res.status(400).json({ message: "Codice non valido o scaduto" });
+    await prisma.$transaction([
+        prisma.user.update({ where: { id: user.id }, data: { ...{ emailVerifiedAt: user.emailVerifiedAt ?? new Date() } } }),
+        emailVerificationToken.update({ where: { id: matched.id }, data: { usedAt: new Date() } }),
+    ]);
     const token = signToken({ sub: user.id });
-    return res.status(201).json({ token, user: { id: user.id, email: user.email, displayName: user.displayName, globalRole: user.globalRole } });
+    return res.json({ token, user: { id: user.id, email: user.email, displayName: user.displayName, globalRole: user.globalRole } });
+});
+const ResendSchema = z.object({ email: z.string().email() });
+authRouter.post("/resend-verification", async (req, res) => {
+    const { email } = ResendSchema.parse(req.body);
+    // Privacy: always return ok.
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user || !user.isActive)
+        return res.json({ ok: true });
+    if (user.emailVerifiedAt)
+        return res.json({ ok: true });
+    const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, "0");
+    const codeHash = await bcrypt.hash(code, 10);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    const emailVerificationToken = prisma.emailVerificationToken;
+    await prisma.$transaction([
+        emailVerificationToken.updateMany({ where: { userId: user.id, usedAt: null }, data: { usedAt: new Date() } }),
+        emailVerificationToken.create({ data: { userId: user.id, codeHash, expiresAt } }),
+    ]);
+    const verifyUrl = `${env.WEB_ORIGIN}/verify-email?email=${encodeURIComponent(email)}`;
+    const subject = "Nuovo codice di verifica - Fanta Pronostici";
+    const html = `
+    <div style="font-family:Arial,sans-serif;line-height:1.5">
+      <h2>Nuovo codice di verifica</h2>
+      <p>Hai richiesto un nuovo codice per verificare la tua email.</p>
+      <p>Inserisci questo codice (valido 10 minuti):</p>
+      <div style="font-size:28px;font-weight:700;letter-spacing:4px;margin:16px 0">${code}</div>
+      <p>Apri la pagina di verifica (opzionale):</p>
+      <p><a href="${verifyUrl}">${verifyUrl}</a></p>
+      <p>Se non sei stato tu, puoi ignorare questa email.</p>
+    </div>
+  `;
+    const text = `Nuovo codice di verifica (valido 10 minuti): ${code}\n\nApri la pagina di verifica (opzionale): ${verifyUrl}`;
+    const sendRes = await sendEmail({ to: email, subject, html, text });
+    if (!sendRes?.ok) {
+        // eslint-disable-next-line no-console
+        console.error("[auth] Resend verification email send failed", {
+            to: email,
+            provider: env.RESEND_API_KEY ? "resend" : env.SENDGRID_API_KEY ? "sendgrid" : "none",
+            skipped: sendRes?.skipped,
+        });
+    }
+    if (env.NODE_ENV !== "production" && (!sendRes?.ok || (!env.RESEND_API_KEY && !env.SENDGRID_API_KEY))) {
+        // eslint-disable-next-line no-console
+        console.log(`[auth] DEV resend verification code for ${email}: ${code}`);
+    }
+    return res.json({ ok: true });
 });
 // Password reset (email-based)
 const ForgotPasswordSchema = z.object({

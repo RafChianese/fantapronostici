@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { prisma } from "../lib/prisma.js";
+import { ensureLeagueConfig } from "../services/ensureLeagueConfig.js";
 import { requireAuth, requireLeagueMember, resolveLeagueId, AuthedRequest } from "../middleware/authMiddleware.js";
 import { assertPredictionsEditableForMatches, getLockInfo } from "../lib/lock.js";
 import { recalcAllScoresForLeague } from "../lib/scoring.js";

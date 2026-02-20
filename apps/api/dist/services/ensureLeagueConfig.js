@@ -15,6 +15,7 @@ export async function ensureLeagueConfig(leagueId) {
             tieBreak1: "EXACT",
             tieBreak2: "OUTCOME",
             tieBreak3: "SUM_GOALS",
+            competitionPredictionsDeadline: null,
         },
     });
     await prisma.rule.upsert({
@@ -28,6 +29,14 @@ export async function ensureLeagueConfig(leagueId) {
             enableUnderOver25: false,
             pointsUnderOver25: 1,
             enableMatchdayAwards: false,
+            enableJolly: false,
+            jollyMultiplier: 2,
+            enableScorer: false,
+            pointsScorer: 3,
+            enableCompetitionWinner: false,
+            pointsCompetitionWinner: 15,
+            enableCompetitionTopScorer: false,
+            pointsCompetitionTopScorer: 12,
             scoringMode: "CUMULATIVE",
             allowOutcomeWithExact: true,
             allowSumGoalsWithExact: true,

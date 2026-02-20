@@ -24,7 +24,7 @@ publicRouter.get("/leagues/resolve", async (req, res) => {
         return res.status(404).json({ message: "Lega non trovata" });
     return res.json({ league });
 });
-publicRouter.get("/matches", async (_req, res) => {
+publicRouter.get("/matches", async (req, res) => {
     // Safety fix (dev DBs): if all matches have matchday=1 (historical seed) but there are more than 4,
     // auto-assign matchdays in blocks of 4 matches ordered by kickoffAt.
     // This keeps the UI grouping correct and also persists the correction in DB.
@@ -35,6 +35,18 @@ publicRouter.get("/matches", async (_req, res) => {
         await prisma.$transaction(existing.map((m, idx) => prisma.match.update({ where: { id: m.id }, data: { matchday: Math.floor(idx / 4) + 1 } })));
     }
     const matches = await prisma.match.findMany({ orderBy: [{ matchday: "asc" }, { kickoffAt: "asc" }] });
+    // Optional league-scoped extras (non-breaking): Partita Jolly
+    const leagueId = typeof req.headers["x-league-id"] === "string" ? String(req.headers["x-league-id"]) : undefined;
+    if (leagueId) {
+        await ensureLeagueConfig(leagueId);
+        const rules = await prisma.rule.findUnique({ where: { leagueId } });
+        if (rules?.enableJolly) {
+            const jollyRows = await prisma.matchdayJolly.findMany({ where: { leagueId }, select: { matchId: true } });
+            const set = new Set(jollyRows.map((r) => String(r.matchId)));
+            return res.json({ matches: matches.map((m) => ({ ...m, isJolly: set.has(String(m.id)) })) });
+        }
+        return res.json({ matches: matches.map((m) => ({ ...m, isJolly: false })) });
+    }
     res.json({ matches });
 });
 publicRouter.get("/lock", async (req, res) => {
@@ -45,8 +57,28 @@ publicRouter.get("/lock", async (req, res) => {
     const rules = await prisma.rule.findUnique({ where: { leagueId: league.id } });
     const info = await getLockInfo(league.id);
     res.json({
-        lock: { lockUntil: info.lockUntil, isForceLocked: info.isForceLocked, lockedByTime: info.lockedByTime, isLocked: info.isLocked },
-        features: { underOver25: !!rules?.enableUnderOver25, matchdayAwards: !!rules?.enableMatchdayAwards },
+        lock: {
+            lockUntil: info.lockUntil,
+            isForceLocked: info.isForceLocked,
+            lockedByTime: info.lockedByTime,
+            isLocked: info.isLocked,
+            // Deploy-safe extras used by the UI to lock only the relevant matchdays.
+            lockAll: !!info?.auto?.lockAll,
+            lockedMatchdays: (info?.auto?.lockedMatchdays || []).map((x) => Number(x)),
+        },
+        leagueSettings: info.leagueSettings,
+        features: {
+            underOver25: !!rules?.enableUnderOver25,
+            matchdayAwards: !!rules?.enableMatchdayAwards,
+            jolly: !!rules?.enableJolly,
+            jollyMultiplier: rules?.jollyMultiplier ?? 2,
+            scorer: !!rules?.enableScorer,
+            scorerPoints: rules?.pointsScorer ?? 3,
+            competitionWinner: !!rules?.enableCompetitionWinner,
+            competitionWinnerPoints: rules?.pointsCompetitionWinner ?? 15,
+            competitionTopScorer: !!rules?.enableCompetitionTopScorer,
+            competitionTopScorerPoints: rules?.pointsCompetitionTopScorer ?? 12,
+        },
     });
 });
 // Read-only: returns the rule + setting values that affect the league regulation ("Regolamento").
@@ -56,14 +88,21 @@ publicRouter.get("/regolamento-config", async (req, res) => {
     if (!league)
         return res.status(400).json({ message: "Missing leagueId or leagueCode" });
     await ensureLeagueConfig(league.id);
-    const [rules, settings, lockInfo] = await Promise.all([
+    const [rules, settings, lockInfo, monetization] = await Promise.all([
         prisma.rule.findUnique({ where: { leagueId: league.id } }),
         prisma.setting.findUnique({ where: { leagueId: league.id } }),
         getLockInfo(league.id),
+        prisma.leagueMonetization.findUnique({ where: { leagueId: league.id }, include: { prizes: true } }),
     ]);
     if (!rules || !settings)
         return res.status(500).json({ message: "Missing league config" });
     res.json({
+        monetization: monetization
+            ? {
+                entryFeeCents: monetization.entryFeeCents,
+                prizes: (monetization.prizes || []).map((p) => ({ position: p.position, amountCents: p.amountCents })),
+            }
+            : { entryFeeCents: 0, prizes: [] },
         league: { id: league.id, name: league.name, code: league.code },
         rules: {
             pointsExact: rules.pointsExact,
@@ -72,6 +111,10 @@ publicRouter.get("/regolamento-config", async (req, res) => {
             enableUnderOver25: rules.enableUnderOver25,
             pointsUnderOver25: rules.pointsUnderOver25,
             enableMatchdayAwards: rules.enableMatchdayAwards,
+            enableJolly: rules.enableJolly ?? false,
+            jollyMultiplier: rules.jollyMultiplier ?? 2,
+            enableScorer: rules.enableScorer ?? false,
+            pointsScorer: rules.pointsScorer ?? 3,
             scoringMode: rules.scoringMode,
             allowOutcomeWithExact: rules.allowOutcomeWithExact,
             allowSumGoalsWithExact: rules.allowSumGoalsWithExact,
@@ -121,7 +164,7 @@ publicRouter.get("/leaderboard", async (req, res) => {
     });
     const agg = new Map();
     for (const p of preds) {
-        const a = agg.get(p.userId) || { totalPoints: 0, exactHits: 0, outcomeHits: 0, sumGoalsHits: 0, underOverHits: 0 };
+        const a = agg.get(p.userId) || { totalPoints: 0, competitionPoints: 0, exactHits: 0, outcomeHits: 0, sumGoalsHits: 0, underOverHits: 0 };
         a.totalPoints += p.totalPoints ?? 0;
         if ((p.pointsExact ?? 0) > 0)
             a.exactHits += 1;
@@ -132,6 +175,20 @@ publicRouter.get("/leaderboard", async (req, res) => {
         if (rules.enableUnderOver25 && (p.pointsUnderOver ?? 0) > 0)
             a.underOverHits += 1;
         agg.set(p.userId, a);
+    }
+    // Competition predictions (winner/top scorer) add extra points.
+    const comp = await prisma.competitionPick.groupBy({
+        by: ["userId"],
+        where: { leagueId: league.id },
+        _sum: { pointsAwarded: true },
+    });
+    for (const row of comp) {
+        const uid = String(row.userId);
+        const pts = Number(row._sum?.pointsAwarded ?? 0);
+        const a = agg.get(uid) || { totalPoints: 0, competitionPoints: 0, exactHits: 0, outcomeHits: 0, sumGoalsHits: 0, underOverHits: 0 };
+        a.competitionPoints = pts;
+        a.totalPoints += pts;
+        agg.set(uid, a);
     }
     const awardCounts = rules.enableMatchdayAwards
         ? await prisma.matchdayAward.groupBy({
@@ -149,6 +206,7 @@ publicRouter.get("/leaderboard", async (req, res) => {
         userId: m.user.id,
         displayName: m.user.displayName,
         totalPoints: agg.get(m.user.id)?.totalPoints ?? 0,
+        competitionPoints: agg.get(m.user.id)?.competitionPoints ?? 0,
         exactHits: agg.get(m.user.id)?.exactHits ?? 0,
         outcomeHits: agg.get(m.user.id)?.outcomeHits ?? 0,
         sumGoalsHits: agg.get(m.user.id)?.sumGoalsHits ?? 0,
@@ -288,7 +346,7 @@ publicRouter.get("/users/:id/summary", async (req, res) => {
     }, { exact: 0, outcome: 0, sumGoals: 0, underOver: 0, total: 0 });
     res.json({
         league: { id: league.id, code: league.code, name: league.name },
-        features: { underOver25: !!rules?.enableUnderOver25, matchdayAwards: !!rules?.enableMatchdayAwards },
+        features: { underOver25: !!rules?.enableUnderOver25, matchdayAwards: !!rules?.enableMatchdayAwards, jolly: !!rules?.enableJolly, jollyMultiplier: rules?.jollyMultiplier ?? 2 },
         user: { id: member.user.id, displayName: member.user.displayName, email: member.user.email },
         detail,
         totals,

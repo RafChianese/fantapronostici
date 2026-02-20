@@ -3,9 +3,11 @@ import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth, requireLeagueAdmin, requireSuperAdmin, resolveLeagueId } from "../middleware/authMiddleware.js";
 import { recalcAllScoresForLeague } from "../lib/scoring.js";
+import { getLockInfo } from "../lib/lock.js";
 import { clearMatchdayAwardsForLeague } from "../lib/matchdayAwards.js";
 import { runSyncOnce } from "../jobs/syncJob.js";
 import { ensureLeagueConfig } from "../services/ensureLeagueConfig.js";
+import { buildAutoLockSentinel, decodeLeagueSettings } from "../lib/leagueConfigEncoding.js";
 export const adminRouter = Router();
 adminRouter.use(requireAuth, requireLeagueAdmin);
 function getLeagueOr400(req, res) {
@@ -26,14 +28,67 @@ adminRouter.get("/members", async (req, res) => {
         include: { user: true },
         orderBy: [{ status: "asc" }, { createdAt: "desc" }],
     });
+    const lockInfo = await getLockInfo(leagueId);
+    const lockedSet = new Set((lockInfo?.auto?.lockedMatchdays || []).map((x) => Number(x)));
+    // If force locked or lockAll, there are no editable predictions
+    if (lockInfo?.isForceLocked || lockInfo?.auto?.lockAll) {
+        return res.json({
+            members: members.map((m) => ({
+                id: m.id,
+                role: m.role,
+                status: m.status,
+                predictionCheck: { required: 0, done: 0, missing: 0, complete: true },
+                user: {
+                    id: m.user.id,
+                    email: m.user.email,
+                    displayName: m.user.displayName,
+                    isActive: m.user.isActive,
+                    globalRole: m.user.globalRole,
+                },
+                createdAt: m.createdAt,
+            })),
+        });
+    }
+    const matches = await prisma.match.findMany({
+        orderBy: [{ matchday: "asc" }, { kickoffAt: "asc" }],
+        select: { id: true, matchday: true, status: true },
+    });
+    const editableMatchIds = matches
+        .filter((mx) => mx.status === "NOT_STARTED" && !lockedSet.has(Number(mx.matchday || 1)))
+        .map((mx) => String(mx.id));
+    const required = editableMatchIds.length;
+    const userIds = members.map((m) => m.userId);
+    const counts = required
+        ? await prisma.prediction.groupBy({
+            by: ["userId"],
+            where: { leagueId, userId: { in: userIds }, matchId: { in: editableMatchIds } },
+            _count: { _all: true },
+        })
+        : [];
+    const countByUser = new Map();
+    for (const row of counts)
+        countByUser.set(String(row.userId), Number(row._count?._all ?? 0));
     res.json({
-        members: members.map((m) => ({
-            id: m.id,
-            role: m.role,
-            status: m.status,
-            user: { id: m.user.id, email: m.user.email, displayName: m.user.displayName, isActive: m.user.isActive, globalRole: m.user.globalRole },
-            createdAt: m.createdAt,
-        })),
+        members: members.map((m) => {
+            const done = required ? countByUser.get(String(m.userId)) || 0 : 0;
+            const missing = required ? Math.max(0, required - done) : 0;
+            return {
+                id: m.id,
+                role: m.role,
+                status: m.status,
+                predictionCheck: required
+                    ? { required, done, missing, complete: missing === 0 }
+                    : { required: 0, done: 0, missing: 0, complete: true },
+                user: {
+                    id: m.user.id,
+                    email: m.user.email,
+                    displayName: m.user.displayName,
+                    isActive: m.user.isActive,
+                    globalRole: m.user.globalRole,
+                },
+                createdAt: m.createdAt,
+            };
+        }),
     });
 });
 const PatchMemberSchema = z.object({
@@ -73,6 +128,26 @@ adminRouter.get("/rules", async (req, res) => {
         return;
     await ensureLeagueConfig(leagueId);
     const rules = await prisma.rule.findUnique({ where: { leagueId } });
+    const monetization = await prisma.leagueMonetization.findUnique({
+        where: { leagueId },
+        include: { prizes: true },
+    });
+    // Backward/forward compatible shaping:
+    // - Legacy UI reads entryFeeCents + prizesJson from Rule
+    // - New additive table is source of truth if present
+    if (monetization && rules) {
+        const shaped = {
+            ...rules,
+            entryFeeCents: typeof monetization.entryFeeCents === "number" ? monetization.entryFeeCents : rules.entryFeeCents,
+            prizesJson: monetization.prizes?.length
+                ? monetization.prizes
+                    .slice()
+                    .sort((a, b) => a.position - b.position)
+                    .map((p) => ({ position: p.position, amountCents: p.amountCents }))
+                : rules.prizesJson,
+        };
+        return res.json({ rules: shaped });
+    }
     res.json({ rules });
 });
 const RulesSchema = z.object({
@@ -82,30 +157,143 @@ const RulesSchema = z.object({
     enableUnderOver25: z.boolean().optional().default(false),
     pointsUnderOver25: z.number().int().min(0).max(50).optional().default(1),
     enableMatchdayAwards: z.boolean().optional().default(false),
+    // Partita Jolly
+    enableJolly: z.boolean().optional().default(false),
+    jollyMultiplier: z.number().int().min(1).max(10).optional().default(2),
+    // Marcatore
+    enableScorer: z.boolean().optional().default(false),
+    pointsScorer: z.number().int().min(0).max(50).optional().default(3),
+    // Pronostici competizione
+    enableCompetitionWinner: z.boolean().optional().default(false),
+    pointsCompetitionWinner: z.number().int().min(0).max(200).optional().default(15),
+    enableCompetitionTopScorer: z.boolean().optional().default(false),
+    pointsCompetitionTopScorer: z.number().int().min(0).max(200).optional().default(12),
     scoringMode: z.enum(["CUMULATIVE", "BEST_ONLY", "MIXED"]),
     allowOutcomeWithExact: z.boolean(),
     allowSumGoalsWithExact: z.boolean(),
     allowSumGoalsWithOutcome: z.boolean(),
+    // Optional monetization
+    entryFeeCents: z.number().int().min(0).max(1_000_000_000).optional().nullable(),
+    prizesJson: z
+        .array(z.object({
+        position: z.number().int().min(1).max(100),
+        amountCents: z.number().int().min(0).max(1_000_000_000),
+    }))
+        .max(50)
+        .optional()
+        .nullable(),
 });
 adminRouter.put("/rules", async (req, res) => {
     const leagueId = getLeagueOr400(req, res);
     if (!leagueId)
         return;
     const data = RulesSchema.parse(req.body);
+    // Prisma JSON fields do not accept plain `null` in TS typings.
+    // If admin leaves prizes empty, we omit the field.
+    const sanitized = {
+        ...data,
+        prizesJson: data.prizesJson === null || typeof data.prizesJson === "undefined"
+            ? undefined
+            : data.prizesJson,
+    };
     const rules = await prisma.rule.upsert({
         where: { leagueId },
-        create: { leagueId, ...data },
-        update: { ...data },
+        create: { leagueId, ...sanitized },
+        update: { ...sanitized },
     });
-    // If awards are disabled, clear stored awards for consistency.
-    if (!rules.enableMatchdayAwards) {
-        await clearMatchdayAwardsForLeague(leagueId);
+    // --- Monetization additive table (source of truth) ---
+    // Keep Rule fields for backward compatibility, but also persist into LeagueMonetization + LeaguePrize.
+    const fee = typeof data.entryFeeCents === "number" ? data.entryFeeCents : null;
+    const prizes = Array.isArray(data.prizesJson) ? data.prizesJson : null;
+    const hasMonetization = fee !== null || (Array.isArray(prizes) && prizes.length > 0);
+    if (hasMonetization) {
+        const monetization = await prisma.leagueMonetization.upsert({
+            where: { leagueId },
+            create: { leagueId, ...(fee !== null ? { entryFeeCents: fee } : {}) },
+            update: { ...(fee !== null ? { entryFeeCents: fee } : { entryFeeCents: null }) },
+        });
+        // Replace prizes atomically (simple and safe)
+        await prisma.leaguePrize.deleteMany({ where: { monetizationId: monetization.id } });
+        if (Array.isArray(prizes) && prizes.length > 0) {
+            await prisma.leaguePrize.createMany({
+                data: prizes.map((p) => ({ monetizationId: monetization.id, position: p.position, amountCents: p.amountCents })),
+                skipDuplicates: true,
+            });
+        }
     }
+    else {
+        // Clear monetization if admin removed everything
+        const existing = await prisma.leagueMonetization.findUnique({ where: { leagueId } });
+        if (existing) {
+            await prisma.leaguePrize.deleteMany({ where: { monetizationId: existing.id } });
+            await prisma.leagueMonetization.delete({ where: { leagueId } });
+        }
+    }
+    // If awards are disabled, clear stored awards for consistency.
     if (!rules.enableMatchdayAwards) {
         await clearMatchdayAwardsForLeague(leagueId);
     }
     await recalcAllScoresForLeague(leagueId);
     res.json({ rules });
+});
+// --- Partita Jolly (matchday selection) ---
+const JollySettingsSchema = z.object({
+    enableJolly: z.boolean(),
+    jollyMultiplier: z.number().int().min(1).max(10).default(2),
+});
+const SetJollySchema = z.object({
+    matchId: z.string().min(1).nullable(),
+});
+adminRouter.get("/jolly", async (req, res) => {
+    const leagueId = getLeagueOr400(req, res);
+    if (!leagueId)
+        return;
+    await ensureLeagueConfig(leagueId);
+    const rules = await prisma.rule.findUnique({ where: { leagueId } });
+    const rows = await prisma.matchdayJolly.findMany({ where: { leagueId }, orderBy: { matchday: "asc" } });
+    res.json({
+        settings: { enableJolly: !!rules?.enableJolly, jollyMultiplier: rules?.jollyMultiplier ?? 2 },
+        selections: rows.map((r) => ({ matchday: r.matchday, matchId: r.matchId })),
+    });
+});
+adminRouter.put("/jolly/settings", async (req, res) => {
+    const leagueId = getLeagueOr400(req, res);
+    if (!leagueId)
+        return;
+    await ensureLeagueConfig(leagueId);
+    const { enableJolly, jollyMultiplier } = JollySettingsSchema.parse(req.body);
+    const rules = await prisma.rule.update({
+        where: { leagueId },
+        data: { enableJolly, jollyMultiplier },
+    });
+    await recalcAllScoresForLeague(leagueId);
+    res.json({ settings: { enableJolly: rules.enableJolly, jollyMultiplier: rules.jollyMultiplier } });
+});
+adminRouter.put("/jolly/:matchday", async (req, res) => {
+    const leagueId = getLeagueOr400(req, res);
+    if (!leagueId)
+        return;
+    const matchday = Number(req.params.matchday);
+    if (!Number.isFinite(matchday) || matchday <= 0)
+        return res.status(400).json({ message: "matchday non valida" });
+    const { matchId } = SetJollySchema.parse(req.body);
+    if (matchId === null) {
+        await prisma.matchdayJolly.deleteMany({ where: { leagueId, matchday } });
+        await recalcAllScoresForLeague(leagueId);
+        return res.json({ matchday, matchId: null });
+    }
+    const match = await prisma.match.findUnique({ where: { id: matchId } });
+    if (!match)
+        return res.status(404).json({ message: "Match non trovato" });
+    if (match.matchday !== matchday)
+        return res.status(400).json({ message: "La partita selezionata non appartiene a questa giornata" });
+    const row = await prisma.matchdayJolly.upsert({
+        where: { leagueId_matchday: { leagueId, matchday } },
+        create: { leagueId, matchday, matchId },
+        update: { matchId },
+    });
+    await recalcAllScoresForLeague(leagueId);
+    res.json({ matchday: row.matchday, matchId: row.matchId });
 });
 // --- Settings (lock) ---
 adminRouter.get("/settings", async (req, res) => {
@@ -114,36 +302,68 @@ adminRouter.get("/settings", async (req, res) => {
         return;
     await ensureLeagueConfig(leagueId);
     const settings = await prisma.setting.findUnique({ where: { leagueId } });
-    res.json({ settings });
+    if (!settings)
+        return res.json({ settings: null });
+    const decoded = decodeLeagueSettings(settings.lockUntil);
+    // Expose decoded fields to admin UI (still read-only).
+    res.json({ settings: { ...settings, ...decoded } });
 });
 const SettingsSchema = z.object({
-    lockUntil: z.string().datetime(),
+    // lockUntil is no longer edited manually. Kept optional for backward compatibility with older web builds.
+    // NOTE: Some older deployments/web builds may omit this field entirely.
+    // Using `.default()` makes it effectively optional and prevents runtime crashes.
+    lockUntil: z.string().datetime().optional().default("1970-01-01T00:00:00.000Z"),
     isForceLocked: z.boolean().optional(),
+    // --- Deploy-safe extensions (optional, backward compatible) ---
+    // Deprecated (lock is always automatic). Still accepted for backward compatibility.
+    lockMode: z.enum(["MANUAL", "AUTO"]).optional(),
+    lockOffsetMinutes: z.number().int().min(0).max(120).optional(),
+    predictionMode: z.enum(["TOURNAMENT_PRE", "MATCHDAY_BY_MATCHDAY"]).optional(),
     tieBreak1: z.enum(["EXACT", "OUTCOME", "SUM_GOALS"]).optional(),
     tieBreak2: z.enum(["EXACT", "OUTCOME", "SUM_GOALS"]).optional(),
     tieBreak3: z.enum(["EXACT", "OUTCOME", "SUM_GOALS"]).optional(),
+    competitionPredictionsDeadline: z.string().datetime().nullable().optional(),
 });
 adminRouter.put("/settings", async (req, res) => {
     const leagueId = getLeagueOr400(req, res);
     if (!leagueId)
         return;
     const body = SettingsSchema.parse(req.body);
+    // Deploy-safe encoding into Setting.lockUntil (no new DB columns).
+    // NEW: lock is ALWAYS automatic. We only persist (predictionMode + lockOffsetMinutes) via sentinel.
+    const existing = await prisma.setting.findUnique({ where: { leagueId } });
+    const existingDecoded = existing
+        ? decodeLeagueSettings(existing.lockUntil)
+        : { lockMode: "AUTO", lockOffsetMinutes: 30, predictionMode: "MATCHDAY_BY_MATCHDAY" };
+    const predictionMode = (body.predictionMode ?? existingDecoded.predictionMode);
+    const lockOffsetMinutes = typeof body.lockOffsetMinutes === "number" ? body.lockOffsetMinutes : existingDecoded.lockOffsetMinutes;
+    const lockUntilToStore = buildAutoLockSentinel(predictionMode, lockOffsetMinutes);
     const settings = await prisma.setting.upsert({
         where: { leagueId },
         create: {
             leagueId,
-            lockUntil: new Date(body.lockUntil),
+            lockUntil: lockUntilToStore,
             isForceLocked: body.isForceLocked ?? false,
             ...(body.tieBreak1 ? { tieBreak1: body.tieBreak1 } : {}),
             ...(body.tieBreak2 ? { tieBreak2: body.tieBreak2 } : {}),
             ...(body.tieBreak3 ? { tieBreak3: body.tieBreak3 } : {}),
+            ...(typeof body.competitionPredictionsDeadline === "string"
+                ? { competitionPredictionsDeadline: new Date(body.competitionPredictionsDeadline) }
+                : body.competitionPredictionsDeadline === null
+                    ? { competitionPredictionsDeadline: null }
+                    : {}),
         },
         update: {
-            lockUntil: new Date(body.lockUntil),
+            lockUntil: lockUntilToStore,
             ...(typeof body.isForceLocked === "boolean" ? { isForceLocked: body.isForceLocked } : {}),
             ...(body.tieBreak1 ? { tieBreak1: body.tieBreak1 } : {}),
             ...(body.tieBreak2 ? { tieBreak2: body.tieBreak2 } : {}),
             ...(body.tieBreak3 ? { tieBreak3: body.tieBreak3 } : {}),
+            ...(typeof body.competitionPredictionsDeadline === "string"
+                ? { competitionPredictionsDeadline: new Date(body.competitionPredictionsDeadline) }
+                : body.competitionPredictionsDeadline === null
+                    ? { competitionPredictionsDeadline: null }
+                    : {}),
         },
     });
     res.json({ settings });

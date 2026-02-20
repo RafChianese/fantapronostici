@@ -17,6 +17,52 @@ export async function fetchFixtures(params) {
         status: params.status,
     });
 }
+export async function fetchFixtureLineups(fixtureId) {
+    const rows = (await apiFootballClient.fixtureLineups({ fixture: fixtureId }));
+    // Normalize to our shape
+    const out = [];
+    for (const r of rows || []) {
+        const team = r?.team;
+        const mapPlayer = (p) => {
+            const pl = p?.player || p;
+            const id = Number(pl?.id);
+            const name = String(pl?.name || "").trim();
+            if (!Number.isFinite(id) || !name)
+                return null;
+            return { id, name, number: pl?.number ?? null, pos: pl?.pos ?? null };
+        };
+        const startXI = Array.isArray(r?.startXI) ? r.startXI.map(mapPlayer).filter(Boolean) : [];
+        const substitutes = Array.isArray(r?.substitutes) ? r.substitutes.map(mapPlayer).filter(Boolean) : [];
+        if (!team?.id || !team?.name)
+            continue;
+        out.push({
+            team: { id: Number(team.id), name: String(team.name), logo: team.logo ?? undefined },
+            startXI: startXI,
+            substitutes: substitutes,
+        });
+    }
+    return out;
+}
+export async function fetchFixtureEvents(fixtureId) {
+    const rows = (await apiFootballClient.fixtureEvents({ fixture: fixtureId }));
+    const out = [];
+    for (const r of rows || []) {
+        const team = r?.team;
+        const time = r?.time || {};
+        if (!team?.id || !team?.name)
+            continue;
+        out.push({
+            time: { elapsed: time?.elapsed ?? null, extra: time?.extra ?? null },
+            team: { id: Number(team.id), name: String(team.name), logo: team.logo ?? undefined },
+            player: r?.player ? { id: r.player.id ?? null, name: r.player.name ?? null } : undefined,
+            assist: r?.assist ? { id: r.assist.id ?? null, name: r.assist.name ?? null } : undefined,
+            type: r?.type ?? null,
+            detail: r?.detail ?? null,
+            comments: r?.comments ?? null,
+        });
+    }
+    return out;
+}
 export function mapApiFootballStatus(short) {
     const s = String(short || "").toUpperCase();
     if (s === "NS")

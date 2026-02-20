@@ -11,17 +11,34 @@ import { bootstrapDefaults } from "./bootstrapDefaults.js";
 const app = express();
 app.use(helmet());
 // CORS
-// WEB_ORIGIN can be a comma-separated allowlist (useful for prod web domains too).
+// WEB_ORIGIN can be a comma-separated allowlist.
+// Example: WEB_ORIGIN=https://fantapronosticiapp.it,https://www.fantapronosticiapp.it
 // Always allow local dev + Capacitor origins.
 const allowedOrigins = new Set((env.WEB_ORIGIN || "")
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean));
+// If you provide only one of the two, automatically allow both apex and www.
+// Example: https://www.example.com -> also allow https://example.com (same scheme), and vice versa.
+for (const origin of Array.from(allowedOrigins)) {
+    try {
+        const u = new URL(origin);
+        if (u.hostname.startsWith("www.")) {
+            allowedOrigins.add(`${u.protocol}//${u.hostname.replace(/^www\./, "")}`);
+        }
+        else {
+            allowedOrigins.add(`${u.protocol}//www.${u.hostname}`);
+        }
+    }
+    catch {
+        // ignore invalid origin strings
+    }
+}
 allowedOrigins.add("http://localhost:5173");
 allowedOrigins.add("https://localhost");
 allowedOrigins.add("http://localhost");
 allowedOrigins.add("capacitor://localhost");
-app.use(cors({
+const corsOptions = {
     origin: (origin, cb) => {
         // Allow non-browser clients (no Origin header)
         if (!origin)
@@ -31,7 +48,14 @@ app.use(cors({
         return cb(new Error(`CORS blocked origin: ${origin}`));
     },
     credentials: true,
-}));
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    // IMPORTANT: include custom headers used by the frontend (triggers preflight)
+    allowedHeaders: ["Content-Type", "Authorization", "X-League-Id"],
+    optionsSuccessStatus: 204,
+};
+app.use(cors(corsOptions));
+// Handle preflight for all routes
+app.options("*", cors(corsOptions));
 app.use(express.json({ limit: "1mb" }));
 app.use(morgan("dev"));
 app.get("/health", (_req, res) => res.json({ ok: true }));
