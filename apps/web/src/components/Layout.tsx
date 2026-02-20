@@ -364,6 +364,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   </NavItem>
                   {user && activeMembership ? (
                     <>
+                      <NavItem to="/competition" onClick={() => setDesktopMenuOpen(false)}>
+                        Pronostici competizione
+                      </NavItem>
                       <NavItem to="/regolamento" onClick={() => setDesktopMenuOpen(false)}>
                         Regolamento
                       </NavItem>
@@ -483,6 +486,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
                 {activeMembership ? (
                   <>
+                    <NavItem to="/competition" onClick={() => setDrawerOpen(false)}>
+                      Pronostici competizione
+                    </NavItem>
                     <NavItem to="/regolamento" onClick={() => setDrawerOpen(false)}>
                       Regolamento
                     </NavItem>

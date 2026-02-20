@@ -183,6 +183,25 @@ export function generateRegolamentoTemplate(rules: LeagueRules, settings: League
         paragraphs: ["In questa lega la regola ‘Marcatore’ non è attiva."],
       };
 
+  const competitionSection: RegolamentoSection = (rules as any).enableCompetitionWinner || (rules as any).enableCompetitionTopScorer
+    ? {
+        title: "Pronostici competizione 🏆",
+        paragraphs: [
+          "Sono attivi uno o più pronostici extra legati alla competizione.",
+          (settings as any).competitionPredictionsDeadline
+            ? `Le scelte sono modificabili fino a: ${formatDateTimeIt(String((settings as any).competitionPredictionsDeadline))}.`
+            : "Le scelte sono modificabili fino all'inizio della competizione (deadline automatica).",
+        ],
+        bullets: [
+          ...( (rules as any).enableCompetitionWinner ? [`Vincitore competizione: +${Number((rules as any).pointsCompetitionWinner ?? 15) || 15} punti`] : [] ),
+          ...( (rules as any).enableCompetitionTopScorer ? [`Capocannoniere competizione: +${Number((rules as any).pointsCompetitionTopScorer ?? 12) || 12} punti`] : [] ),
+        ],
+      }
+    : {
+        title: "Pronostici competizione 🏆",
+        paragraphs: ["In questa lega i pronostici competizione (vincitore/capocannoniere) non sono attivi."],
+      };
+
   const monetizationSection: RegolamentoSection | null = (() => {
     const feeCents = typeof (rules as any).entryFeeCents === "number" ? (rules as any).entryFeeCents : null;
     const prizes = Array.isArray((rules as any).prizesJson) ? (rules as any).prizesJson : null;
@@ -259,6 +278,7 @@ export function generateRegolamentoTemplate(rules: LeagueRules, settings: League
       awardsSection,
       jollySection,
       scorerSection,
+      competitionSection,
       ...(monetizationSection ? [monetizationSection] : []),
       lockSection,
       rankingSection,

@@ -17,6 +17,7 @@ export async function ensureLeagueConfig(leagueId: string) {
       tieBreak1: "EXACT",
       tieBreak2: "OUTCOME",
       tieBreak3: "SUM_GOALS",
+      competitionPredictionsDeadline: null,
     },
   });
 
@@ -35,6 +36,11 @@ export async function ensureLeagueConfig(leagueId: string) {
       jollyMultiplier: 2,
       enableScorer: false,
       pointsScorer: 3,
+
+      enableCompetitionWinner: false,
+      pointsCompetitionWinner: 15,
+      enableCompetitionTopScorer: false,
+      pointsCompetitionTopScorer: 12,
       scoringMode: "CUMULATIVE",
       allowOutcomeWithExact: true,
       allowSumGoalsWithExact: true,

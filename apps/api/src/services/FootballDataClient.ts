@@ -123,6 +123,16 @@ export class FootballDataClient {
     return this.request<any>("GET", `/competitions/${competitionCode}/teams`, undefined, { cacheTtlMs: 10 * 60 * 1000 });
   }
 
+  async getScorers(competitionCode: string, params?: { season?: number; limit?: number }) {
+    // Scorers can change often; cache briefly.
+    return this.request<any>("GET", `/competitions/${competitionCode}/scorers`, params, { cacheTtlMs: 5 * 60 * 1000 });
+  }
+
+  async getStandings(competitionCode: string, params?: { season?: number }) {
+    // Standings update often; cache briefly.
+    return this.request<any>("GET", `/competitions/${competitionCode}/standings`, params, { cacheTtlMs: 5 * 60 * 1000 });
+  }
+
   async getMatch(matchId: number) {
     // Match details are safe to cache briefly.
     return this.request<any>("GET", `/matches/${matchId}`, undefined, { cacheTtlMs: 60 * 1000 });

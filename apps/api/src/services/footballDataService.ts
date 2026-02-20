@@ -67,6 +67,43 @@ export async function fetchCompetitionTeams(args: { competitionCode: string }) {
   return (data?.teams ?? []) as FootballDataTeam[];
 }
 
+export async function fetchCompetitionScorers(args: { competitionCode: string; season?: number; limit?: number }) {
+  const data = await client.getScorers(args.competitionCode, {
+    ...(args.season ? { season: args.season } : {}),
+    ...(args.limit ? { limit: args.limit } : {}),
+  });
+  return (data?.scorers ?? []) as any[];
+}
+
+export async function fetchCompetitionStandings(args: { competitionCode: string; season?: number }) {
+  const data = await client.getStandings(args.competitionCode, {
+    ...(args.season ? { season: args.season } : {}),
+  });
+  return (data?.standings ?? []) as any[];
+}
+
+export function extractWinnerFromStandings(standings: any[]): { teamExternalId: number | null; teamName: string | null } {
+  // Typical shape: standings[0].table[0].team
+  const table = standings?.find((s: any) => (s?.type || "TOTAL") === "TOTAL")?.table ?? standings?.[0]?.table;
+  const top = Array.isArray(table) ? table[0] : null;
+  const team = top?.team;
+  const id = Number(team?.id);
+  return {
+    teamExternalId: Number.isFinite(id) ? id : null,
+    teamName: typeof team?.name === "string" ? team.name : null,
+  };
+}
+
+export function extractTopScorerFromScorers(scorers: any[]): { playerExternalId: number | null; playerName: string | null } {
+  const top = Array.isArray(scorers) ? scorers[0] : null;
+  const player = top?.player;
+  const id = Number(player?.id);
+  return {
+    playerExternalId: Number.isFinite(id) ? id : null,
+    playerName: typeof player?.name === "string" ? player.name : (typeof top?.name === "string" ? top.name : null),
+  };
+}
+
 export async function fetchMatchDetail(args: { matchId: number }) {
   const data = await client.getMatch(args.matchId);
   return data as any;

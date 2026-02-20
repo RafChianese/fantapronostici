@@ -686,6 +686,17 @@ export default function PredictionsPage() {
                         ) : null}
                       </div>
 
+                      {config?.features?.scorer && m.status === "NOT_STARTED" ? (
+                        <button
+                          type="button"
+                          onClick={() => openDetail(m.id)}
+                          className="mt-2 inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
+                          title="Seleziona marcatore"
+                        >
+                          ⚽ Seleziona marcatore
+                        </button>
+                      ) : null}
+
                       {canEdit ? (
                         <div className="mt-2 grid grid-cols-7 gap-1">
                           {quick.map(([a, b]) => (

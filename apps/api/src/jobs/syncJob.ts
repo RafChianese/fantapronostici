@@ -7,6 +7,10 @@ import {
   mapFootballDataStatus,
   fetchMatchDetail,
   extractScorersFromMatchDetail,
+  fetchCompetitionScorers,
+  fetchCompetitionStandings,
+  extractWinnerFromStandings,
+  extractTopScorerFromScorers,
 } from "../services/footballDataService.js";
 import { fetchFixtures, mapApiFootballStatus, computeMatchday, fetchFixtureEvents } from "../services/apiFootball.js";
 import { recalcScoresForMatchAcrossLeagues } from "../lib/scoring.js";
@@ -277,6 +281,89 @@ export async function runSyncOnce() {
   } catch (e: any) {
     // Enrichment is best-effort (rate-limit / temporary API issues).
     console.error("[sync] football-data teams enrichment error", e?.message || e);
+  }
+
+  // --- Competition predictions resolution (best-effort, football-data only) ---
+  // If the competition is fully finished, resolve outcome once per league and award points.
+  try {
+    const allFinished = matches.every((m: any) => mapFootballDataStatus(String(m.status || "")) === "FINISHED");
+    if (allFinished && competitionCode) {
+      const leagues = await prisma.league.findMany({
+        include: { rules: true, settings: true, competitionOutcome: true },
+      });
+
+      const needAny = leagues.some(
+        (l: any) =>
+          (l.rules?.enableCompetitionWinner || l.rules?.enableCompetitionTopScorer) && !l.competitionOutcome?.resolvedAt
+      );
+
+      if (needAny) {
+        const [standings, scorers] = await Promise.all([
+          fetchCompetitionStandings({ competitionCode, ...(season ? { season } : {}) }).catch(() => []),
+          fetchCompetitionScorers({ competitionCode, ...(season ? { season } : {}), limit: 1 }).catch(() => []),
+        ]);
+
+        const winner = extractWinnerFromStandings(standings as any);
+        const topScorer = extractTopScorerFromScorers(scorers as any);
+
+        for (const league of leagues as any[]) {
+          const rules = league.rules;
+          if (!rules) continue;
+          const wants = !!rules.enableCompetitionWinner || !!rules.enableCompetitionTopScorer;
+          if (!wants) continue;
+          if (league.competitionOutcome?.resolvedAt) continue;
+
+          const outcome = await prisma.competitionOutcome.upsert({
+            where: { leagueId: league.id },
+            create: {
+              leagueId: league.id,
+              provider: "FOOTBALL_DATA",
+              competitionCode,
+              season: season ?? null,
+              winnerTeamExternalId: winner.teamExternalId,
+              winnerTeamName: winner.teamName,
+              topScorerPlayerExternalId: topScorer.playerExternalId,
+              topScorerPlayerName: topScorer.playerName,
+              resolvedAt: new Date(),
+            },
+            update: {
+              provider: "FOOTBALL_DATA",
+              competitionCode,
+              season: season ?? null,
+              winnerTeamExternalId: winner.teamExternalId,
+              winnerTeamName: winner.teamName,
+              topScorerPlayerExternalId: topScorer.playerExternalId,
+              topScorerPlayerName: topScorer.playerName,
+              resolvedAt: new Date(),
+            },
+          });
+
+          // Award points
+          const picks = await prisma.competitionPick.findMany({ where: { leagueId: league.id } });
+          for (const p of picks as any[]) {
+            let pts = 0;
+            if (p.type === "WINNER" && rules.enableCompetitionWinner && winner.teamExternalId && p.teamExternalId === winner.teamExternalId) {
+              pts = rules.pointsCompetitionWinner ?? 15;
+            }
+            if (
+              p.type === "TOP_SCORER" &&
+              rules.enableCompetitionTopScorer &&
+              topScorer.playerExternalId &&
+              p.playerExternalId === topScorer.playerExternalId
+            ) {
+              pts = rules.pointsCompetitionTopScorer ?? 12;
+            }
+            if ((p.pointsAwarded ?? 0) !== pts) {
+              await prisma.competitionPick.update({ where: { id: p.id }, data: { pointsAwarded: pts } });
+            }
+          }
+
+          console.log(`[sync] competition outcome resolved for league ${league.id}: ${outcome.id}`);
+        }
+      }
+    }
+  } catch (e: any) {
+    console.warn("[sync] competition resolution error", e?.message || e);
   }
 
   return { ok: true, message: `Synced ${matches.length} matches from football-data.org (${competitionCode}${season ? `/${season}` : ""})` };

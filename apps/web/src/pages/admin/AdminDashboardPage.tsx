@@ -495,6 +495,40 @@ function RulesTab() {
                   />
                 </div>
 
+                <div className="pt-2" />
+
+                <SwitchRow
+                  label="Pronostico: Vincitore competizione (🏆)"
+                  hint="Permette agli utenti di scegliere la squadra vincitrice della competizione entro la deadline."
+                  checked={!!(rules as any)?.enableCompetitionWinner}
+                  onChange={(v) => setRules({ ...(rules as any), enableCompetitionWinner: v })}
+                />
+                <div className="pl-1">
+                  <Input
+                    label="Punti Vincitore competizione"
+                    type="number"
+                    disabled={!((rules as any)?.enableCompetitionWinner)}
+                    value={String((rules as any)?.pointsCompetitionWinner ?? 15)}
+                    onChange={(e) => setRules({ ...(rules as any), pointsCompetitionWinner: Number(e.target.value) })}
+                  />
+                </div>
+
+                <SwitchRow
+                  label="Pronostico: Capocannoniere competizione (🥅)"
+                  hint="Permette agli utenti di scegliere il capocannoniere finale entro la deadline."
+                  checked={!!(rules as any)?.enableCompetitionTopScorer}
+                  onChange={(v) => setRules({ ...(rules as any), enableCompetitionTopScorer: v })}
+                />
+                <div className="pl-1">
+                  <Input
+                    label="Punti Capocannoniere competizione"
+                    type="number"
+                    disabled={!((rules as any)?.enableCompetitionTopScorer)}
+                    value={String((rules as any)?.pointsCompetitionTopScorer ?? 12)}
+                    onChange={(e) => setRules({ ...(rules as any), pointsCompetitionTopScorer: Number(e.target.value) })}
+                  />
+                </div>
+
               </div>
             </Section>
 
@@ -554,6 +588,10 @@ function RulesTab() {
                       jollyMultiplier: Number(rules.jollyMultiplier ?? 2),
                       enableScorer: !!(rules as any).enableScorer,
                       pointsScorer: Number((rules as any).pointsScorer ?? 3),
+                      enableCompetitionWinner: !!(rules as any).enableCompetitionWinner,
+                      pointsCompetitionWinner: Number((rules as any).pointsCompetitionWinner ?? 15),
+                      enableCompetitionTopScorer: !!(rules as any).enableCompetitionTopScorer,
+                      pointsCompetitionTopScorer: Number((rules as any).pointsCompetitionTopScorer ?? 12),
                       scoringMode: rules.scoringMode,
                       allowOutcomeWithExact: !!rules.allowOutcomeWithExact,
                       allowSumGoalsWithExact: !!rules.allowSumGoalsWithExact,
@@ -803,6 +841,36 @@ function RulesTab() {
                 <div className="mt-1 text-xs text-slate-600">Esempio: primo match 20:45 con 30 min → lock dalle 20:15.</div>
               </Section>
 
+              <Section
+                title="Deadline pronostici competizione"
+                hint="Entro questa data/ora gli utenti possono modificare Vincitore competizione e Capocannoniere. Se vuoto, la deadline è l'inizio del primo match disponibile."
+              >
+                <Input
+                  label="Deadline (data e ora)"
+                  type="datetime-local"
+                  value={(() => {
+                    const iso = settings?.competitionPredictionsDeadline;
+                    if (!iso) return "";
+                    try {
+                      return new Date(iso).toISOString().slice(0, 16);
+                    } catch {
+                      return "";
+                    }
+                  })()}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (!v) return setSettings({ ...settings, competitionPredictionsDeadline: null });
+                    try {
+                      const d = new Date(v);
+                      setSettings({ ...settings, competitionPredictionsDeadline: d.toISOString() });
+                    } catch {
+                      setSettings({ ...settings, competitionPredictionsDeadline: null });
+                    }
+                  }}
+                />
+                <div className="mt-1 text-xs text-slate-600">Suggerimento: imposta la deadline prima della prima giornata.</div>
+              </Section>
+
               <Section title="Lock forzato" hint="Blocca subito i pronostici indipendentemente dal calendario. Usa questa opzione solo in emergenza.">
                 <SwitchRow
                   label="Attiva lock forzato"
@@ -825,6 +893,7 @@ function RulesTab() {
                         tieBreak1: settings.tieBreak1,
                         tieBreak2: settings.tieBreak2,
                         tieBreak3: settings.tieBreak3,
+                        competitionPredictionsDeadline: settings.competitionPredictionsDeadline ?? null,
                       });
                       await load();
                       setOk("Impostazioni salvate.");
@@ -873,6 +942,7 @@ function RulesTab() {
                           tieBreak1: settings.tieBreak1,
                           tieBreak2: settings.tieBreak2,
                           tieBreak3: settings.tieBreak3,
+                          competitionPredictionsDeadline: settings.competitionPredictionsDeadline ?? null,
                         });
                         await load();
                         setOk("Lock forzato rimosso.");
@@ -920,6 +990,7 @@ function RulesTab() {
                       tieBreak1: settings.tieBreak1,
                       tieBreak2: settings.tieBreak2,
                       tieBreak3: settings.tieBreak3,
+                      competitionPredictionsDeadline: settings.competitionPredictionsDeadline ?? null,
                     });
                     setOk("Criteri classifica salvati.");
                   } catch (e: any) {

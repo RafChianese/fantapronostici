@@ -48,6 +48,11 @@ enum RankingCriterion {
   SUM_GOALS
 }
 
+enum CompetitionPickType {
+  WINNER
+  TOP_SCORER
+}
+
 model User {
   id           String       @id @default(cuid())
   email        String       @unique
@@ -65,6 +70,9 @@ model User {
 
   // Optional scorer picks ("marcatore" feature)
   scorerPicks  ScorerPick[]
+
+  // Competition predictions (winner / top scorer)
+  competitionPicks CompetitionPick[]
 
   // Awards (best matchday score)
   matchdayAwards MatchdayAward[]
@@ -111,6 +119,10 @@ model League {
 
   // Optional scorer picks ("marcatore" feature)
   scorerPicks     ScorerPick[]
+
+  // Competition predictions (winner / top scorer)
+  competitionPicks CompetitionPick[]
+  competitionOutcome CompetitionOutcome?
 
   // Partita Jolly per matchday
   matchdayJollies MatchdayJolly[]
@@ -294,6 +306,12 @@ model Rule {
   enableScorer          Boolean   @default(false)
   pointsScorer          Int       @default(3)
 
+  // Pronostici competizione
+  enableCompetitionWinner    Boolean @default(false)
+  pointsCompetitionWinner    Int     @default(15)
+  enableCompetitionTopScorer Boolean @default(false)
+  pointsCompetitionTopScorer Int     @default(12)
+
   // Optional league monetization (all optional, non-destructive)
   // entryFeeCents: participation fee in cents (e.g., 1000 = 10.00€)
   entryFeeCents          Int?
@@ -336,6 +354,49 @@ model MatchdayAward {
   @@index([userId])
 }
 
+model CompetitionPick {
+  id        String             @id @default(cuid())
+  userId    String
+  leagueId  String
+  type      CompetitionPickType
+
+  // Winner pick
+  teamExternalId Int?
+  teamName       String?
+
+  // Top scorer pick
+  playerExternalId Int?
+  playerName       String?
+
+  pointsAwarded Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, leagueId, type])
+  @@index([leagueId])
+  @@index([userId])
+}
+
+model CompetitionOutcome {
+  id        String   @id @default(cuid())
+  leagueId  String   @unique
+  provider  String   @default("FOOTBALL_DATA")
+  competitionCode String?
+  season    Int?
+
+  winnerTeamExternalId Int?
+  winnerTeamName       String?
+  topScorerPlayerExternalId Int?
+  topScorerPlayerName       String?
+  resolvedAt DateTime?
+  updatedAt  DateTime @updatedAt
+
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+}
+
 model Setting {
   id            String   @id @default(cuid())
   leagueId      String   @unique
@@ -346,6 +407,9 @@ model Setting {
   tieBreak1     RankingCriterion @default(EXACT)
   tieBreak2     RankingCriterion @default(OUTCOME)
   tieBreak3     RankingCriterion @default(SUM_GOALS)
+
+  // Deadline per pronostici competizione (winner / top scorer)
+  competitionPredictionsDeadline DateTime?
   updatedAt     DateTime @updatedAt
 
   league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)

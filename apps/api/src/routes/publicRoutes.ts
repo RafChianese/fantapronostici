@@ -86,6 +86,10 @@ publicRouter.get("/lock", async (req, res) => {
       jollyMultiplier: rules?.jollyMultiplier ?? 2,
       scorer: !!(rules as any)?.enableScorer,
       scorerPoints: (rules as any)?.pointsScorer ?? 3,
+      competitionWinner: !!(rules as any)?.enableCompetitionWinner,
+      competitionWinnerPoints: (rules as any)?.pointsCompetitionWinner ?? 15,
+      competitionTopScorer: !!(rules as any)?.enableCompetitionTopScorer,
+      competitionTopScorerPoints: (rules as any)?.pointsCompetitionTopScorer ?? 12,
     },
   });
 });
@@ -181,17 +185,32 @@ publicRouter.get("/leaderboard", async (req, res) => {
 
   const agg = new Map<
     string,
-    { totalPoints: number; exactHits: number; outcomeHits: number; sumGoalsHits: number; underOverHits: number }
+    { totalPoints: number; competitionPoints: number; exactHits: number; outcomeHits: number; sumGoalsHits: number; underOverHits: number }
   >();
 
   for (const p of preds) {
-    const a = agg.get(p.userId) || { totalPoints: 0, exactHits: 0, outcomeHits: 0, sumGoalsHits: 0, underOverHits: 0 };
+    const a = agg.get(p.userId) || { totalPoints: 0, competitionPoints: 0, exactHits: 0, outcomeHits: 0, sumGoalsHits: 0, underOverHits: 0 };
     a.totalPoints += p.totalPoints ?? 0;
     if ((p.pointsExact ?? 0) > 0) a.exactHits += 1;
     if ((p.pointsOutcome ?? 0) > 0) a.outcomeHits += 1;
     if ((p.pointsSumGoals ?? 0) > 0) a.sumGoalsHits += 1;
     if (rules.enableUnderOver25 && (p.pointsUnderOver ?? 0) > 0) a.underOverHits += 1;
     agg.set(p.userId, a);
+  }
+
+  // Competition predictions (winner/top scorer) add extra points.
+  const comp = await prisma.competitionPick.groupBy({
+    by: ["userId"],
+    where: { leagueId: league.id },
+    _sum: { pointsAwarded: true },
+  });
+  for (const row of comp as any[]) {
+    const uid = String(row.userId);
+    const pts = Number(row._sum?.pointsAwarded ?? 0);
+    const a = agg.get(uid) || { totalPoints: 0, competitionPoints: 0, exactHits: 0, outcomeHits: 0, sumGoalsHits: 0, underOverHits: 0 };
+    a.competitionPoints = pts;
+    a.totalPoints += pts;
+    agg.set(uid, a);
   }
 
   const awardCounts = rules.enableMatchdayAwards
@@ -212,6 +231,7 @@ publicRouter.get("/leaderboard", async (req, res) => {
     userId: m.user.id,
     displayName: m.user.displayName,
     totalPoints: agg.get(m.user.id)?.totalPoints ?? 0,
+    competitionPoints: agg.get(m.user.id)?.competitionPoints ?? 0,
     exactHits: agg.get(m.user.id)?.exactHits ?? 0,
     outcomeHits: agg.get(m.user.id)?.outcomeHits ?? 0,
     sumGoalsHits: agg.get(m.user.id)?.sumGoalsHits ?? 0,

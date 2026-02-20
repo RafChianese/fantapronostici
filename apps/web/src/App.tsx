@@ -15,6 +15,7 @@ import AccountPage from "./pages/AccountPage";
 import OnboardingPage from "./pages/OnboardingPage";
 import DashboardPage from "./pages/DashboardPage";
 import PredictionsPage from "./pages/PredictionsPage";
+import CompetitionPredictionsPage from "./pages/CompetitionPredictionsPage";
 import LeagueStatsPage from "./pages/LeagueStatsPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import UserSummaryPage from "./pages/UserSummaryPage";
@@ -133,6 +134,15 @@ export default function App() {
             element={
               <RequireLeague>
                 <PredictionsPage />
+              </RequireLeague>
+            }
+          />
+
+          <Route
+            path="/competition"
+            element={
+              <RequireLeague>
+                <CompetitionPredictionsPage />
               </RequireLeague>
             }
           />

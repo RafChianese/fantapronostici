@@ -28,6 +28,10 @@ export type LeagueRules = {
   jollyMultiplier?: number;
   enableScorer?: boolean;
   pointsScorer?: number;
+  enableCompetitionWinner?: boolean;
+  pointsCompetitionWinner?: number;
+  enableCompetitionTopScorer?: boolean;
+  pointsCompetitionTopScorer?: number;
   scoringMode: ScoringMode;
   allowOutcomeWithExact: boolean;
   allowSumGoalsWithExact: boolean;
@@ -50,12 +54,36 @@ export type MatchDetailResponse = {
   reason?: string;
 };
 
+export type CompetitionPredictionsResponse = {
+  enabled: { winner: boolean; topScorer: boolean };
+  points: { winner: number; topScorer: number };
+  deadline: string | null;
+  canEdit: boolean;
+  picks: {
+    winner: { teamExternalId: number | null; teamName: string | null; pointsAwarded: number } | null;
+    topScorer: { playerExternalId: number | null; playerName: string | null; pointsAwarded: number } | null;
+  };
+  options: {
+    teams: Array<{ id: number; name: string; crest?: string | null }>;
+    scorers: Array<{ id: number; name: string; teamName?: string | null; goals?: number }>;
+  };
+};
+
+export type SaveCompetitionPredictionsBody = {
+  winnerTeamId: number | null;
+  winnerTeamName?: string | null;
+  topScorerPlayerId: number | null;
+  topScorerPlayerName?: string | null;
+};
+
 export type LeagueSettings = {
   lockUntil: string; // ISO date string
   isForceLocked: boolean;
   tieBreak1: RankingCriterion;
   tieBreak2: RankingCriterion;
   tieBreak3: RankingCriterion;
+
+  competitionPredictionsDeadline?: string | null;
 };
 
 export type RegolamentoConfigResponse = {
@@ -161,6 +189,9 @@ export const api = {
   matchDetail: (matchId: string) => request(`/api/me/matches/${encodeURIComponent(matchId)}/detail`) as Promise<MatchDetailResponse>,
   setScorer: (matchId: string, payload: { playerId: number | null; playerName?: string | null }) =>
     request(`/api/me/matches/${encodeURIComponent(matchId)}/scorer`, { method: "PUT", body: JSON.stringify(payload) }),
+  competitionPredictions: () => request(`/api/me/competition-predictions`) as Promise<CompetitionPredictionsResponse>,
+  saveCompetitionPredictions: (body: SaveCompetitionPredictionsBody) =>
+    request(`/api/me/competition-predictions`, { method: "PUT", body: JSON.stringify(body) }) as Promise<CompetitionPredictionsResponse>,
   savePredictions: (predictions: { matchId: string; homeGoals: number; awayGoals: number }[]) =>
     request(`/api/me/predictions`, { method: "PUT", body: JSON.stringify({ predictions }) }),
   lock: (leagueId?: string, leagueCode?: string) => {

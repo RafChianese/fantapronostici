@@ -6,7 +6,13 @@ import { requireAuth, requireLeagueMember, resolveLeagueId, AuthedRequest } from
 import { assertPredictionsEditableForMatches, getLockInfo } from "../lib/lock.js";
 import { recalcAllScoresForLeague } from "../lib/scoring.js";
 import { getMonetizationConfig } from "../lib/monetization.js";
-import { fetchCompetitionTeams, fetchMatchDetail, extractEventsFromMatchDetail, extractScorersFromMatchDetail } from "../services/footballDataService.js";
+import {
+  extractEventsFromMatchDetail,
+  extractScorersFromMatchDetail,
+  fetchCompetitionScorers,
+  fetchCompetitionTeams,
+  fetchMatchDetail,
+} from "../services/footballDataService.js";
 
 export const meRouter = Router();
 

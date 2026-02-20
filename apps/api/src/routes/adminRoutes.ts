@@ -184,6 +184,12 @@ const RulesSchema = z.object({
   // Marcatore
   enableScorer: z.boolean().optional().default(false),
   pointsScorer: z.number().int().min(0).max(50).optional().default(3),
+
+  // Pronostici competizione
+  enableCompetitionWinner: z.boolean().optional().default(false),
+  pointsCompetitionWinner: z.number().int().min(0).max(200).optional().default(15),
+  enableCompetitionTopScorer: z.boolean().optional().default(false),
+  pointsCompetitionTopScorer: z.number().int().min(0).max(200).optional().default(12),
   scoringMode: z.enum(["CUMULATIVE", "BEST_ONLY", "MIXED"]),
   allowOutcomeWithExact: z.boolean(),
   allowSumGoalsWithExact: z.boolean(),
@@ -362,6 +368,8 @@ const SettingsSchema = z.object({
   tieBreak1: z.enum(["EXACT", "OUTCOME", "SUM_GOALS"]).optional(),
   tieBreak2: z.enum(["EXACT", "OUTCOME", "SUM_GOALS"]).optional(),
   tieBreak3: z.enum(["EXACT", "OUTCOME", "SUM_GOALS"]).optional(),
+
+  competitionPredictionsDeadline: z.string().datetime().nullable().optional(),
 });
 
 adminRouter.put("/settings", async (req, res) => {
@@ -391,6 +399,11 @@ adminRouter.put("/settings", async (req, res) => {
       ...(body.tieBreak1 ? { tieBreak1: body.tieBreak1 } : {}),
       ...(body.tieBreak2 ? { tieBreak2: body.tieBreak2 } : {}),
       ...(body.tieBreak3 ? { tieBreak3: body.tieBreak3 } : {}),
+      ...(typeof body.competitionPredictionsDeadline === "string"
+        ? { competitionPredictionsDeadline: new Date(body.competitionPredictionsDeadline) }
+        : body.competitionPredictionsDeadline === null
+        ? { competitionPredictionsDeadline: null }
+        : {}),
     },
     update: {
       lockUntil: lockUntilToStore,
@@ -398,6 +411,11 @@ adminRouter.put("/settings", async (req, res) => {
       ...(body.tieBreak1 ? { tieBreak1: body.tieBreak1 } : {}),
       ...(body.tieBreak2 ? { tieBreak2: body.tieBreak2 } : {}),
       ...(body.tieBreak3 ? { tieBreak3: body.tieBreak3 } : {}),
+      ...(typeof body.competitionPredictionsDeadline === "string"
+        ? { competitionPredictionsDeadline: new Date(body.competitionPredictionsDeadline) }
+        : body.competitionPredictionsDeadline === null
+        ? { competitionPredictionsDeadline: null }
+        : {}),
     },
   });
 
