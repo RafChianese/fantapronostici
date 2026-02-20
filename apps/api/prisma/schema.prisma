@@ -63,6 +63,9 @@ model User {
   memberships  LeagueMember[]
   predictions  Prediction[]
 
+  // Optional scorer picks ("marcatore" feature)
+  scorerPicks  ScorerPick[]
+
   // Awards (best matchday score)
   matchdayAwards MatchdayAward[]
 
@@ -105,6 +108,12 @@ model League {
   rules       Rule?
   settings    Setting?
   predictions Prediction[]
+
+  // Optional scorer picks ("marcatore" feature)
+  scorerPicks     ScorerPick[]
+
+  // Partita Jolly per matchday
+  matchdayJollies MatchdayJolly[]
 
   // Awards (best matchday score)
   matchdayAwards MatchdayAward[]
@@ -209,6 +218,12 @@ model Match {
   updatedAt   DateTime      @updatedAt
 
   predictions Prediction[]
+
+  // Optional scorer picks for this match
+  scorerPicks ScorerPick[]
+
+  // Jolly selections that reference this match
+  matchdayJollies MatchdayJolly[]
 }
 
 model Prediction {

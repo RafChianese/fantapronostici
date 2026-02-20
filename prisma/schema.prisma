@@ -63,6 +63,9 @@ model User {
   memberships  LeagueMember[]
   predictions  Prediction[]
 
+  // Optional scorer picks ("marcatore" feature)
+  scorerPicks  ScorerPick[]
+
   // Awards (best matchday score)
   matchdayAwards MatchdayAward[]
 
@@ -105,6 +108,12 @@ model League {
   rules       Rule?
   settings    Setting?
   predictions Prediction[]
+
+  // Optional scorer picks ("marcatore" feature)
+  scorerPicks     ScorerPick[]
+
+  // Partita Jolly per matchday
+  matchdayJollies MatchdayJolly[]
 
   // Awards (best matchday score)
   matchdayAwards MatchdayAward[]
@@ -189,6 +198,9 @@ model Match {
   status      MatchStatus   @default(NOT_STARTED)
   homeScore   Int?
   awayScore   Int?
+
+  // Optional: cached goal scorers from external provider (used for "marcatore" feature)
+  goalScorersJson Json?
   // API-Football v3
   apiFootballFixtureId Int?    @unique
   apiLeagueId          Int?
@@ -206,6 +218,12 @@ model Match {
   updatedAt   DateTime      @updatedAt
 
   predictions Prediction[]
+
+  // Optional scorer picks for this match
+  scorerPicks ScorerPick[]
+
+  // Jolly selections that reference this match
+  matchdayJollies MatchdayJolly[]
 }
 
 model Prediction {
@@ -219,6 +237,7 @@ model Prediction {
   pointsOutcome  Int      @default(0)
   pointsSumGoals Int      @default(0)
   pointsUnderOver Int     @default(0)
+  pointsScorer    Int     @default(0)
   totalPoints    Int      @default(0)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -231,6 +250,26 @@ model Prediction {
   @@index([matchId])
   @@index([userId])
   @@index([leagueId])
+}
+
+// Optional scorer pick, independent from score prediction
+model ScorerPick {
+  id        String   @id @default(cuid())
+  userId    String
+  leagueId  String
+  matchId   String
+  playerExternalId String
+  playerName       String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  match  Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, leagueId, matchId])
+  @@index([leagueId])
+  @@index([matchId])
 }
 
 model Rule {
@@ -247,6 +286,14 @@ model Rule {
   allowSumGoalsWithExact Boolean    @default(true)
   allowSumGoalsWithOutcome Boolean  @default(true)
 
+  // Partita Jolly (moltiplicatore punti su una partita per matchday)
+  enableJolly           Boolean   @default(false)
+  jollyMultiplier       Int       @default(2)
+
+  // Marcatore (se lineup disponibile)
+  enableScorer          Boolean   @default(false)
+  pointsScorer          Int       @default(3)
+
   // Optional league monetization (all optional, non-destructive)
   // entryFeeCents: participation fee in cents (e.g., 1000 = 10.00€)
   entryFeeCents          Int?
@@ -255,6 +302,23 @@ model Rule {
   updatedAt              DateTime   @updatedAt
 
   league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+}
+
+
+model MatchdayJolly {
+  id        String   @id @default(cuid())
+  leagueId  String
+  matchday  Int
+  matchId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  match  Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@unique([leagueId, matchday])
+  @@index([leagueId])
+  @@index([matchId])
 }
 
 model MatchdayAward {
