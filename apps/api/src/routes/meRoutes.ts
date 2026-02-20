@@ -325,6 +325,155 @@ meRouter.post("/ad-unlock", async (req: AuthedRequest, res) => {
   res.json({ unlocked: true, expiresAt: row.expiresAt });
 });
 
+
+
+// --- Competition predictions (winner + top scorer) ---
+const PutCompetitionPredictionsSchema = z.object({
+  winnerTeamId: z.number().int().positive().nullable().optional(),
+  winnerTeamName: z.string().trim().min(1).max(200).nullable().optional(),
+  topScorerPlayerId: z.number().int().positive().nullable().optional(),
+  topScorerPlayerName: z.string().trim().min(1).max(200).nullable().optional(),
+});
+
+meRouter.get("/competition-predictions", requireLeagueMember, async (req: AuthedRequest, res) => {
+  const leagueId = resolveLeagueId(req)!;
+  await ensureLeagueConfig(leagueId);
+
+  const [rules, settings, picks, superSetting] = await Promise.all([
+    prisma.rule.findUnique({ where: { leagueId } }),
+    prisma.setting.findUnique({ where: { leagueId } }),
+    prisma.competitionPick.findMany({ where: { leagueId, userId: req.user!.id } }),
+    prisma.superSetting.findFirst({ orderBy: { createdAt: "asc" } }).catch(() => null as any),
+  ]);
+
+  const deadline = settings?.competitionPredictionsDeadline
+    ? new Date(settings.competitionPredictionsDeadline)
+    : (await prisma.match.findFirst({ orderBy: { kickoffAt: "asc" }, select: { kickoffAt: true } }))?.kickoffAt ?? null;
+  const deadlineMs = deadline ? new Date(deadline).getTime() : NaN;
+  const canEdit = !deadline || !Number.isFinite(deadlineMs) ? true : Date.now() < deadlineMs;
+
+  const enableWinner = !!(rules as any)?.enableCompetitionWinner;
+  const enableTop = !!(rules as any)?.enableCompetitionTopScorer;
+
+  const provider = String(superSetting?.provider || "FOOTBALL_DATA").toUpperCase();
+  const competitionCode = String(superSetting?.footballDataCompetitionCode || "").trim();
+  const season = superSetting?.footballDataSeason ?? null;
+
+  let teams: any[] = [];
+  let scorers: any[] = [];
+  if (provider === "FOOTBALL_DATA" && competitionCode) {
+    try {
+      teams = await fetchCompetitionTeams({ competitionCode });
+    } catch {
+      teams = [];
+    }
+    try {
+      const resp = await fetchCompetitionScorers({ competitionCode, ...(season ? { season } : {}), limit: 50 });
+      scorers = Array.isArray((resp as any)?.scorers) ? (resp as any).scorers : [];
+    } catch {
+      scorers = [];
+    }
+  }
+
+  const pickWinner = picks.find((p) => p.type === "WINNER") || null;
+  const pickTop = picks.find((p) => p.type === "TOP_SCORER") || null;
+
+  res.json({
+    enabled: { winner: enableWinner, topScorer: enableTop },
+    points: {
+      winner: (rules as any)?.pointsCompetitionWinner ?? 15,
+      topScorer: (rules as any)?.pointsCompetitionTopScorer ?? 12,
+    },
+    deadline: deadline ? new Date(deadline).toISOString() : null,
+    canEdit,
+    picks: {
+      winner: pickWinner
+        ? { teamExternalId: pickWinner.teamExternalId, teamName: pickWinner.teamName, pointsAwarded: pickWinner.pointsAwarded }
+        : null,
+      topScorer: pickTop
+        ? { playerExternalId: pickTop.playerExternalId, playerName: pickTop.playerName, pointsAwarded: pickTop.pointsAwarded }
+        : null,
+    },
+    options: {
+      teams: teams
+        .map((t: any) => ({ id: Number(t.id), name: String(t.shortName || t.name || "").trim(), crest: (t as any).crest ?? null }))
+        .filter((t: any) => Number.isFinite(t.id) && t.name),
+      scorers: scorers
+        .map((s: any) => ({
+          id: Number(s?.player?.id ?? s?.id),
+          name: String(s?.player?.name ?? s?.name ?? "").trim(),
+          teamName: String(s?.team?.name ?? "").trim() || null,
+          goals: Number(s?.goals ?? s?.numberOfGoals ?? 0) || 0,
+        }))
+        .filter((p: any) => Number.isFinite(p.id) && p.name),
+    },
+  });
+});
+
+meRouter.put("/competition-predictions", requireLeagueMember, async (req: AuthedRequest, res) => {
+  const leagueId = resolveLeagueId(req)!;
+  const body = PutCompetitionPredictionsSchema.parse(req.body);
+
+  await ensureLeagueConfig(leagueId);
+  const [rules, settings] = await Promise.all([
+    prisma.rule.findUnique({ where: { leagueId } }),
+    prisma.setting.findUnique({ where: { leagueId } }),
+  ]);
+
+  const deadline = settings?.competitionPredictionsDeadline
+    ? new Date(settings.competitionPredictionsDeadline)
+    : (await prisma.match.findFirst({ orderBy: { kickoffAt: "asc" }, select: { kickoffAt: true } }))?.kickoffAt ?? null;
+
+  if (deadline) {
+    const ms = new Date(deadline).getTime();
+    if (Number.isFinite(ms) && Date.now() >= ms) {
+      return res.status(400).json({ message: "Deadline scaduta: pronostici competizione bloccati", reason: "DEADLINE" });
+    }
+  }
+
+  const enableWinner = !!(rules as any)?.enableCompetitionWinner;
+  const enableTop = !!(rules as any)?.enableCompetitionTopScorer;
+
+  if (enableWinner) {
+    if (body.winnerTeamId === null) {
+      await prisma.competitionPick.deleteMany({ where: { leagueId, userId: req.user!.id, type: "WINNER" } });
+    } else if (typeof body.winnerTeamId === "number") {
+      await prisma.competitionPick.upsert({
+        where: { userId_leagueId_type: { userId: req.user!.id, leagueId, type: "WINNER" } },
+        create: {
+          userId: req.user!.id,
+          leagueId,
+          type: "WINNER",
+          teamExternalId: body.winnerTeamId,
+          teamName: body.winnerTeamName ?? null,
+        },
+        update: { teamExternalId: body.winnerTeamId, teamName: body.winnerTeamName ?? null },
+      });
+    }
+  }
+
+  if (enableTop) {
+    if (body.topScorerPlayerId === null) {
+      await prisma.competitionPick.deleteMany({ where: { leagueId, userId: req.user!.id, type: "TOP_SCORER" } });
+    } else if (typeof body.topScorerPlayerId === "number") {
+      await prisma.competitionPick.upsert({
+        where: { userId_leagueId_type: { userId: req.user!.id, leagueId, type: "TOP_SCORER" } },
+        create: {
+          userId: req.user!.id,
+          leagueId,
+          type: "TOP_SCORER",
+          playerExternalId: body.topScorerPlayerId,
+          playerName: body.topScorerPlayerName ?? null,
+        },
+        update: { playerExternalId: body.topScorerPlayerId, playerName: body.topScorerPlayerName ?? null },
+      });
+    }
+  }
+
+  const picks = await prisma.competitionPick.findMany({ where: { leagueId, userId: req.user!.id } });
+  res.json({ picks });
+});
+
 // Change password (logged-in)
 const ChangePasswordSchema = z.object({
   currentPassword: z.string().min(6),
