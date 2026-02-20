@@ -335,6 +335,29 @@ export function Layout({ children }: { children: React.ReactNode }) {
             Home
           </NavLink>
 
+          {(isLeagueAdmin || isSuperAdmin) ? (
+            <NavLink
+              to="/admin"
+              data-tour="admin-dashboard-link"
+              className={({ isActive }) =>
+                `rounded-2xl px-3 py-2 text-sm font-semibold ${isActive ? "bg-[#E9FBF9] text-[#0F766E]" : "text-slate-700 hover:bg-slate-50"}`
+              }
+            >
+              Area admin
+            </NavLink>
+          ) : null}
+
+          {isSuperAdmin ? (
+            <NavLink
+              to="/super"
+              className={({ isActive }) =>
+                `rounded-2xl px-3 py-2 text-sm font-semibold ${isActive ? "bg-[#FFF7ED] text-[#9A3412]" : "text-slate-700 hover:bg-slate-50"}`
+              }
+            >
+              Area superAdmin
+            </NavLink>
+          ) : null}
+
           <div className="relative">
             <button
               type="button"
@@ -376,11 +399,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   <NavItem to="/account" onClick={() => setDesktopMenuOpen(false)}>
                     Account
                   </NavItem>
-                  {user && activeMembership?.role === "ADMIN" ? (
-                    <NavItem to="/admin" onClick={() => setDesktopMenuOpen(false)}>
-                      Admin
-                    </NavItem>
-                  ) : null}
                 </div>
               </div>
             ) : null}
@@ -473,7 +491,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 ) : null}
                 {isSuperAdmin ? (
                   <NavItem to="/super" onClick={() => setDrawerOpen(false)}>
-                    Area Admin
+                    Area superAdmin
                   </NavItem>
                 ) : null}
 

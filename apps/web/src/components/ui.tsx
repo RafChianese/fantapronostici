@@ -7,15 +7,15 @@ export function Button(
 ) {
   const { className = "", variant = "primary", ...rest } = props;
   const base =
-    "inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed";
+    "inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:translate-y-[1px]";
   const v =
     variant === "primary"
-      ? "bg-[#2EC4B6] text-white hover:bg-[#28b3a6]"
+      ? "bg-gradient-to-b from-[#2EC4B6] to-[#1FA99C] text-white shadow-sm hover:shadow-md hover:brightness-[1.02]"
       : variant === "danger"
       ? "bg-rose-600 text-white hover:bg-rose-500"
       : variant === "ghost"
       ? "bg-transparent text-slate-700 hover:bg-slate-100"
-      : "bg-white text-slate-900 border border-slate-200 hover:bg-slate-50";
+      : "bg-white text-slate-900 border border-slate-200 shadow-sm hover:shadow-md hover:bg-slate-50";
   return <button className={`${base} ${v} ${className}`} {...rest} />;
 }
 
@@ -42,12 +42,12 @@ export function Input(
 }
 
 export function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <div className={`rounded-2xl bg-white shadow-sm border border-slate-100 transition-shadow duration-200 hover:shadow-md ${className}`}>{children}</div>;
+  return <div className={`rounded-2xl border border-slate-200/70 bg-gradient-to-b from-white to-slate-50/60 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg ${className}`}>{children}</div>;
 }
 
 export function CardHeader({ title, subtitle, right }: { title: string; subtitle?: string; right?: React.ReactNode }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-5">
+    <div className="flex items-start justify-between gap-4 border-b border-slate-200/60 p-5 bg-gradient-to-r from-white to-slate-50">
       <div>
         <div className="text-lg font-semibold">{title}</div>
         {subtitle ? <div className="mt-1 text-sm text-slate-600">{subtitle}</div> : null}

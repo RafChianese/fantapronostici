@@ -822,9 +822,7 @@ export default function PredictionsPage() {
                               <div className="min-w-0 truncate text-sm font-semibold text-slate-900">{m.awayTeam}</div>
                             </div>
                           </div>
-                          <div className="mt-1 hidden text-xs text-slate-500 sm:block">
-                            {d.toLocaleString()} · Reale: <span className="font-medium text-slate-700">{real}</span>
-                          </div>
+                          <div className="mt-1 hidden text-xs text-slate-500 sm:block">{d.toLocaleString()}</div>
                         </div>
 
                         <div className="flex items-center gap-1">
@@ -1065,46 +1063,6 @@ export default function PredictionsPage() {
                         Selezionato: <span className="font-semibold text-slate-800">{detailData.scorer.playerName}</span>
                       </div>
                     ) : null}
-                  </div>
-
-                  {/* Lineups */}
-                  <div>
-                    <div className="text-sm font-semibold text-slate-900">Giocatori</div>
-                    {!detailData.lineupAvailable ? (
-                      <div className="mt-2 text-sm text-slate-600">Lista giocatori non disponibile.</div>
-                    ) : (
-                      <div className="mt-2 grid gap-3 sm:grid-cols-2">
-                        {(detailData.lineups || []).map((t: any) => (
-                          <div key={String(t?.team?.id || Math.random())} className="rounded-2xl border border-slate-100 bg-white p-4">
-                            <div className="flex items-center gap-2">
-                              {t?.team?.logo ? <img src={t.team.logo} className="h-5 w-5 rounded" alt={t.team.name} /> : null}
-                              <div className="text-sm font-semibold text-slate-900">{t?.team?.name}</div>
-                            </div>
-                            <div className="mt-2">
-                              <div className="text-xs font-semibold text-slate-700">Titolari</div>
-                              <ul className="mt-1 space-y-1 text-sm text-slate-700">
-                                {(t.startXI || []).slice(0, 11).map((p: any) => (
-                                  <li key={String(p.id)} className="flex items-center justify-between">
-                                    <span className="truncate">{p.number ? <span className="text-slate-400">#{p.number}</span> : null} {p.name}</span>
-                                    {p.pos ? <span className="text-xs text-slate-400">{p.pos}</span> : null}
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                            {(t.substitutes || []).length ? (
-                              <div className="mt-3">
-                                <div className="text-xs font-semibold text-slate-700">Panchina</div>
-                                <ul className="mt-1 space-y-1 text-sm text-slate-700">
-                                  {(t.substitutes || []).slice(0, 12).map((p: any) => (
-                                    <li key={String(p.id)} className="truncate">{p.number ? <span className="text-slate-400">#{p.number}</span> : null} {p.name}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                            ) : null}
-                          </div>
-                        ))}
-                      </div>
-                    )}
                   </div>
 
                   {/* Events */}
