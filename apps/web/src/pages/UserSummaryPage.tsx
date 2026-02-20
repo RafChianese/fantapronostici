@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { api } from "../lib/api";
 import { useLoading } from "../lib/loading";
 import { Badge, Button, Card, CardContent, CardHeader, Skeleton } from "../components/ui";
+import { UserAvatar } from "../components/Avatar";
 import { useAuth } from "../lib/auth";
 import { showNativeRewardedAd } from "../lib/nativeAds";
 
@@ -570,6 +571,13 @@ export default function UserSummaryPage() {
           right={<Link className="text-sm text-slate-600 hover:underline" to="/leaderboard">← Torna alla classifica</Link>}
         />
         <CardContent className="space-y-4">
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+            <UserAvatar userId={safeUser.id || ""} avatar={(safeUser as any).avatarJson || null} size={44} className="shadow-sm" />
+            <div className="min-w-0">
+              <div className="truncate text-sm font-semibold text-slate-900">{safeUser.displayName}</div>
+              <div className="mt-0.5 text-xs text-slate-600">{safeLeague.name}</div>
+            </div>
+          </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
               <div className="text-[11px] font-medium text-slate-600">% Esatti</div>

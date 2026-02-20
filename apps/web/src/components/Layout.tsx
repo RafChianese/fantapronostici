@@ -6,6 +6,7 @@ import { FullScreenLoaderOverlay } from "./FullScreenLoaderOverlay";
 import { GuidedTour, TourStep } from "./GuidedTour";
 import { Button, Spinner } from "./ui";
 import { LockBanner } from "./LockBanner";
+import { UserAvatar } from "./Avatar";
 
 function Icon({
   name,
@@ -423,7 +424,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     </select>
                   </div>
                 ) : null}
-                <div className="hidden text-sm text-slate-700 md:block">Ciao, {user.displayName}</div>
+                <div className="hidden items-center gap-2 text-sm text-slate-700 md:flex">
+                  <UserAvatar userId={user.id} avatar={(user as any).avatarJson || null} size={26} className="shadow-sm" />
+                  <span>Ciao, {user.displayName}</span>
+                </div>
                 <Button
                   onClick={() => {
                     logout();

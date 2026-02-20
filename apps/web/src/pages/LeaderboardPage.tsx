@@ -4,10 +4,12 @@ import { api } from "../lib/api";
 import { useLoading } from "../lib/loading";
 import { Badge, Button, Card, CardContent, CardHeader, Skeleton } from "../components/ui";
 import { useAuth } from "../lib/auth";
+import { UserAvatar } from "../components/Avatar";
 
 type Row = {
   userId: string;
   displayName: string;
+  avatarJson?: any;
   totalPoints: number;
   exactHits: number;
   outcomeHits: number;
@@ -193,7 +195,10 @@ export default function LeaderboardPage() {
                           </span>
                         ) : null}
                       </div>
-                      <Link className="font-medium hover:underline" to={`/users/${r.userId}`}>{r.displayName}</Link>
+                      <div className="flex items-center gap-2">
+                        <UserAvatar userId={r.userId} avatar={r.avatarJson || null} size={26} className="shadow-sm" />
+                        <Link className="font-medium hover:underline" to={`/users/${r.userId}`}>{r.displayName}</Link>
+                      </div>
                     </div>
                     <div className="text-right text-sm font-semibold sm:hidden">{r.totalPoints} pt</div>
                   </div>

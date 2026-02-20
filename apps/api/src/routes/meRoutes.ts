@@ -23,7 +23,7 @@ meRouter.use(requireAuth);
 meRouter.get("/", async (req: AuthedRequest, res) => {
   const user = await prisma.user.findUnique({
     where: { id: req.user!.id },
-    select: { id: true, email: true, displayName: true, globalRole: true, isActive: true, createdAt: true },
+    select: { id: true, email: true, displayName: true, avatarJson: true, globalRole: true, isActive: true, createdAt: true },
   });
 
   const memberships = await prisma.leagueMember.findMany({
@@ -39,17 +39,32 @@ meRouter.get("/", async (req: AuthedRequest, res) => {
 // Update profile (display name)
 const UpdateProfileSchema = z.object({
   displayName: z.string().trim().min(2).max(60),
+  avatar: z
+    .object({
+      sex: z.enum(["male", "female"]),
+      skin: z.enum(["light", "tan", "brown", "dark"]),
+      eyes: z.enum(["brown", "blue", "green", "gray"]),
+      hairType: z.enum(["short", "medium", "long", "curly", "bald"]),
+      hairColor: z.enum(["black", "brown", "blonde", "red", "gray"]),
+      outfitType: z.enum(["tshirt", "hoodie", "jersey", "suit"]),
+      outfitColor: z.enum(["black", "blue", "red", "green", "purple", "orange", "gray"]),
+    })
+    .partial()
+    .optional(),
 });
 
 meRouter.put("/profile", async (req: AuthedRequest, res) => {
-  const { displayName } = UpdateProfileSchema.parse(req.body);
+  const { displayName, avatar } = UpdateProfileSchema.parse(req.body);
 
   let user;
   try {
     user = await prisma.user.update({
       where: { id: req.user!.id },
-      data: { displayName },
-      select: { id: true, email: true, displayName: true, globalRole: true, isActive: true, createdAt: true },
+      data: {
+        displayName,
+        avatarJson: avatar ? (avatar as any) : undefined,
+      },
+      select: { id: true, email: true, displayName: true, avatarJson: true, globalRole: true, isActive: true, createdAt: true },
     });
   } catch (e: any) {
     if (e?.code === "P2002") {
@@ -88,7 +103,16 @@ meRouter.get("/predictions", requireLeagueMember, async (req: AuthedRequest, res
     orderBy: { match: { kickoffAt: "asc" } },
   });
 
-  res.json({ predictions });
+  // Include scorer picks so the FE can show the selected scorer on match cards.
+  const matchIds = predictions.map((p) => p.matchId);
+  const scorerPicks = matchIds.length
+    ? await prisma.scorerPick.findMany({
+        where: { userId: req.user!.id, leagueId, matchId: { in: matchIds } },
+        select: { matchId: true, playerName: true, playerExternalId: true },
+      })
+    : [];
+
+  res.json({ predictions, scorerPicks });
 });
 
 // Match detail (lineups + events) + scorer pick

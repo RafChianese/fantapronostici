@@ -4,6 +4,7 @@ import { api, CompetitionPredictionsResponse } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { useLoading } from "../lib/loading";
 import { Alert, Badge, Button, Card, CardContent, CardHeader, Input, Skeleton } from "../components/ui";
+import { SearchableSelect } from "../components/SearchableSelect";
 
 type Match = {
   id: string;
@@ -34,6 +35,8 @@ type PredictionState = {
   pointsScorer?: number;
   totalPoints?: number;
 };
+
+type ScorerPickSummary = { matchId: string; playerName: string | null; playerExternalId: string | null };
 
 function StatusDot({ status }: { status: string }) {
   const s = String(status || "").toUpperCase();
@@ -162,19 +165,16 @@ function CompetitionPredictionsPanel() {
               {data.enabled.winner ? (
                 <div className="space-y-2">
                   <div className="text-sm font-semibold text-slate-900">Vincitore torneo (+{data.points.winner} punti)</div>
-                  <select
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                  <SearchableSelect
                     disabled={!canEdit || saving}
                     value={winnerId}
-                    onChange={(e) => setWinnerId(e.target.value)}
-                  >
-                    <option value="">Seleziona squadra…</option>
-                    {data.options.teams.map((t) => (
-                      <option key={t.id} value={String(t.id)}>
-                        {t.name}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(v) => setWinnerId(v)}
+                    placeholder="Seleziona squadra…"
+                    emptyLabel="—"
+                    options={data.options.teams
+                      .map((t) => ({ value: String(t.id), label: t.name }))
+                      .sort((a, b) => a.label.localeCompare(b.label, "it"))}
+                  />
                   {data.picks.winner?.pointsAwarded ? <div className="text-xs text-slate-600">Punti assegnati: {data.picks.winner.pointsAwarded}</div> : null}
                 </div>
               ) : null}
@@ -182,24 +182,17 @@ function CompetitionPredictionsPanel() {
               {data.enabled.topScorer ? (
                 <div className="space-y-2">
                   <div className="text-sm font-semibold text-slate-900">Capocannoniere (+{data.points.topScorer} punti)</div>
-                  <select
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                  <SearchableSelect
                     disabled={!canEdit || saving || (data.options.scorers?.length ?? 0) === 0}
                     value={scorerId}
-                    onChange={(e) => setScorerId(e.target.value)}
-                  >
-                    <option value="">Seleziona giocatore…</option>
-                    {data.options.scorers.map((s) => (
-                      <option key={s.id} value={String(s.id)}>
-                        {s.name}{s.teamName ? ` (${s.teamName})` : ""}
-                      </option>
-                    ))}
-                  </select>
-                  {(data.options.scorers?.length ?? 0) === 0 ? (
-                    <Alert>
-                      Lista giocatori non disponibile da football-data per questa competizione. Se vuoi la lista completa serve un provider con coverage “squad/scorers”.
-                    </Alert>
-                  ) : null}
+                    onChange={(v) => setScorerId(v)}
+                    placeholder="Seleziona giocatore…"
+                    emptyLabel="—"
+                    options={data.options.scorers
+                      .map((s) => ({ value: String(s.id), label: `${s.name}${s.teamName ? ` (${s.teamName})` : ""}` }))
+                      .sort((a, b) => a.label.localeCompare(b.label, "it"))}
+                  />
+                  {(data.options.scorers?.length ?? 0) === 0 ? <Alert>Lista giocatori non disponibile per questa competizione.</Alert> : null}
                   {data.picks.topScorer?.pointsAwarded ? <div className="text-xs text-slate-600">Punti assegnati: {data.picks.topScorer.pointsAwarded}</div> : null}
                 </div>
               ) : null}
@@ -233,6 +226,7 @@ export default function PredictionsPage() {
   const { show, hide } = useLoading();
   const [matches, setMatches] = useState<Match[]>([]);
   const [preds, setPreds] = useState<Record<string, PredictionState>>({});
+  const [scorerPickByMatchId, setScorerPickByMatchId] = useState<Map<string, ScorerPickSummary>>(new Map());
   const [config, setConfig] = useState<any>(null);
   const [collapsed, setCollapsed] = useState<Record<number, boolean>>({});
 
@@ -269,6 +263,8 @@ export default function PredictionsPage() {
       const map: Record<string, PredictionState> = {};
       for (const pr of (p.predictions as PredictionState[])) map[pr.matchId] = pr;
       setPreds(map);
+      const picks = ((p as any).scorerPicks || []) as ScorerPickSummary[];
+      setScorerPickByMatchId(new Map(picks.map((x) => [x.matchId, x])));
       setConfig(c);
     } catch (e: any) {
       setToast({ tone: "danger", msg: e.message });
@@ -883,6 +879,13 @@ export default function PredictionsPage() {
                         </button>
                       ) : null}
 
+                      {config?.features?.scorer && scorerPickByMatchId.get(m.id)?.playerName ? (
+                        <div className="mt-1 text-xs text-slate-600">
+                          <span className="text-slate-500">Marcatore scelto:</span>{" "}
+                          <span className="font-semibold text-slate-800">{scorerPickByMatchId.get(m.id)!.playerName}</span>
+                        </div>
+                      ) : null}
+
                       {canEdit ? (
                         <div className="mt-2 grid grid-cols-7 gap-1">
                           {quick.map(([a, b]) => (
@@ -973,42 +976,35 @@ export default function PredictionsPage() {
                       <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
                         <label className="block text-sm">
                           <span className="mb-1 block text-xs font-medium text-slate-700">Seleziona giocatore</span>
-                          <select
-                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                          <SearchableSelect
                             disabled={!detailData.canPickScorer}
                             value={detailPlayerId === null ? "" : String(detailPlayerId)}
-                            onChange={(e) => {
-                              const v = e.target.value ? Number(e.target.value) : NaN;
-                              setDetailPlayerId(Number.isFinite(v) ? v : null);
+                            placeholder="Seleziona giocatore…"
+                            emptyLabel="—"
+                            onChange={(v) => {
+                              const n = v ? Number(v) : NaN;
+                              setDetailPlayerId(Number.isFinite(n) ? n : null);
                             }}
-                          >
-                            <option value="">—</option>
-                            {(() => {
-                              const items: Array<{ id: number; label: string }> = [];
+                            options={(() => {
+                              const items: Array<{ value: string; label: string }> = [];
                               for (const t of detailData.lineups || []) {
                                 const teamName = t?.team?.name || "";
                                 for (const p of [...(t.startXI || []), ...(t.substitutes || [])]) {
                                   if (!p?.id || !p?.name) continue;
                                   const num = p?.number ? `#${p.number} ` : "";
-                                  items.push({ id: Number(p.id), label: `${teamName} · ${num}${p.name}` });
+                                  items.push({ value: String(p.id), label: `${teamName} · ${num}${p.name}` });
                                 }
                               }
-                              // de-dup
-                              const seen = new Set<number>();
+                              const seen = new Set<string>();
                               return items
                                 .filter((x) => {
-                                  if (seen.has(x.id)) return false;
-                                  seen.add(x.id);
+                                  if (seen.has(x.value)) return false;
+                                  seen.add(x.value);
                                   return true;
                                 })
-                                .sort((a, b) => a.label.localeCompare(b.label, "it"))
-                                .map((x) => (
-                                  <option key={x.id} value={String(x.id)}>
-                                    {x.label}
-                                  </option>
-                                ));
+                                .sort((a, b) => a.label.localeCompare(b.label, "it"));
                             })()}
-                          </select>
+                          />
                         </label>
 
                         <div className="flex gap-2">

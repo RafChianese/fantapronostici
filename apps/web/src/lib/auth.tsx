@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { api, clearActiveLeagueId, clearToken, getActiveLeagueId, getToken, setActiveLeagueId, setToken, type Membership, type User } from "./api";
+import { api, clearActiveLeagueId, clearToken, getActiveLeagueId, getToken, setActiveLeagueId, setToken, type Membership, type UserWithAvatar as User } from "./api";
 
 type AuthState = {
   user: User | null;

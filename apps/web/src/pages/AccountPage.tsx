@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { api } from "../lib/api";
+import { api, type AvatarConfig } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { useToast } from "../lib/toast";
 import { Alert, Button, Card, CardContent, CardHeader, Input } from "../components/ui";
 import { LeagueAvatar } from "../components/LeagueAvatar";
+import { UserAvatar, normalizeAvatar } from "../components/Avatar";
 
 export default function AccountPage() {
   const { user, memberships, refreshMe, activeLeagueId } = useAuth();
@@ -17,6 +18,12 @@ export default function AccountPage() {
   const [profileOk, setProfileOk] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
 
+  // Avatar
+  const [avatar, setAvatar] = useState<AvatarConfig>({});
+  const [savingAvatar, setSavingAvatar] = useState(false);
+  const [avatarOk, setAvatarOk] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+
   // Password
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -28,6 +35,11 @@ export default function AccountPage() {
   useEffect(() => {
     if (user?.displayName) setDisplayName(user.displayName);
   }, [user?.displayName]);
+
+  useEffect(() => {
+    // Initialize editor with stored avatar (if any)
+    setAvatar((user as any)?.avatarJson || {});
+  }, [(user as any)?.avatarJson]);
 
   // Push notifications
   const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined;
@@ -69,7 +81,7 @@ export default function AccountPage() {
               }
               setSavingProfile(true);
               try {
-                await api.updateProfile(dn);
+                await api.updateProfile({ displayName: dn });
                 await refreshMe();
                 setProfileOk(true);
               } catch (err: any) {
@@ -80,6 +92,130 @@ export default function AccountPage() {
             }}
           >
             Salva profilo
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader title="Avatar" subtitle="Personalizza il tuo avatar (visibile in classifica)." />
+        <CardContent className="space-y-4">
+          {avatarError ? <Alert tone="danger">{avatarError}</Alert> : null}
+          {avatarOk ? <Alert tone="success">Avatar aggiornato</Alert> : null}
+
+          {user ? (
+            <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <UserAvatar userId={user.id} avatar={avatar} size={64} className="shadow" />
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-slate-900">Anteprima</div>
+                <div className="mt-0.5 text-xs text-slate-600">Le combinazioni sono salvate nel tuo profilo.</div>
+              </div>
+            </div>
+          ) : null}
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <FieldSelect
+              label="Sesso"
+              value={avatar.sex || ""}
+              onChange={(v) => setAvatar((p) => ({ ...p, sex: v as any }))}
+              options={[
+                { value: "male", label: "Maschile" },
+                { value: "female", label: "Femminile" },
+              ]}
+            />
+            <FieldSelect
+              label="Pelle"
+              value={avatar.skin || ""}
+              onChange={(v) => setAvatar((p) => ({ ...p, skin: v as any }))}
+              options={[
+                { value: "light", label: "Chiara" },
+                { value: "tan", label: "Media" },
+                { value: "brown", label: "Scura" },
+                { value: "dark", label: "Molto scura" },
+              ]}
+            />
+            <FieldSelect
+              label="Occhi"
+              value={avatar.eyes || ""}
+              onChange={(v) => setAvatar((p) => ({ ...p, eyes: v as any }))}
+              options={[
+                { value: "brown", label: "Marroni" },
+                { value: "blue", label: "Blu" },
+                { value: "green", label: "Verdi" },
+                { value: "gray", label: "Grigi" },
+              ]}
+            />
+            <FieldSelect
+              label="Capelli"
+              value={avatar.hairType || ""}
+              onChange={(v) => setAvatar((p) => ({ ...p, hairType: v as any }))}
+              options={[
+                { value: "short", label: "Corti" },
+                { value: "medium", label: "Medi" },
+                { value: "long", label: "Lunghi" },
+                { value: "curly", label: "Ricci" },
+                { value: "bald", label: "Calvo" },
+              ]}
+            />
+            <FieldSelect
+              label="Colore capelli"
+              value={avatar.hairColor || ""}
+              onChange={(v) => setAvatar((p) => ({ ...p, hairColor: v as any }))}
+              options={[
+                { value: "black", label: "Neri" },
+                { value: "brown", label: "Castani" },
+                { value: "blonde", label: "Biondi" },
+                { value: "red", label: "Rossi" },
+                { value: "gray", label: "Grigi" },
+              ]}
+            />
+            <FieldSelect
+              label="Vestito"
+              value={avatar.outfitType || ""}
+              onChange={(v) => setAvatar((p) => ({ ...p, outfitType: v as any }))}
+              options={[
+                { value: "tshirt", label: "T-shirt" },
+                { value: "hoodie", label: "Felpa" },
+                { value: "jersey", label: "Maglia" },
+                { value: "suit", label: "Completo" },
+              ]}
+            />
+            <FieldSelect
+              label="Colore vestito"
+              value={avatar.outfitColor || ""}
+              onChange={(v) => setAvatar((p) => ({ ...p, outfitColor: v as any }))}
+              options={[
+                { value: "black", label: "Nero" },
+                { value: "blue", label: "Blu" },
+                { value: "red", label: "Rosso" },
+                { value: "green", label: "Verde" },
+                { value: "purple", label: "Viola" },
+                { value: "orange", label: "Arancione" },
+                { value: "gray", label: "Grigio" },
+              ]}
+            />
+          </div>
+
+          <Button
+            disabled={savingAvatar || !user}
+            onClick={async () => {
+              if (!user) return;
+              setAvatarError(null);
+              setAvatarOk(false);
+              setSavingAvatar(true);
+              try {
+                // Normalize before saving (ensures all keys are valid/consistent)
+                const normalized = normalizeAvatar(user.id, avatar);
+                await api.updateProfile({ displayName: displayName.trim() || user.displayName, avatar: normalized });
+                await refreshMe();
+                setAvatarOk(true);
+              } catch (e: any) {
+                setAvatarError(e?.message || "Errore");
+              } finally {
+                setSavingAvatar(false);
+              }
+            }}
+          >
+            Salva avatar
           </Button>
         </CardContent>
       </Card>
@@ -227,5 +363,35 @@ export default function AccountPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function FieldSelect({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: Array<{ value: string; label: string }>;
+}) {
+  return (
+    <label className="block">
+      <div className="mb-1 text-sm font-medium text-slate-800">{label}</div>
+      <select
+        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        <option value="">(default)</option>
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }

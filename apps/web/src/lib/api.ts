@@ -5,6 +5,18 @@ export type LeagueRole = "MEMBER" | "ADMIN";
 export type MembershipStatus = "PENDING" | "APPROVED" | "REJECTED";
 
 export type User = { id: string; email: string; displayName: string; globalRole: GlobalRole };
+
+export type AvatarConfig = {
+  sex?: "male" | "female";
+  skin?: "light" | "tan" | "brown" | "dark";
+  eyes?: "brown" | "blue" | "green" | "gray";
+  hairType?: "short" | "medium" | "long" | "curly" | "bald";
+  hairColor?: "black" | "brown" | "blonde" | "red" | "gray";
+  outfitType?: "tshirt" | "hoodie" | "jersey" | "suit";
+  outfitColor?: "black" | "blue" | "red" | "green" | "purple" | "orange" | "gray";
+};
+
+export type UserWithAvatar = User & { avatarJson?: AvatarConfig | null };
 export type LeagueBranding = { logoUrl?: string | null; logoDataUrl?: string | null };
 export type League = { id: string; name: string; code: string; branding?: LeagueBranding | null };
 export type Membership = {
@@ -178,11 +190,11 @@ export const api = {
     request(`/api/auth/reset-password`, { method: "POST", body: JSON.stringify({ email, token, newPassword }) }),
 
   // me
-  me: () => request(`/api/me`),
+  me: () => request(`/api/me`) as Promise<{ user: UserWithAvatar; memberships: Membership[] }>,
   changePassword: (currentPassword: string, newPassword: string) =>
     request(`/api/me/password`, { method: "PUT", body: JSON.stringify({ currentPassword, newPassword }) }),
-  updateProfile: (displayName: string) =>
-    request(`/api/me/profile`, { method: "PUT", body: JSON.stringify({ displayName }) }),
+  updateProfile: (payload: { displayName: string; avatar?: AvatarConfig }) =>
+    request(`/api/me/profile`, { method: "PUT", body: JSON.stringify(payload) }),
   adUnlockStatus: () => request(`/api/me/ad-unlock`),
   adUnlock: () => request(`/api/me/ad-unlock`, { method: "POST" }),
   myPredictions: () => request(`/api/me/predictions`),
