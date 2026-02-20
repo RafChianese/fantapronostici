@@ -24,6 +24,10 @@ export type LeagueRules = {
   enableUnderOver25: boolean;
   pointsUnderOver25: number;
   enableMatchdayAwards: boolean;
+  enableJolly?: boolean;
+  jollyMultiplier?: number;
+  enableScorer?: boolean;
+  pointsScorer?: number;
   scoringMode: ScoringMode;
   allowOutcomeWithExact: boolean;
   allowSumGoalsWithExact: boolean;
@@ -32,6 +36,18 @@ export type LeagueRules = {
   // Optional monetization (all optional)
   entryFeeCents?: number | null;
   prizesJson?: Array<{ position: number; amountCents: number }> | null;
+};
+
+export type MatchDetailResponse = {
+  match: any;
+  lineupAvailable: boolean;
+  lineups: any[];
+  events: any[];
+  scorer: { playerExternalId: string; playerName: string } | null;
+  scorerEnabled: boolean;
+  pointsScorer: number;
+  canPickScorer: boolean;
+  reason?: string;
 };
 
 export type LeagueSettings = {
@@ -142,6 +158,9 @@ export const api = {
   adUnlockStatus: () => request(`/api/me/ad-unlock`),
   adUnlock: () => request(`/api/me/ad-unlock`, { method: "POST" }),
   myPredictions: () => request(`/api/me/predictions`),
+  matchDetail: (matchId: string) => request(`/api/me/matches/${encodeURIComponent(matchId)}/detail`) as Promise<MatchDetailResponse>,
+  setScorer: (matchId: string, payload: { playerId: number | null; playerName?: string | null }) =>
+    request(`/api/me/matches/${encodeURIComponent(matchId)}/scorer`, { method: "PUT", body: JSON.stringify(payload) }),
   savePredictions: (predictions: { matchId: string; homeGoals: number; awayGoals: number }[]) =>
     request(`/api/me/predictions`, { method: "PUT", body: JSON.stringify({ predictions }) }),
   lock: (leagueId?: string, leagueCode?: string) => {
@@ -204,6 +223,20 @@ export const api = {
     const q = leagueId ? `?leagueId=${encodeURIComponent(leagueId)}` : "";
     return request(`/api/admin/rules${q}`, { method: "PUT", body: JSON.stringify(rules) });
   },
+  // jolly (admin)
+  adminJolly: (leagueId?: string) => {
+    const q = leagueId ? `?leagueId=${encodeURIComponent(leagueId)}` : "";
+    return request(`/api/admin/jolly${q}`);
+  },
+  adminSaveJollySettings: (payload: { enableJolly: boolean; jollyMultiplier: number }, leagueId?: string) => {
+    const q = leagueId ? `?leagueId=${encodeURIComponent(leagueId)}` : "";
+    return request(`/api/admin/jolly/settings${q}`, { method: "PUT", body: JSON.stringify(payload) });
+  },
+  adminSetJollyForMatchday: (matchday: number, matchId: string | null, leagueId?: string) => {
+    const q = leagueId ? `?leagueId=${encodeURIComponent(leagueId)}` : "";
+    return request(`/api/admin/jolly/${matchday}${q}`, { method: "PUT", body: JSON.stringify({ matchId }) });
+  },
+
   adminSettings: (leagueId?: string) => {
     const q = leagueId ? `?leagueId=${encodeURIComponent(leagueId)}` : "";
     return request(`/api/admin/settings${q}`);

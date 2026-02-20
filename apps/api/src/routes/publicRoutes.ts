@@ -28,7 +28,7 @@ publicRouter.get("/leagues/resolve", async (req, res) => {
   return res.json({ league });
 });
 
-publicRouter.get("/matches", async (_req, res) => {
+publicRouter.get("/matches", async (req, res) => {
   // Safety fix (dev DBs): if all matches have matchday=1 (historical seed) but there are more than 4,
   // auto-assign matchdays in blocks of 4 matches ordered by kickoffAt.
   // This keeps the UI grouping correct and also persists the correction in DB.
@@ -45,6 +45,20 @@ publicRouter.get("/matches", async (_req, res) => {
   }
 
   const matches = await prisma.match.findMany({ orderBy: [{ matchday: "asc" }, { kickoffAt: "asc" }] });
+
+  // Optional league-scoped extras (non-breaking): Partita Jolly
+  const leagueId = typeof req.headers["x-league-id"] === "string" ? String(req.headers["x-league-id"]) : undefined;
+  if (leagueId) {
+    await ensureLeagueConfig(leagueId);
+    const rules = await prisma.rule.findUnique({ where: { leagueId } });
+    if (rules?.enableJolly) {
+      const jollyRows = await prisma.matchdayJolly.findMany({ where: { leagueId }, select: { matchId: true } });
+      const set = new Set(jollyRows.map((r) => String(r.matchId)));
+      return res.json({ matches: matches.map((m) => ({ ...m, isJolly: set.has(String(m.id)) })) });
+    }
+    return res.json({ matches: matches.map((m) => ({ ...m, isJolly: false })) });
+  }
+
   res.json({ matches });
 });
 
@@ -65,7 +79,14 @@ publicRouter.get("/lock", async (req, res) => {
       lockedMatchdays: (info?.auto?.lockedMatchdays || []).map((x: any) => Number(x)),
     },
     leagueSettings: info.leagueSettings,
-    features: { underOver25: !!rules?.enableUnderOver25, matchdayAwards: !!rules?.enableMatchdayAwards },
+    features: {
+      underOver25: !!rules?.enableUnderOver25,
+      matchdayAwards: !!rules?.enableMatchdayAwards,
+      jolly: !!rules?.enableJolly,
+      jollyMultiplier: rules?.jollyMultiplier ?? 2,
+      scorer: !!(rules as any)?.enableScorer,
+      scorerPoints: (rules as any)?.pointsScorer ?? 3,
+    },
   });
 });
 
@@ -102,6 +123,10 @@ publicRouter.get("/regolamento-config", async (req, res) => {
       enableUnderOver25: rules.enableUnderOver25,
       pointsUnderOver25: rules.pointsUnderOver25,
       enableMatchdayAwards: rules.enableMatchdayAwards,
+      enableJolly: (rules as any).enableJolly ?? false,
+      jollyMultiplier: (rules as any).jollyMultiplier ?? 2,
+      enableScorer: (rules as any).enableScorer ?? false,
+      pointsScorer: (rules as any).pointsScorer ?? 3,
       scoringMode: rules.scoringMode,
       allowOutcomeWithExact: rules.allowOutcomeWithExact,
       allowSumGoalsWithExact: rules.allowSumGoalsWithExact,
@@ -335,7 +360,7 @@ publicRouter.get("/users/:id/summary", async (req, res) => {
 
   res.json({
     league: { id: league.id, code: league.code, name: league.name },
-    features: { underOver25: !!rules?.enableUnderOver25, matchdayAwards: !!rules?.enableMatchdayAwards },
+    features: { underOver25: !!rules?.enableUnderOver25, matchdayAwards: !!rules?.enableMatchdayAwards, jolly: !!rules?.enableJolly, jollyMultiplier: rules?.jollyMultiplier ?? 2 },
     user: { id: member.user.id, displayName: member.user.displayName, email: member.user.email },
     detail,
     totals,

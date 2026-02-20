@@ -1,8 +1,14 @@
 import cron from "node-cron";
 import { env } from "../lib/env.js";
 import { prisma } from "../lib/prisma.js";
-import { fetchCompetitionMatches, fetchCompetitionTeams, mapFootballDataStatus } from "../services/footballDataService.js";
-import { fetchFixtures, mapApiFootballStatus, computeMatchday } from "../services/apiFootball.js";
+import {
+  fetchCompetitionMatches,
+  fetchCompetitionTeams,
+  mapFootballDataStatus,
+  fetchMatchDetail,
+  extractScorersFromMatchDetail,
+} from "../services/footballDataService.js";
+import { fetchFixtures, mapApiFootballStatus, computeMatchday, fetchFixtureEvents } from "../services/apiFootball.js";
 import { recalcScoresForMatchAcrossLeagues } from "../lib/scoring.js";
 
 export async function runSyncOnce() {
@@ -44,6 +50,27 @@ export async function runSyncOnce() {
       const homeScore = row.goals?.home ?? null;
       const awayScore = row.goals?.away ?? null;
 
+      // Cache goal scorers only for finished matches (used by "marcatore" feature)
+      let goalScorersJson: any = null;
+      if (status === "FINISHED") {
+        try {
+          const events = await fetchFixtureEvents(row.fixture.id);
+          const uniq = new Map<number, string>();
+          for (const ev of events) {
+            const type = String(ev?.type || "").toLowerCase();
+            if (type !== "goal") continue;
+            const pid = ev?.player?.id;
+            const pname = String(ev?.player?.name || "").trim();
+            const n = Number(pid);
+            if (!Number.isFinite(n) || !pname) continue;
+            if (!uniq.has(n)) uniq.set(n, pname);
+          }
+          goalScorersJson = Array.from(uniq.entries()).map(([id, name]) => ({ id, name }));
+        } catch (e: any) {
+          console.warn("[sync] api-football events error", e?.message || e);
+        }
+      }
+
       const existing = await prisma.match.findUnique({ where: { externalId } });
       if (existing) {
         const updated = await prisma.match.update({
@@ -59,6 +86,7 @@ export async function runSyncOnce() {
             status,
             homeScore,
             awayScore,
+            ...(goalScorersJson ? { goalScorersJson } : {}),
             source: "API_FOOTBALL",
             apiFootballFixtureId: row.fixture.id,
             apiLeagueId: leagueId,
@@ -81,6 +109,7 @@ export async function runSyncOnce() {
             status,
             homeScore,
             awayScore,
+            ...(goalScorersJson ? { goalScorersJson } : {}),
             source: "API_FOOTBALL",
             apiFootballFixtureId: row.fixture.id,
             apiLeagueId: leagueId,
@@ -145,6 +174,24 @@ export async function runSyncOnce() {
           footballDataSeason: season,
         },
       });
+
+      // If "marcatore" feature is used, cache scorers for finished matches (best-effort, rate-limit safe).
+      if (status === "FINISHED") {
+        const picks = await prisma.scorerPick.count({ where: { matchId: updated.id } }).catch(() => 0);
+        if (picks > 0) {
+          try {
+            const detail = await fetchMatchDetail({ matchId: m.id });
+            const scorers = extractScorersFromMatchDetail(detail)
+              .filter((s) => s.id !== null)
+              .map((s) => ({ id: Number(s.id), name: s.name }));
+            if (scorers.length) {
+              await prisma.match.update({ where: { id: updated.id }, data: { goalScorersJson: scorers as any } });
+            }
+          } catch (e: any) {
+            console.warn("[sync] football-data match detail error", e?.message || e);
+          }
+        }
+      }
       await recalcScoresForMatchAcrossLeagues(updated.id);
     } else {
       const created = await prisma.match.create({

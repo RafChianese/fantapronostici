@@ -155,6 +155,34 @@ export function generateRegolamentoTemplate(rules: LeagueRules, settings: League
         paragraphs: ["In questa lega il premio miglior giornata non è previsto."],
       };
 
+
+  const jollySection: RegolamentoSection = (rules as any).enableJolly
+    ? {
+        title: "Partita Jolly ⭐",
+        paragraphs: [
+          "È attiva la Partita Jolly: per ogni giornata l’admin può selezionare una sola partita come Jolly.",
+          `I punti ottenuti su quella partita vengono moltiplicati x${Number((rules as any).jollyMultiplier ?? 2) || 2}.`,
+        ],
+      }
+    : {
+        title: "Partita Jolly ⭐",
+        paragraphs: ["In questa lega la Partita Jolly non è attiva."],
+      };
+
+  const scorerSection: RegolamentoSection = (rules as any).enableScorer
+    ? {
+        title: "Marcatore ⚽",
+        paragraphs: [
+          "È attivo il pronostico ‘Marcatore’: se è disponibile la lista giocatori del match, puoi selezionare un giocatore che segnerà almeno un gol.",
+          "La selezione è modificabile solo finché la partita non è iniziata e la finestra di lock lo consente.",
+        ],
+        bullets: [`Punteggio bonus: +${Number((rules as any).pointsScorer ?? 3) || 3} punti`],
+      }
+    : {
+        title: "Marcatore ⚽",
+        paragraphs: ["In questa lega la regola ‘Marcatore’ non è attiva."],
+      };
+
   const monetizationSection: RegolamentoSection | null = (() => {
     const feeCents = typeof (rules as any).entryFeeCents === "number" ? (rules as any).entryFeeCents : null;
     const prizes = Array.isArray((rules as any).prizesJson) ? (rules as any).prizesJson : null;
@@ -229,6 +257,8 @@ export function generateRegolamentoTemplate(rules: LeagueRules, settings: League
       scoringModeSection,
       underOverSection,
       awardsSection,
+      jollySection,
+      scorerSection,
       ...(monetizationSection ? [monetizationSection] : []),
       lockSection,
       rankingSection,

@@ -367,15 +367,19 @@ function RulesTab() {
   const [ok, setOk] = useState("");
   const [rules, setRules] = useState<any>(null);
   const [settings, setSettings] = useState<any>(null);
+  const [matches, setMatches] = useState<any[]>([]);
+  const [jolly, setJolly] = useState<any>(null);
 
   async function load() {
     show();
     setLoading(true);
     setErr("");
     try {
-      const [r1, r2] = await Promise.all([api.adminRules(), api.adminSettings()]);
+      const [r1, r2, r3, r4] = await Promise.all([api.adminRules(), api.adminSettings(), api.matches(), api.adminJolly()]);
       setRules(r1.rules);
       setSettings(r2.settings);
+      setMatches(r3.matches || []);
+      setJolly(r4);
     } catch (e: any) {
       setErr(e?.message || "Errore");
     } finally {
@@ -458,6 +462,39 @@ function RulesTab() {
                   checked={!!rules?.enableMatchdayAwards}
                   onChange={(v) => setRules({ ...rules, enableMatchdayAwards: v })}
                 />
+
+                <SwitchRow
+                  label="Abilita Partita Jolly (⭐)"
+                  hint="Permette di selezionare 1 partita per giornata che vale punti moltiplicati (es. x2)."
+                  checked={!!rules?.enableJolly}
+                  onChange={(v) => setRules({ ...rules, enableJolly: v })}
+                />
+                <div className="pl-1">
+                  <Input
+                    label="Moltiplicatore Jolly"
+                    type="number"
+                    disabled={!rules?.enableJolly}
+                    value={String(rules?.jollyMultiplier ?? 2)}
+                    onChange={(e) => setRules({ ...rules, jollyMultiplier: Number(e.target.value) })}
+                  />
+                </div>
+
+                <SwitchRow
+                  label="Abilita Marcatore (⚽)"
+                  hint="Permette di selezionare un giocatore marcatore (solo se la lineup del match è disponibile)."
+                  checked={!!(rules as any)?.enableScorer}
+                  onChange={(v) => setRules({ ...(rules as any), enableScorer: v })}
+                />
+                <div className="pl-1">
+                  <Input
+                    label="Punti Marcatore"
+                    type="number"
+                    disabled={!((rules as any)?.enableScorer)}
+                    value={String((rules as any)?.pointsScorer ?? 3)}
+                    onChange={(e) => setRules({ ...(rules as any), pointsScorer: Number(e.target.value) })}
+                  />
+                </div>
+
               </div>
             </Section>
 
@@ -513,6 +550,10 @@ function RulesTab() {
                       enableUnderOver25: !!rules.enableUnderOver25,
                       pointsUnderOver25: Number(rules.pointsUnderOver25 ?? 1),
                       enableMatchdayAwards: !!rules.enableMatchdayAwards,
+                      enableJolly: !!rules.enableJolly,
+                      jollyMultiplier: Number(rules.jollyMultiplier ?? 2),
+                      enableScorer: !!(rules as any).enableScorer,
+                      pointsScorer: Number((rules as any).pointsScorer ?? 3),
                       scoringMode: rules.scoringMode,
                       allowOutcomeWithExact: !!rules.allowOutcomeWithExact,
                       allowSumGoalsWithExact: !!rules.allowSumGoalsWithExact,
@@ -619,6 +660,97 @@ function RulesTab() {
 
               <div className="text-xs text-slate-600">
                 Suggerimento: imposta importi in € (l'app salva in centesimi).
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Jolly */}
+          <Card>
+            <CardHeader title="Partita Jolly ⭐" subtitle="Seleziona la partita per giornata (opzionale)" />
+            <CardContent className="space-y-4">
+              <div className="text-sm text-slate-700">
+                {rules?.enableJolly ? (
+                  <>
+                    Scegli una partita per ogni giornata: i punti ottenuti su quella partita vengono moltiplicati per <span className="font-semibold">x{Number(rules?.jollyMultiplier ?? 2) || 2}</span>.
+                  </>
+                ) : (
+                  <>La Partita Jolly è disattivata nelle regole. Attivala nella sezione "Funzioni extra" per renderla effettiva.</>
+                )}
+              </div>
+
+              {(() => {
+                const byMd = new Map<number, any[]>();
+                (matches || []).forEach((m: any) => {
+                  const md = Number(m.matchday || 1);
+                  byMd.set(md, [...(byMd.get(md) || []), m]);
+                });
+                const matchdays = Array.from(byMd.keys()).sort((a, b) => a - b);
+                const selMap = new Map<number, string>();
+                (jolly?.selections || []).forEach((s: any) => selMap.set(Number(s.matchday), String(s.matchId)));
+
+                if (matchdays.length === 0) {
+                  return <div className="text-xs text-slate-500">Nessuna partita disponibile.</div>;
+                }
+
+                return (
+                  <div className="space-y-3">
+                    {matchdays.map((md) => {
+                      const list = (byMd.get(md) || []).slice().sort((a: any, b: any) => new Date(a.kickoffAt).getTime() - new Date(b.kickoffAt).getTime());
+                      const current = selMap.get(md) || "";
+                      return (
+                        <div key={md} className="rounded-2xl border border-slate-200 p-3">
+                          <div className="mb-2 flex items-center justify-between">
+                            <div className="text-sm font-semibold text-slate-900">Giornata {md}</div>
+                            {current ? <span className="text-xs font-semibold text-amber-700">⭐ Selezionata</span> : <span className="text-xs text-slate-500">—</span>}
+                          </div>
+
+                          <select
+                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                            value={current}
+                            onChange={async (e) => {
+                              const v = e.target.value || "";
+                              show();
+                              try {
+                                setErr("");
+                                setOk("");
+                                await api.adminSetJollyForMatchday(md, v ? v : null);
+                                const r = await api.adminJolly();
+                                setJolly(r);
+                                setOk('Partita jolly aggiornata. Classifica ricalcolata.');
+                              } catch (e: any) {
+                                setErr(e?.message || 'Errore');
+                              } finally {
+                                hide();
+                              }
+                            }}
+                          >
+                            <option value="">Nessuna (disattiva per questa giornata)</option>
+                            {list.map((m: any) => {
+                              const label = `${m.homeTeam} - ${m.awayTeam}`;
+                              const when = (() => {
+                                try {
+                                  const d = new Date(m.kickoffAt);
+                                  return d.toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+                                } catch {
+                                  return '';
+                                }
+                              })();
+                              return (
+                                <option key={m.id} value={m.id}>
+                                  {when ? `${when} · ` : ''}{label}
+                                </option>
+                              );
+                            })}
+                          </select>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+
+              <div className="text-xs text-slate-500">
+                Nota: se la feature è disattivata, la selezione non ha effetti sul punteggio (ma viene comunque salvata).
               </div>
             </CardContent>
           </Card>

@@ -177,6 +177,13 @@ const RulesSchema = z.object({
   enableUnderOver25: z.boolean().optional().default(false),
   pointsUnderOver25: z.number().int().min(0).max(50).optional().default(1),
   enableMatchdayAwards: z.boolean().optional().default(false),
+  // Partita Jolly
+  enableJolly: z.boolean().optional().default(false),
+  jollyMultiplier: z.number().int().min(1).max(10).optional().default(2),
+
+  // Marcatore
+  enableScorer: z.boolean().optional().default(false),
+  pointsScorer: z.number().int().min(0).max(50).optional().default(3),
   scoringMode: z.enum(["CUMULATIVE", "BEST_ONLY", "MIXED"]),
   allowOutcomeWithExact: z.boolean(),
   allowSumGoalsWithExact: z.boolean(),
@@ -255,6 +262,75 @@ adminRouter.put("/rules", async (req, res) => {
 
   await recalcAllScoresForLeague(leagueId);
   res.json({ rules });
+});
+
+// --- Partita Jolly (matchday selection) ---
+const JollySettingsSchema = z.object({
+  enableJolly: z.boolean(),
+  jollyMultiplier: z.number().int().min(1).max(10).default(2),
+});
+
+const SetJollySchema = z.object({
+  matchId: z.string().min(1).nullable(),
+});
+
+adminRouter.get("/jolly", async (req, res) => {
+  const leagueId = getLeagueOr400(req, res);
+  if (!leagueId) return;
+
+  await ensureLeagueConfig(leagueId);
+  const rules = await prisma.rule.findUnique({ where: { leagueId } });
+  const rows = await prisma.matchdayJolly.findMany({ where: { leagueId }, orderBy: { matchday: "asc" } });
+
+  res.json({
+    settings: { enableJolly: !!rules?.enableJolly, jollyMultiplier: rules?.jollyMultiplier ?? 2 },
+    selections: rows.map((r) => ({ matchday: r.matchday, matchId: r.matchId })),
+  });
+});
+
+adminRouter.put("/jolly/settings", async (req, res) => {
+  const leagueId = getLeagueOr400(req, res);
+  if (!leagueId) return;
+
+  await ensureLeagueConfig(leagueId);
+  const { enableJolly, jollyMultiplier } = JollySettingsSchema.parse(req.body);
+
+  const rules = await prisma.rule.update({
+    where: { leagueId },
+    data: { enableJolly, jollyMultiplier },
+  });
+
+  await recalcAllScoresForLeague(leagueId);
+  res.json({ settings: { enableJolly: rules.enableJolly, jollyMultiplier: rules.jollyMultiplier } });
+});
+
+adminRouter.put("/jolly/:matchday", async (req, res) => {
+  const leagueId = getLeagueOr400(req, res);
+  if (!leagueId) return;
+
+  const matchday = Number(req.params.matchday);
+  if (!Number.isFinite(matchday) || matchday <= 0) return res.status(400).json({ message: "matchday non valida" });
+
+  const { matchId } = SetJollySchema.parse(req.body);
+
+  if (matchId === null) {
+    await prisma.matchdayJolly.deleteMany({ where: { leagueId, matchday } });
+    await recalcAllScoresForLeague(leagueId);
+    return res.json({ matchday, matchId: null });
+  }
+
+  const match = await prisma.match.findUnique({ where: { id: matchId } });
+  if (!match) return res.status(404).json({ message: "Match non trovato" });
+  if (match.matchday !== matchday) return res.status(400).json({ message: "La partita selezionata non appartiene a questa giornata" });
+
+  const row = await prisma.matchdayJolly.upsert({
+    where: { leagueId_matchday: { leagueId, matchday } },
+    create: { leagueId, matchday, matchId },
+    update: { matchId },
+  });
+
+  await recalcAllScoresForLeague(leagueId);
+  res.json({ matchday: row.matchday, matchId: row.matchId });
 });
 
 // --- Settings (lock) ---

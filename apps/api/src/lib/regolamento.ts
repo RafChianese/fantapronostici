@@ -139,6 +139,41 @@ export function generateRegolamentoTemplate(params: {
         paragraphs: ["In questa lega non è previsto un premio miglior giornata."],
       };
 
+  const jollyEnabled = !!(rules as any).enableJolly;
+  const jollyMultiplier = Number((rules as any).jollyMultiplier ?? 2) || 2;
+
+  const jollySection: RegolamentoSection = jollyEnabled
+    ? {
+        title: "Partita Jolly ⭐",
+        paragraphs: [
+          "Questa lega include la Partita Jolly (bonus punti).",
+          "Per ogni giornata l’admin può selezionare una sola partita come ‘Jolly’.",
+          `I punti ottenuti su quella partita vengono moltiplicati x${jollyMultiplier}.`,
+        ],
+      }
+    : {
+        title: "Partita Jolly ⭐",
+        paragraphs: ["In questa lega la Partita Jolly non è attiva."],
+      };
+
+  const scorerEnabled = !!(rules as any).enableScorer;
+  const scorerPoints = Number((rules as any).pointsScorer ?? 3) || 3;
+
+  const scorerSection: RegolamentoSection = scorerEnabled
+    ? {
+        title: "Marcatore ⚽",
+        paragraphs: [
+          "Questa lega include il pronostico ‘Marcatore’.",
+          "Se è disponibile la lista giocatori del match, puoi selezionare un giocatore che segnerà almeno un gol.",
+          "La selezione è modificabile solo finché la partita non è iniziata e la finestra di lock lo consente.",
+          `Se il giocatore selezionato segna (anche su rigore), ottieni ${scorerPoints} punti bonus su quella partita.`,
+        ],
+      }
+    : {
+        title: "Marcatore ⚽",
+        paragraphs: ["In questa lega la regola ‘Marcatore’ non è attiva."],
+      };
+
   const lockSection: RegolamentoSection = {
     title: "Finestra di modifica pronostici (Lock)",
     paragraphs: [
@@ -178,6 +213,8 @@ export function generateRegolamentoTemplate(params: {
       modeSection,
       underOverSection,
       awardsSection,
+      jollySection,
+      scorerSection,
       lockSection,
       tieSection,
     ],

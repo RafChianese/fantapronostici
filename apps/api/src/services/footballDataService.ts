@@ -30,6 +30,20 @@ export type FootballDataTeam = {
   name: string;
   shortName?: string;
   crest?: string;
+  // Some plans embed a squad list inside competition teams.
+  squad?: Array<{
+    id: number;
+    name: string;
+    position?: string;
+    shirtNumber?: number;
+  }>;
+};
+
+export type FootballDataMatchDetail = {
+  match?: any;
+  goals?: any[];
+  bookings?: any[];
+  substitutions?: any[];
 };
 
 const client = new FootballDataClient();
@@ -51,6 +65,103 @@ export async function fetchCompetitionMatches(args: { competitionCode: string; s
 export async function fetchCompetitionTeams(args: { competitionCode: string }) {
   const data = await client.getTeams(args.competitionCode);
   return (data?.teams ?? []) as FootballDataTeam[];
+}
+
+export async function fetchMatchDetail(args: { matchId: number }) {
+  const data = await client.getMatch(args.matchId);
+  return data as any;
+}
+
+export async function fetchTeamDetail(args: { teamId: number }) {
+  const data = await client.getTeam(args.teamId);
+  return data as any;
+}
+
+export function extractScorersFromMatchDetail(detail: any): Array<{ id: number | null; name: string }> {
+  const out: Array<{ id: number | null; name: string }> = [];
+  const push = (id: any, name: any) => {
+    const n = typeof name === "string" ? name.trim() : "";
+    if (!n) return;
+    const pid = Number(id);
+    out.push({ id: Number.isFinite(pid) ? pid : null, name: n });
+  };
+
+  const goals = (detail as any)?.goals;
+  if (Array.isArray(goals)) {
+    for (const g of goals) {
+      // football-data has varied shapes across plans.
+      push((g as any)?.scorer?.id ?? (g as any)?.player?.id ?? (g as any)?.scorerId, (g as any)?.scorer?.name ?? (g as any)?.player?.name ?? (g as any)?.scorerName);
+    }
+  }
+
+  // Fallback: some responses may embed scorers inside score.scorers
+  const scorers = (detail as any)?.score?.scorers;
+  if (Array.isArray(scorers)) {
+    for (const s of scorers) push((s as any)?.player?.id ?? (s as any)?.id, (s as any)?.player?.name ?? (s as any)?.name);
+  }
+
+  // Deduplicate by (id|name)
+  const seen = new Set<string>();
+  const uniq: Array<{ id: number | null; name: string }> = [];
+  for (const s of out) {
+    const k = `${s.id ?? "na"}:${s.name.toLowerCase()}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    uniq.push(s);
+  }
+  return uniq;
+}
+
+export function extractEventsFromMatchDetail(detail: any) {
+  const events: any[] = [];
+  const goals = (detail as any)?.goals;
+  if (Array.isArray(goals)) {
+    for (const g of goals) {
+      events.push({
+        type: "GOAL",
+        minute: (g as any)?.minute ?? null,
+        team: (g as any)?.team?.name ?? null,
+        player: (g as any)?.scorer?.name ?? (g as any)?.player?.name ?? null,
+        detail: (g as any)?.type ?? (g as any)?.detail ?? null,
+      });
+    }
+  }
+  const bookings = (detail as any)?.bookings;
+  if (Array.isArray(bookings)) {
+    for (const b of bookings) {
+      events.push({
+        type: "CARD",
+        minute: (b as any)?.minute ?? null,
+        team: (b as any)?.team?.name ?? null,
+        player: (b as any)?.player?.name ?? null,
+        detail: (b as any)?.card ?? (b as any)?.type ?? null,
+      });
+    }
+  }
+  const subs = (detail as any)?.substitutions;
+  if (Array.isArray(subs)) {
+    for (const s of subs) {
+      events.push({
+        type: "SUBSTITUTION",
+        minute: (s as any)?.minute ?? null,
+        team: (s as any)?.team?.name ?? null,
+        player: (s as any)?.playerOut?.name ?? null,
+        assist: (s as any)?.playerIn?.name ?? null,
+        detail: null,
+      });
+    }
+  }
+
+  // sort by minute where possible
+  events.sort((a, b) => {
+    const am = Number(a?.minute);
+    const bm = Number(b?.minute);
+    if (!Number.isFinite(am) && !Number.isFinite(bm)) return 0;
+    if (!Number.isFinite(am)) return 1;
+    if (!Number.isFinite(bm)) return -1;
+    return am - bm;
+  });
+  return events;
 }
 
 export function mapFootballDataStatus(status: string) {

@@ -135,6 +135,16 @@ export class ApiFootballClient {
     });
   }
 
+  fixtureLineups(params: { fixture: number }) {
+    return this.get<any[]>("/fixtures/lineups", { fixture: params.fixture }, { cache: true });
+  }
+
+  fixtureEvents(params: { fixture: number }) {
+    // Events can change while a match is live, but for our use (detail + finished scoring)
+    // a short-lived cache is fine and helps rate limits.
+    return this.get<any[]>("/fixtures/events", { fixture: params.fixture }, { cache: true });
+  }
+
   async fixturesAllPages(params: { league: number; season: number; round?: string; status?: string; timezone?: string }) {
     const out: any[] = [];
     let page = 1;

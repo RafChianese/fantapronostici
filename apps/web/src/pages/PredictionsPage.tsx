@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Lock } from "lucide-react";
+import { Lock, X, Info } from "lucide-react";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { useLoading } from "../lib/loading";
@@ -17,6 +17,7 @@ type Match = {
   status: "NOT_STARTED" | "IN_PROGRESS" | "FINISHED";
   homeScore: number | null;
   awayScore: number | null;
+  isJolly?: boolean;
 };
 
 type PredictionState = {
@@ -30,6 +31,7 @@ type PredictionState = {
   pointsOutcome?: number;
   pointsSumGoals?: number;
   pointsUnderOver?: number;
+  pointsScorer?: number;
   totalPoints?: number;
 };
 
@@ -45,6 +47,7 @@ function buildBreakdown(p: PredictionState, underOverEnabled: boolean) {
   if ((p.pointsOutcome ?? 0) > 0) parts.push(`1X2 ${p.pointsOutcome}`);
   if ((p.pointsSumGoals ?? 0) > 0) parts.push(`Somma ${p.pointsSumGoals}`);
   if (underOverEnabled && (p.pointsUnderOver ?? 0) > 0) parts.push(`2.5 ${(p.pointsUnderOver ?? 0)}`);
+  if ((p.pointsScorer ?? 0) > 0) parts.push(`Marcatore ${p.pointsScorer}`);
   return parts.length ? parts.join(" · ") : "—";
 }
 
@@ -60,6 +63,13 @@ export default function PredictionsPage() {
   const [saving, setSaving] = useState(false);
   const [saveHint, setSaveHint] = useState<string>("");
   const [toast, setToast] = useState<{ tone: "success" | "danger"; msg: string } | null>(null);
+
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailMatchId, setDetailMatchId] = useState<string | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailData, setDetailData] = useState<any>(null);
+  const [detailPlayerId, setDetailPlayerId] = useState<number | null>(null);
+  const [detailSaving, setDetailSaving] = useState(false);
 
   const autosaveTimerRef = useRef<number | null>(null);
   const predsRef = useRef<Record<string, PredictionState>>({});
@@ -87,6 +97,33 @@ export default function PredictionsPage() {
       setLoading(false);
       if (!silent) hide();
     }
+  };
+
+  const openDetail = async (matchId: string) => {
+    setDetailOpen(true);
+    setDetailMatchId(matchId);
+    setDetailLoading(true);
+    setDetailData(null);
+    setDetailPlayerId(null);
+    try {
+      const d = await api.matchDetail(matchId);
+      setDetailData(d);
+      const sel = d?.scorer?.playerExternalId ? String(d.scorer.playerExternalId) : "";
+      const m = sel.match(/^(?:afp:|fdp:)?(\d+)$/i);
+      setDetailPlayerId(m ? Number(m[1]) : null);
+    } catch (e: any) {
+      setToast({ tone: "danger", msg: e?.message || "Errore" });
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const closeDetail = () => {
+    setDetailOpen(false);
+    setDetailMatchId(null);
+    setDetailData(null);
+    setDetailPlayerId(null);
+    setDetailSaving(false);
   };
 
   const matchById = useMemo(() => {
@@ -551,6 +588,9 @@ export default function PredictionsPage() {
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                           {statusBadge(m.status)}
+                          {m.isJolly ? (
+                            <span title="Partita Jolly" className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700">⭐ Jolly</span>
+                          ) : null}
                           {!canEdit ? (
                             <span
                               title={lockReason}
@@ -560,7 +600,18 @@ export default function PredictionsPage() {
                             </span>
                           ) : null}
                         </div>
-                        <div className="text-xs text-slate-500 sm:hidden">Reale: <span className="font-medium text-slate-700">{real}</span></div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white/70 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                            onClick={() => openDetail(m.id)}
+                            title="Dettaglio match"
+                          >
+                            <Info className="h-3.5 w-3.5" aria-hidden="true" />
+                            <span className="hidden sm:inline">Dettaglio</span>
+                          </button>
+                          <div className="text-xs text-slate-500 sm:hidden">Reale: <span className="font-medium text-slate-700">{real}</span></div>
+                        </div>
                       </div>
 
                       {!canEdit ? <div className="pointer-events-none absolute inset-0 bg-white/25" /> : null}
@@ -663,6 +714,233 @@ export default function PredictionsPage() {
         <Alert tone="danger">
           Hai inserito almeno un pronostico su una partita bloccata (già iniziata/terminata). Rimuovi quei valori per poter salvare.
         </Alert>
+      ) : null}
+
+      {detailOpen ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 p-4 sm:items-center">
+          <div className="w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+              <div className="min-w-0">
+                <div className="truncate text-base font-semibold text-slate-900">Dettaglio match</div>
+                {detailMatchId && matchById.get(detailMatchId) ? (
+                  <div className="mt-0.5 truncate text-sm text-slate-600">
+                    {matchById.get(detailMatchId)!.homeTeam} vs {matchById.get(detailMatchId)!.awayTeam}
+                  </div>
+                ) : null}
+              </div>
+              <button
+                type="button"
+                className="rounded-xl p-2 text-slate-600 hover:bg-slate-100"
+                onClick={closeDetail}
+                aria-label="Chiudi"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="max-h-[80vh] overflow-auto px-5 py-4">
+              {detailLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-8 w-1/2" />
+                  <Skeleton className="h-28 w-full" />
+                  <Skeleton className="h-28 w-full" />
+                </div>
+              ) : !detailData ? (
+                <Alert tone="danger">Impossibile caricare il dettaglio del match.</Alert>
+              ) : (
+                <div className="space-y-6">
+                  {/* Scorer */}
+                  <div className="rounded-2xl border border-slate-100 bg-slate-50/40 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-semibold text-slate-900">Marcatore</div>
+                        <div className="mt-0.5 text-xs text-slate-600">
+                          {detailData.scorerEnabled
+                            ? detailData.canPickScorer
+                              ? `Se il giocatore segna: +${detailData.pointsScorer} punti`
+                              : "Non modificabile per lock o partita iniziata"
+                            : "Feature non attiva in questa lega"}
+                        </div>
+                      </div>
+                      {detailData.scorerEnabled && detailData.lineupAvailable ? (
+                        <span className="text-xs font-medium text-slate-600">Giocatori: disponibili</span>
+                      ) : (
+                        <span className="text-xs font-medium text-slate-600">Giocatori: —</span>
+                      )}
+                    </div>
+
+                    {detailData.scorerEnabled && detailData.lineupAvailable ? (
+                      <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
+                        <label className="block text-sm">
+                          <span className="mb-1 block text-xs font-medium text-slate-700">Seleziona giocatore</span>
+                          <select
+                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                            disabled={!detailData.canPickScorer}
+                            value={detailPlayerId === null ? "" : String(detailPlayerId)}
+                            onChange={(e) => {
+                              const v = e.target.value ? Number(e.target.value) : NaN;
+                              setDetailPlayerId(Number.isFinite(v) ? v : null);
+                            }}
+                          >
+                            <option value="">—</option>
+                            {(() => {
+                              const items: Array<{ id: number; label: string }> = [];
+                              for (const t of detailData.lineups || []) {
+                                const teamName = t?.team?.name || "";
+                                for (const p of [...(t.startXI || []), ...(t.substitutes || [])]) {
+                                  if (!p?.id || !p?.name) continue;
+                                  const num = p?.number ? `#${p.number} ` : "";
+                                  items.push({ id: Number(p.id), label: `${teamName} · ${num}${p.name}` });
+                                }
+                              }
+                              // de-dup
+                              const seen = new Set<number>();
+                              return items
+                                .filter((x) => {
+                                  if (seen.has(x.id)) return false;
+                                  seen.add(x.id);
+                                  return true;
+                                })
+                                .sort((a, b) => a.label.localeCompare(b.label, "it"))
+                                .map((x) => (
+                                  <option key={x.id} value={String(x.id)}>
+                                    {x.label}
+                                  </option>
+                                ));
+                            })()}
+                          </select>
+                        </label>
+
+                        <div className="flex gap-2">
+                          <Button
+                            variant="secondary"
+                            disabled={!detailData.canPickScorer || detailSaving}
+                            onClick={async () => {
+                              setDetailSaving(true);
+                              try {
+                                await api.setScorer(detailMatchId!, { playerId: null });
+                                setToast({ tone: "success", msg: "Marcatore rimosso" });
+                                const d = await api.matchDetail(detailMatchId!);
+                                setDetailData(d);
+                                setDetailPlayerId(null);
+                                await reloadAll({ silent: true });
+                              } catch (e: any) {
+                                setToast({ tone: "danger", msg: e?.message || "Errore" });
+                              } finally {
+                                setDetailSaving(false);
+                              }
+                            }}
+                          >
+                            Rimuovi
+                          </Button>
+                          <Button
+                            disabled={!detailData.canPickScorer || detailSaving || detailPlayerId === null}
+                            onClick={async () => {
+                              setDetailSaving(true);
+                              try {
+                                await api.setScorer(detailMatchId!, { playerId: detailPlayerId });
+                                setToast({ tone: "success", msg: "Marcatore salvato" });
+                                const d = await api.matchDetail(detailMatchId!);
+                                setDetailData(d);
+                                await reloadAll({ silent: true });
+                              } catch (e: any) {
+                                setToast({ tone: "danger", msg: e?.message || "Errore" });
+                              } finally {
+                                setDetailSaving(false);
+                              }
+                            }}
+                          >
+                            Salva
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-3 text-sm text-slate-600">{detailData.scorerEnabled ? "Lista giocatori non disponibile per questo match." : ""}</div>
+                    )}
+
+                    {detailData.scorer ? (
+                      <div className="mt-2 text-xs text-slate-600">
+                        Selezionato: <span className="font-semibold text-slate-800">{detailData.scorer.playerName}</span>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  {/* Lineups */}
+                  <div>
+                    <div className="text-sm font-semibold text-slate-900">Giocatori</div>
+                    {!detailData.lineupAvailable ? (
+                      <div className="mt-2 text-sm text-slate-600">Lista giocatori non disponibile.</div>
+                    ) : (
+                      <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                        {(detailData.lineups || []).map((t: any) => (
+                          <div key={String(t?.team?.id || Math.random())} className="rounded-2xl border border-slate-100 bg-white p-4">
+                            <div className="flex items-center gap-2">
+                              {t?.team?.logo ? <img src={t.team.logo} className="h-5 w-5 rounded" alt={t.team.name} /> : null}
+                              <div className="text-sm font-semibold text-slate-900">{t?.team?.name}</div>
+                            </div>
+                            <div className="mt-2">
+                              <div className="text-xs font-semibold text-slate-700">Titolari</div>
+                              <ul className="mt-1 space-y-1 text-sm text-slate-700">
+                                {(t.startXI || []).slice(0, 11).map((p: any) => (
+                                  <li key={String(p.id)} className="flex items-center justify-between">
+                                    <span className="truncate">{p.number ? <span className="text-slate-400">#{p.number}</span> : null} {p.name}</span>
+                                    {p.pos ? <span className="text-xs text-slate-400">{p.pos}</span> : null}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                            {(t.substitutes || []).length ? (
+                              <div className="mt-3">
+                                <div className="text-xs font-semibold text-slate-700">Panchina</div>
+                                <ul className="mt-1 space-y-1 text-sm text-slate-700">
+                                  {(t.substitutes || []).slice(0, 12).map((p: any) => (
+                                    <li key={String(p.id)} className="truncate">{p.number ? <span className="text-slate-400">#{p.number}</span> : null} {p.name}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            ) : null}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Events */}
+                  <div>
+                    <div className="text-sm font-semibold text-slate-900">Eventi</div>
+                    <div className="mt-2 rounded-2xl border border-slate-100 bg-white p-4">
+                      {(detailData.events || []).length === 0 ? (
+                        <div className="text-sm text-slate-600">Nessun evento disponibile.</div>
+                      ) : (
+                        <ul className="space-y-2">
+                          {(detailData.events || []).slice(0, 200).map((ev: any, idx: number) => {
+                            const minute = Number.isFinite(Number(ev?.minute))
+                              ? String(ev.minute)
+                              : ev?.time?.elapsed
+                                ? `${ev.time.elapsed}${ev.time.extra ? `+${ev.time.extra}` : ""}`
+                                : "";
+                            const team = ev?.team?.name || ev?.team || "";
+                            const player = ev?.player?.name || ev?.player || "";
+                            const detail = ev?.detail || ev?.type || "";
+                            return (
+                              <li key={idx} className="flex items-start justify-between gap-3 text-sm">
+                                <div className="min-w-0">
+                                  <div className="truncate font-medium text-slate-800">{detail}</div>
+                                  <div className="truncate text-xs text-slate-500">{team}{player ? ` · ${player}` : ""}</div>
+                                </div>
+                                <div className="shrink-0 text-xs font-semibold text-slate-500">{minute ? `${minute}'` : ""}</div>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       ) : null}
     </div>
   );

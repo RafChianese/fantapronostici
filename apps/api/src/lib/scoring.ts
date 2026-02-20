@@ -59,6 +59,33 @@ function computeAdjustedPoints(params: {
   return { pointsExact: 0, pointsOutcome: 0, pointsSumGoals: 0, pointsUnderOver: 0, totalPoints: 0 };
 }
 
+
+function applyJollyMultiplier(
+  adjusted: { pointsExact: number; pointsOutcome: number; pointsSumGoals: number; pointsUnderOver: number; pointsScorer: number; totalPoints: number },
+  multiplier: number
+) {
+  const m = Math.max(1, Math.floor(multiplier || 1));
+  if (m === 1) return adjusted;
+  return {
+    pointsExact: adjusted.pointsExact * m,
+    pointsOutcome: adjusted.pointsOutcome * m,
+    pointsSumGoals: adjusted.pointsSumGoals * m,
+    pointsUnderOver: adjusted.pointsUnderOver * m,
+    pointsScorer: adjusted.pointsScorer * m,
+    totalPoints: adjusted.totalPoints * m,
+  };
+}
+
+function scorerHit(match: any, scorerExternalId: string | null | undefined) {
+  const sel = String(scorerExternalId || "").trim();
+  if (!sel) return false;
+  const m = sel.match(/^(?:afp:|fdp:)?(\d+)$/i);
+  const pid = m ? Number(m[1]) : NaN;
+  if (!Number.isFinite(pid)) return false;
+  const arr = Array.isArray(match?.goalScorersJson) ? match.goalScorersJson : [];
+  return arr.some((x: any) => Number(x?.id) === pid);
+}
+
 async function getRulesOrThrow(leagueId: string) {
   const rules = await prisma.rule.findUnique({ where: { leagueId } });
   if (!rules) throw new Error("Missing Rule row for league (seed your DB).");
@@ -66,19 +93,24 @@ async function getRulesOrThrow(leagueId: string) {
 }
 
 export async function recalcAllScoresForLeague(leagueId: string) {
-  const [rules, matches, predictions] = await Promise.all([
+  const [rules, matches, predictions, jollyRows, scorerPicks] = await Promise.all([
     getRulesOrThrow(leagueId),
     prisma.match.findMany(),
     prisma.prediction.findMany({ where: { leagueId } }),
+    prisma.matchdayJolly.findMany({ where: { leagueId } }),
+    prisma.scorerPick.findMany({ where: { leagueId } }),
   ]);
 
   const matchById = new Map(matches.map((m) => [m.id, m]));
-  const updates: { id: string; pointsExact: number; pointsOutcome: number; pointsSumGoals: number; pointsUnderOver: number; totalPoints: number }[] = [];
+  const jollyByMatchId = new Set<string>(jollyRows.map((r: any) => String(r.matchId)));
+  const scorerByUserMatch = new Map<string, string>();
+  for (const sp of scorerPicks as any[]) scorerByUserMatch.set(`${sp.userId}:${sp.matchId}`, String(sp.playerExternalId));
+  const updates: { id: string; pointsExact: number; pointsOutcome: number; pointsSumGoals: number; pointsUnderOver: number; pointsScorer: number; totalPoints: number }[] = [];
 
   for (const p of predictions) {
     const m = matchById.get(p.matchId);
     if (!m || m.status !== "FINISHED" || m.homeScore === null || m.awayScore === null) {
-      updates.push({ id: p.id, pointsExact: 0, pointsOutcome: 0, pointsSumGoals: 0, pointsUnderOver: 0, totalPoints: 0 });
+      updates.push({ id: p.id, pointsExact: 0, pointsOutcome: 0, pointsSumGoals: 0, pointsUnderOver: 0, pointsScorer: 0, totalPoints: 0 });
       continue;
     }
 
@@ -97,7 +129,7 @@ export async function recalcAllScoresForLeague(leagueId: string) {
       if (predOver === realOver) pointsUnderOver = rules.pointsUnderOver25;
     }
 
-    const adjusted = computeAdjustedPoints({
+    const adjustedBase = computeAdjustedPoints({
       mode: rules.scoringMode,
       pointsExact,
       pointsOutcome,
@@ -108,7 +140,13 @@ export async function recalcAllScoresForLeague(leagueId: string) {
       allowSumGoalsWithOutcome: rules.allowSumGoalsWithOutcome,
     });
 
-    updates.push({ id: p.id, ...adjusted });
+    const sel = scorerByUserMatch.get(`${p.userId}:${p.matchId}`) || null;
+    const pointsScorer = rules.enableScorer && scorerHit(m, sel) ? rules.pointsScorer : 0;
+    const adjusted = { ...adjustedBase, pointsScorer, totalPoints: adjustedBase.totalPoints + pointsScorer };
+
+    const withJolly = rules.enableJolly && jollyByMatchId.has(String(m.id)) ? applyJollyMultiplier(adjusted, rules.jollyMultiplier) : adjusted;
+
+    updates.push({ id: p.id, ...withJolly });
   }
 
   if (updates.length === 0) return;
@@ -129,19 +167,24 @@ export async function recalcScoresForMatchAcrossLeagues(matchId: string) {
 }
 
 export async function recalcScoresForMatchForLeague(leagueId: string, matchId: string) {
-  const [rules, match, predictions] = await Promise.all([
+  const [rules, match, predictions, jollyRow] = await Promise.all([
     getRulesOrThrow(leagueId),
     prisma.match.findUnique({ where: { id: matchId } }),
     prisma.prediction.findMany({ where: { leagueId, matchId } }),
+    prisma.matchdayJolly.findFirst({ where: { leagueId, matchId } }),
   ]);
 
   if (!match) return;
 
-  const updates: { id: string; pointsExact: number; pointsOutcome: number; pointsSumGoals: number; pointsUnderOver: number; totalPoints: number }[] = [];
+  const updates: { id: string; pointsExact: number; pointsOutcome: number; pointsSumGoals: number; pointsUnderOver: number; pointsScorer: number; totalPoints: number }[] = [];
+
+  const picks = await prisma.scorerPick.findMany({ where: { leagueId, matchId } });
+  const scorerByUser = new Map<string, string>();
+  for (const sp of picks as any[]) scorerByUser.set(String(sp.userId), String(sp.playerExternalId));
 
   for (const p of predictions) {
     if (match.status !== "FINISHED" || match.homeScore === null || match.awayScore === null) {
-      updates.push({ id: p.id, pointsExact: 0, pointsOutcome: 0, pointsSumGoals: 0, pointsUnderOver: 0, totalPoints: 0 });
+      updates.push({ id: p.id, pointsExact: 0, pointsOutcome: 0, pointsSumGoals: 0, pointsUnderOver: 0, pointsScorer: 0, totalPoints: 0 });
       continue;
     }
 
@@ -160,7 +203,7 @@ export async function recalcScoresForMatchForLeague(leagueId: string, matchId: s
       if (predOver === realOver) pointsUnderOver = rules.pointsUnderOver25;
     }
 
-    const adjusted = computeAdjustedPoints({
+    const adjustedBase = computeAdjustedPoints({
       mode: rules.scoringMode,
       pointsExact,
       pointsOutcome,
@@ -171,7 +214,13 @@ export async function recalcScoresForMatchForLeague(leagueId: string, matchId: s
       allowSumGoalsWithOutcome: rules.allowSumGoalsWithOutcome,
     });
 
-    updates.push({ id: p.id, ...adjusted });
+    const sel = scorerByUser.get(String(p.userId)) || null;
+    const pointsScorer = rules.enableScorer && scorerHit(match, sel) ? rules.pointsScorer : 0;
+    const adjusted = { ...adjustedBase, pointsScorer, totalPoints: adjustedBase.totalPoints + pointsScorer };
+
+    const withJolly = rules.enableJolly && !!jollyRow ? applyJollyMultiplier(adjusted, rules.jollyMultiplier) : adjusted;
+
+    updates.push({ id: p.id, ...withJolly });
   }
 
   if (updates.length === 0) return;

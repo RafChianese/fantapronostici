@@ -122,4 +122,14 @@ export class FootballDataClient {
     // Teams change rarely during a season; cache to avoid wasting requests.
     return this.request<any>("GET", `/competitions/${competitionCode}/teams`, undefined, { cacheTtlMs: 10 * 60 * 1000 });
   }
+
+  async getMatch(matchId: number) {
+    // Match details are safe to cache briefly.
+    return this.request<any>("GET", `/matches/${matchId}`, undefined, { cacheTtlMs: 60 * 1000 });
+  }
+
+  async getTeam(teamId: number) {
+    // Used only as fallback when squads are not embedded in competition teams.
+    return this.request<any>("GET", `/teams/${teamId}`, undefined, { cacheTtlMs: 10 * 60 * 1000 });
+  }
 }
