@@ -16,6 +16,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
   return (
     <div className="mx-auto max-w-lg">
@@ -42,11 +43,6 @@ export default function LoginPage() {
                   await login(email.trim(), password);
                   nav("/");
                 } catch (e: any) {
-                  const code = e?.data?.code;
-                  if (e?.status === 403 && code === "EMAIL_NOT_VERIFIED") {
-                    nav(`/verify-email?email=${encodeURIComponent(email.trim())}`);
-                    return;
-                  }
                   setError(e.message);
                 } finally {
                   setLoading(false);
@@ -62,8 +58,32 @@ export default function LoginPage() {
           <div className="text-sm text-slate-600">
             Se non hai ancora le credenziali, <Link className="font-medium text-[#2EC4B6] hover:underline" to="/register">Registrati</Link>.
           </div>
-          <div className="text-sm">
-            <Link className="text-slate-600 hover:underline" to="/forgot-password">Password dimenticata?</Link>
+
+          <div className="pt-2">
+            <div className="text-xs font-semibold text-slate-500">Oppure</div>
+            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <Button
+                tone="secondary"
+                onClick={() => {
+                  const returnTo = window.location.origin;
+                  window.location.href = `${API_URL}/api/auth/oauth/google/start?returnTo=${encodeURIComponent(returnTo)}`;
+                }}
+              >
+                Continua con Google
+              </Button>
+              <Button
+                tone="secondary"
+                onClick={() => {
+                  const returnTo = window.location.origin;
+                  window.location.href = `${API_URL}/api/auth/oauth/microsoft/start?returnTo=${encodeURIComponent(returnTo)}`;
+                }}
+              >
+                Continua con Microsoft
+              </Button>
+            </div>
+            <div className="mt-2 text-xs text-slate-500">
+              Con OAuth non serve email di verifica né recupero password.
+            </div>
           </div>
         </CardContent>
       </Card>

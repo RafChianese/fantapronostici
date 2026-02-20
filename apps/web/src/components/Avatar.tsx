@@ -20,6 +20,9 @@ const HAIR: Record<string, string> = {
   red: "#B45309",
   gray: "#9CA3AF",
 };
+
+// Eyebrows default to hair color if not set.
+const BROWS: Record<string, string> = HAIR;
 const OUTFIT: Record<string, string> = {
   black: "#111827",
   blue: "#2563EB",
@@ -36,6 +39,7 @@ const DEFAULTS: Required<AvatarConfig> = {
   eyes: "brown",
   hairType: "short",
   hairColor: "brown",
+  eyebrowsColor: "brown",
   outfitType: "hoodie",
   outfitColor: "blue",
 };
@@ -66,6 +70,7 @@ export function buildDefaultAvatar(userId: string): Required<AvatarConfig> {
     eyes: pick(eyes, h >> 4),
     hairType: pick(hairTypes, h >> 6),
     hairColor: pick(hairColors, h >> 8),
+    eyebrowsColor: pick(hairColors, h >> 9),
     outfitType: pick(outfitTypes, h >> 10),
     outfitColor: pick(outfitColors, h >> 12),
   };
@@ -73,7 +78,10 @@ export function buildDefaultAvatar(userId: string): Required<AvatarConfig> {
 
 export function normalizeAvatar(userId: string, avatarJson?: AvatarConfig | null): Required<AvatarConfig> {
   const base = buildDefaultAvatar(userId);
-  return { ...base, ...(avatarJson || {}) };
+  const merged = { ...base, ...(avatarJson || {}) } as any;
+  // Backward compatibility: if eyebrowsColor missing, use hairColor
+  if (!merged.eyebrowsColor) merged.eyebrowsColor = merged.hairColor;
+  return merged as Required<AvatarConfig>;
 }
 
 export function UserAvatar({
@@ -91,6 +99,7 @@ export function UserAvatar({
   const skin = SKIN[a.skin] || SKIN[DEFAULTS.skin];
   const eye = EYES[a.eyes] || EYES[DEFAULTS.eyes];
   const hair = HAIR[a.hairColor] || HAIR[DEFAULTS.hairColor];
+  const brows = (BROWS as any)[(a as any).eyebrowsColor] || hair;
   const outfit = OUTFIT[a.outfitColor] || OUTFIT[DEFAULTS.outfitColor];
 
   const hairPath = (() => {
@@ -98,13 +107,19 @@ export function UserAvatar({
       case "bald":
         return null;
       case "curly":
-        return <path d="M18 10c-3-5-11-5-14 0 2-6 12-6 14 0Z" fill={hair} opacity="0.95" />;
+        return (
+          <path
+            d="M8 14c-1-2 0-6 5-6s6 3 5 6c.6-1.7.2-6.7-5-6.7S7.3 12.3 8 14Z"
+            fill={hair}
+            opacity="0.98"
+          />
+        );
       case "long":
-        return <path d="M6 11c0-4 3-7 7-7s7 3 7 7c0 2-1 3-1 3s-2-2-6-2-6 2-6 2-1-1-1-3Z" fill={hair} />;
+        return <path d="M7.5 14c-1-5 2-8 5.5-8s6.5 3 5.5 8c-.3 1.7-1.2 2.8-1.2 2.8s-1.8-2.1-4.3-2.1-4.3 2.1-4.3 2.1S7.8 15.7 7.5 14Z" fill={hair} />;
       case "medium":
-        return <path d="M6.5 11c.5-4 3.5-6.5 6.5-6.5S19 7 19.5 11c.2 1.7-.4 3-.4 3S17.3 12 13 12s-6.1 2-6.1 2-.6-1.3-.4-3Z" fill={hair} />;
+        return <path d="M8 14c.2-4 2.4-6.8 5-6.8S18.8 10 18 14c-.2 1.2-.6 2-1 2.6-.7-.6-2.1-1.5-4-1.5s-3.3.9-4 1.5c-.4-.6-.8-1.4-1-2.6Z" fill={hair} />;
       default:
-        return <path d="M7 11c1-4 4-6 6-6s5 2 6 6c.4 1.6-.3 3-.3 3S17 12 13 12s-5.7 2-5.7 2-.7-1.4-.3-3Z" fill={hair} />;
+        return <path d="M8 14c.7-3.7 3-6 5-6s4.3 2.3 5 6c.3 1.5-.2 2.7-.7 3.6-.8-.7-2.3-1.6-4.3-1.6s-3.5.9-4.3 1.6c-.5-.9-1-2.1-.7-3.6Z" fill={hair} />;
     }
   })();
 
@@ -113,16 +128,21 @@ export function UserAvatar({
       case "suit":
         return (
           <>
-            <path d="M6 28c1-6 5-9 7-9s6 3 7 9" fill={outfit} />
-            <path d="M13 19l-2 3 2 6 2-6-2-3Z" fill="#111827" opacity="0.7" />
+            <path d="M6.5 28c1.2-6.7 4.9-10.2 6.5-10.2S18.3 21.3 19.5 28" fill={outfit} />
+            <path d="M13 18.2l-2.2 3.2 2.2 6.8 2.2-6.8-2.2-3.2Z" fill="#111827" opacity="0.75" />
           </>
         );
       case "jersey":
-        return <path d="M6 28c1-6 5-9 7-9s6 3 7 9" fill={outfit} opacity="0.95" />;
+        return (
+          <>
+            <path d="M6.7 28c1.1-6.2 5-9.6 6.3-9.6S18 21.8 19.3 28" fill={outfit} opacity="0.98" />
+            <path d="M10.2 19.8h5.6" stroke="#F8FAFC" strokeWidth="1" opacity="0.7" strokeLinecap="round" />
+          </>
+        );
       case "tshirt":
-        return <path d="M7 28c1-5 4-8 6-8s5 3 6 8" fill={outfit} opacity="0.85" />;
+        return <path d="M7.2 28c1.1-5.4 4.2-8.3 5.8-8.3s4.7 2.9 5.8 8.3" fill={outfit} opacity="0.88" />;
       default:
-        return <path d="M6 28c1-6 5-9 7-9s6 3 7 9" fill={outfit} opacity="0.9" />;
+        return <path d="M6.7 28c1.2-6.2 4.9-9.6 6.3-9.6S18 21.8 19.3 28" fill={outfit} opacity="0.92" />;
     }
   })();
 
@@ -136,12 +156,33 @@ export function UserAvatar({
         </defs>
         <g clipPath="url(#clip)">
           <rect x="0" y="0" width="26" height="26" fill="#F8FAFC" />
+
+          {/* Ground */}
+          <ellipse cx="13" cy="25" rx="7" ry="1.8" fill="#E5E7EB" opacity="0.9" />
+
+          {/* Body */}
           {outfitShape}
-          <circle cx="13" cy="11" r="6.5" fill={skin} />
+
+          {/* Legs */}
+          <path d="M10.2 28v-4.2c0-1.2 1.1-2.1 2.8-2.1s2.8.9 2.8 2.1V28" fill={skin} opacity="0.95" />
+          <path d="M9.2 28c.2-1.4 1.2-2.4 2.4-2.4h2.8c1.2 0 2.2 1 2.4 2.4" stroke="#111827" strokeWidth="0.5" opacity="0.15" />
+
+          {/* Head */}
+          <circle cx="13" cy="10.5" r="6.1" fill={skin} />
           {hairPath}
-          <circle cx="10.5" cy="11.5" r="0.8" fill={eye} />
-          <circle cx="15.5" cy="11.5" r="0.8" fill={eye} />
-          <path d="M11 14.5c1.1.8 2.9.8 4 0" stroke="#111827" strokeWidth="0.9" strokeLinecap="round" opacity="0.55" fill="none" />
+
+          {/* Eyebrows */}
+          <path d="M9.7 10.2c.7-.7 1.6-1 2.5-.7" stroke={brows} strokeWidth="0.8" strokeLinecap="round" opacity="0.9" />
+          <path d="M16.3 10.2c-.7-.7-1.6-1-2.5-.7" stroke={brows} strokeWidth="0.8" strokeLinecap="round" opacity="0.9" />
+
+          {/* Eyes */}
+          <circle cx="10.6" cy="11.5" r="1.1" fill="#FFFFFF" opacity="0.95" />
+          <circle cx="15.4" cy="11.5" r="1.1" fill="#FFFFFF" opacity="0.95" />
+          <circle cx="10.6" cy="11.6" r="0.6" fill={eye} />
+          <circle cx="15.4" cy="11.6" r="0.6" fill={eye} />
+
+          {/* Mouth */}
+          <path d="M11.1 14.6c1.2.9 2.6.9 3.8 0" stroke="#111827" strokeWidth="0.8" strokeLinecap="round" opacity="0.55" fill="none" />
         </g>
       </svg>
     </div>

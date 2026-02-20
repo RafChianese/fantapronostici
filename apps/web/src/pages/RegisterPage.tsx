@@ -14,8 +14,13 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
+  const [password2, setPassword2] = useState("");
   const [err, setErr] = useState("");
   const [nameErr, setNameErr] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const pwdOk = password.trim().length >= 8;
+  const pwdMatch = password2 === password;
 
   return (
     <div className="mx-auto max-w-md">
@@ -39,15 +44,29 @@ export default function RegisterPage() {
             </div>
             <Input label="Email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@esempio.com" />
             <Input label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min 8 caratteri" />
+            <Input label="Conferma password" type="password" value={password2} onChange={(e) => setPassword2(e.target.value)} placeholder="Ripeti la password" />
+
+            <div className="text-xs text-slate-600">
+              La password deve avere almeno <span className={pwdOk ? "font-semibold text-emerald-700" : "font-semibold text-slate-700"}>8 caratteri</span>.
+              {password2 ? (
+                <span className={pwdMatch ? "ml-2 text-emerald-700" : "ml-2 text-rose-700"}>
+                  {pwdMatch ? "✓ Le password coincidono" : "Le password non coincidono"}
+                </span>
+              ) : null}
+            </div>
 
             <Button
               className="w-full"
+              disabled={busy}
               onClick={async () => {
                 try {
                   setErr("");
                   setNameErr("");
+                  if (!pwdOk) throw new Error("La password deve avere almeno 8 caratteri");
+                  if (!pwdMatch) throw new Error("Le password non coincidono");
                   if (!isValidEmail(email)) { throw new Error("Inserisci una email valida"); }
-                  const out = await register(email.trim(), displayName.trim(), password);
+                  setBusy(true);
+                  const out = await register(email.trim().toLowerCase(), displayName.trim(), password);
                   if (out?.requiresVerification) {
                     nav(`/verify-email?email=${encodeURIComponent(out.email)}`);
                   } else {
@@ -60,10 +79,12 @@ export default function RegisterPage() {
                   } else {
                     setErr(msg);
                   }
+                } finally {
+                  setBusy(false);
                 }
               }}
             >
-              Registrati
+              {busy ? "Creazione account…" : "Registrati"}
             </Button>
 
             <div className="text-center text-sm text-slate-600">

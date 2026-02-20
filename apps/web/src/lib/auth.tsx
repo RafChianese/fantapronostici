@@ -8,7 +8,7 @@ type AuthState = {
   token: string;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, displayName: string, password: string) => Promise<{ ok: boolean; requiresVerification: boolean; email: string }>;
+  register: (email: string, displayName: string, password: string) => Promise<{ ok: boolean; requiresVerification: boolean; email: string; token?: string; user?: User }>;
   verifyEmail: (email: string, code: string) => Promise<void>;
   resendVerification: (email: string) => Promise<void>;
   refreshMe: () => Promise<void>;
@@ -79,7 +79,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
       register: async (email, displayName, password) => {
         const data = await api.register(email, displayName, password);
-        // No token until email is verified.
+        // Email verification is currently disabled; backend may return token directly.
+        if (data?.token) {
+          setToken(data.token);
+          setTok(data.token);
+          if (data.user) setUser(data.user);
+        }
         return data;
       },
       verifyEmail: async (email: string, code: string) => {

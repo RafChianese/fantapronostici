@@ -46,6 +46,7 @@ const UpdateProfileSchema = z.object({
       eyes: z.enum(["brown", "blue", "green", "gray"]),
       hairType: z.enum(["short", "medium", "long", "curly", "bald"]),
       hairColor: z.enum(["black", "brown", "blonde", "red", "gray"]),
+      eyebrowsColor: z.enum(["black", "brown", "blonde", "red", "gray"]),
       outfitType: z.enum(["tshirt", "hoodie", "jersey", "suit"]),
       outfitColor: z.enum(["black", "blue", "red", "green", "purple", "orange", "gray"]),
     })

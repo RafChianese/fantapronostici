@@ -15,7 +15,7 @@ function Icon({
   name: "dashboard" | "leaderboard" | "predictions" | "leagues" | "menu";
   active?: boolean;
 }) {
-  const stroke = active ? "#2EC4B6" : "#64748b"; // slate-500
+  const stroke = active ? (name === "menu" ? "#ffffff" : "#2EC4B6") : "#64748b"; // slate-500
   const common = {
     width: 22,
     height: 22,
@@ -285,13 +285,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Top bar */}
-      <header className="sticky top-0 z-20 border-b border-slate-100 bg-white/90 backdrop-blur">
+      <header className="sticky top-0 z-20 border-b border-slate-100 bg-[#2EC4B6] text-white md:bg-white/90 md:text-slate-900 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
           <div className="flex min-w-0 items-center gap-3">
             {user ? (
               <button
                 type="button"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-sm md:hidden"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/25 bg-white/15 text-white shadow-sm md:hidden"
                 onClick={() => setDrawerOpen((v) => !v)}
                 aria-label="Apri menu"
               >
@@ -302,15 +302,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
             )}
 
             <Link to={user ? "/" : "/login"} className="min-w-0">
-              <div className="truncate text-base font-semibold leading-tight text-slate-900">{leagueTitle}</div>
+              <div className="truncate text-base font-extrabold leading-tight text-white md:text-slate-900">{leagueTitle}</div>
               {inviteCode ? (
                 <div className="mt-1 flex flex-wrap items-center gap-2">
-                  <span data-tour="invite-code" className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-700">
+                  <span data-tour="invite-code" className="rounded-full border border-white/25 bg-white/15 px-2 py-0.5 text-xs font-medium text-white md:border-slate-200 md:bg-white md:text-slate-700">
                     Codice invito: <span className="font-semibold">{inviteCode}</span>
                   </span>
                   <button
                     type="button"
-                    className="text-xs font-medium text-[#2EC4B6] hover:underline"
+                    className="text-xs font-bold text-white/95 hover:underline md:text-[#2EC4B6]"
                     onClick={(e) => {
                       e.preventDefault();
                       copyInviteCode();
@@ -320,7 +320,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   </button>
                 </div>
               ) : (
-                <div className="mt-1 text-xs text-slate-500">Fase a gironi</div>
+                <div className="mt-1 text-xs text-white/90 md:text-slate-500">Fase a gironi</div>
               )}
             </Link>
           </div>

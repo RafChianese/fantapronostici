@@ -4,6 +4,8 @@ import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { useLock } from "../lib/lock";
 import { Button, Card, CardContent, CardHeader, Skeleton, Badge } from "../components/ui";
+import { AnimatedNumber } from "../components/AnimatedNumber";
+import { AchievementsStrip } from "../components/Achievements";
 
 function getInitials(name: string) {
   const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
@@ -101,6 +103,21 @@ export default function DashboardPage() {
     "";
 
   const totals = summary?.totals ?? { total: 0, exact: 0, outcome: 0, sumGoals: 0 };
+  // XP-style micro feedback when points change.
+  const [xpDelta, setXpDelta] = useState<number>(0);
+  const prevTotalRef = React.useRef<number>(Number(totals?.total ?? 0));
+  useEffect(() => {
+    const prev = prevTotalRef.current;
+    const next = Number(totals?.total ?? 0);
+    if (Number.isFinite(prev) && Number.isFinite(next) && next !== prev) {
+      const d = next - prev;
+      if (d > 0) {
+        setXpDelta(d);
+        window.setTimeout(() => setXpDelta(0), 900);
+      }
+      prevTotalRef.current = next;
+    }
+  }, [totals?.total]);
   const items: any[] = Array.isArray(summary?.detail) ? summary.detail : [];
 
   const byMatchday = useMemo(() => {
@@ -291,9 +308,16 @@ export default function DashboardPage() {
                 <div className="text-[11px] font-semibold text-slate-500">Posizione</div>
                 <div className="text-lg font-extrabold text-slate-900">{myPosition ?? "—"}</div>
               </div>
-              <div className="rounded-2xl bg-slate-50 p-3">
+              <div className="relative rounded-2xl bg-slate-50 p-3">
                 <div className="text-[11px] font-semibold text-slate-500">Punti</div>
-                <div className="text-lg font-extrabold text-slate-900">{Number(totals?.total ?? 0)}</div>
+                <div className="text-lg font-extrabold text-slate-900">
+                  <AnimatedNumber value={Number(totals?.total ?? 0)} />
+                </div>
+                {xpDelta > 0 ? (
+                  <div className="pointer-events-none absolute right-3 top-3 tm-xp-float rounded-full bg-emerald-600 px-2 py-0.5 text-[11px] font-extrabold text-white shadow-lg">
+                    +{xpDelta} XP
+                  </div>
+                ) : null}
               </div>
               <div className="rounded-2xl bg-slate-50 p-3">
                 <div className="text-[11px] font-semibold text-slate-500">Giornate</div>
@@ -301,12 +325,25 @@ export default function DashboardPage() {
               </div>
               <div className="rounded-2xl bg-slate-50 p-3">
                 <div className="text-[11px] font-semibold text-slate-500">Esatti</div>
-                <div className="text-lg font-extrabold text-slate-900">{Number(totals?.exact ?? 0)}</div>
+                <div className="text-lg font-extrabold text-slate-900">
+                  <AnimatedNumber value={Number(totals?.exact ?? 0)} />
+                </div>
               </div>
             </div>
           )}
         </CardContent>
       </Card>
+
+      <div className="mb-4">
+        <AchievementsStrip
+          input={{
+            hasAnyPrediction: (items?.length ?? 0) > 0,
+            hasScorerPick: Boolean((items ?? []).some((x: any) => x?.scorerPick?.playerName)),
+            hasTournamentPicks: Boolean((summary as any)?.competitionPicks?.winner || (summary as any)?.competitionPicks?.topScorer),
+            myRank: myPosition ?? null,
+          }}
+        />
+      </div>
 
       {/* 5) Current matchday */}
       <Card className="mb-4 rounded-3xl">

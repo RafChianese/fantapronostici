@@ -5,6 +5,7 @@ import { useLoading } from "../lib/loading";
 import { Badge, Button, Card, CardContent, CardHeader, Skeleton } from "../components/ui";
 import { useAuth } from "../lib/auth";
 import { UserAvatar } from "../components/Avatar";
+import { AnimatedNumber } from "../components/AnimatedNumber";
 
 type Row = {
   userId: string;
@@ -181,6 +182,9 @@ export default function LeaderboardPage() {
               const tr = flash[r.userId] || "";
               const flashCls = tr === "up" ? "tm-flash-up" : tr === "down" ? "tm-flash-down" : "";
               const delta = deltas[r.userId] || 0;
+              const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : "";
+              const medalTone = idx === 0 ? "amber" : idx === 1 ? "blue" : idx === 2 ? "rose" : "gray";
+              const medalGlow = idx <= 2 ? "tm-medal-glow" : "";
               return (
               <div key={r.userId} className={`py-3 ${user?.id && r.userId === user.id ? "rounded-2xl bg-[#2EC4B6]/10 px-3" : ""} ${flashCls}`}>
                 {/* Mobile: 2 righe senza scroll orizzontale. Desktop: layout a colonne */}
@@ -188,7 +192,10 @@ export default function LeaderboardPage() {
                   <div className="flex items-center justify-between sm:col-span-8 sm:justify-start sm:gap-3">
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-2">
-                        <Badge tone={idx === 0 ? "amber" : "gray"}>#{idx + 1}</Badge>
+                        <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-extrabold ${idx <= 2 ? "border-[#2EC4B6]/30 bg-white" : "border-slate-200 bg-slate-50"} ${medalGlow}`}>
+                          <span className="tabular-nums">#{idx + 1}</span>
+                          {medal ? <span aria-hidden="true">{medal}</span> : null}
+                        </span>
                         {delta !== 0 ? (
                           <span className="text-[11px] font-semibold text-slate-700" title="Variazione posizione">
                             {delta > 0 ? "▲" : "▼"}
@@ -198,12 +205,17 @@ export default function LeaderboardPage() {
                       <div className="flex items-center gap-2">
                         <UserAvatar userId={r.userId} avatar={r.avatarJson || null} size={26} className="shadow-sm" />
                         <Link className="font-medium hover:underline" to={`/users/${r.userId}`}>{r.displayName}</Link>
+                        {idx <= 2 ? <Badge tone={medalTone}>Top {idx + 1}</Badge> : null}
                       </div>
                     </div>
-                    <div className="text-right text-sm font-semibold sm:hidden">{r.totalPoints} pt</div>
+                    <div className="text-right text-sm font-extrabold sm:hidden">
+                      <AnimatedNumber value={r.totalPoints} /> pt
+                    </div>
                   </div>
 
-                  <div className="hidden sm:col-span-2 sm:block sm:text-right sm:text-sm sm:font-semibold">{r.totalPoints} pt</div>
+                  <div className="hidden sm:col-span-2 sm:block sm:text-right sm:text-sm sm:font-extrabold">
+                    <AnimatedNumber value={r.totalPoints} /> pt
+                  </div>
 
                   <div className="flex flex-wrap items-center justify-start gap-x-4 gap-y-1 text-xs text-slate-700 sm:col-span-2 sm:justify-end sm:flex-nowrap sm:gap-x-3">
                     <span className="whitespace-nowrap" title="Risultati esatti">🎯 {r.exactHits}</span>

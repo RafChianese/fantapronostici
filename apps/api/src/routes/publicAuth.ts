@@ -2,10 +2,12 @@ import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import crypto from "crypto";
+import jwt from "jsonwebtoken";
 import { prisma } from "../lib/prisma.js";
 import { signToken } from "../lib/auth.js";
 import { env } from "../lib/env.js";
-import { sendEmail } from "../services/email.js";
+// Email flows are temporarily disabled (no paid provider required).
+// import { sendEmail } from "../services/email.js";
 
 export const authRouter = Router();
 
@@ -21,12 +23,6 @@ authRouter.post("/login", async (req, res) => {
 
   const ok = await bcrypt.compare(password, user.passwordHash);
   if (!ok) return res.status(401).json({ message: "Credenziali non valide" });
-
-  // NOTE: keep builds resilient if Prisma Client types are temporarily out of sync on CI/Render.
-  const emailVerifiedAt = (user as any).emailVerifiedAt as Date | null | undefined;
-  if (!emailVerifiedAt) {
-    return res.status(403).json({ code: "EMAIL_NOT_VERIFIED", message: "Email non verificata" });
-  }
 
   const token = signToken({ sub: user.id });
   return res.json({ token, user: { id: user.id, email: user.email, displayName: user.displayName, globalRole: user.globalRole } });
@@ -52,7 +48,8 @@ authRouter.post("/register", async (req, res) => {
   let user;
   try {
     user = await prisma.user.create({
-      data: { email, displayName, passwordHash, globalRole: "USER", isActive: true, ...({ emailVerifiedAt: null } as any) },
+      // Email verification is temporarily bypassed.
+      data: { email, displayName, passwordHash, globalRole: "USER", isActive: true, ...({ emailVerifiedAt: new Date() } as any) },
     });
   } catch (e: any) {
     // Prisma unique constraint (race condition safe)
@@ -65,56 +62,14 @@ authRouter.post("/register", async (req, res) => {
     throw e;
   }
 
-  // Generate and email a 6-digit OTP (valid 10 minutes)
-  const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, "0");
-  const codeHash = await bcrypt.hash(code, 10);
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-
-  const emailVerificationToken = (prisma as any).emailVerificationToken;
-  await prisma.$transaction([
-    // Invalidate previous pending tokens
-    emailVerificationToken.updateMany({
-      where: { userId: user.id, usedAt: null },
-      data: { usedAt: new Date() },
-    }),
-    emailVerificationToken.create({
-      data: { userId: user.id, codeHash, expiresAt },
-    }),
-  ]);
-
-  const verifyUrl = `${env.WEB_ORIGIN}/verify-email?email=${encodeURIComponent(email)}`;
-  const subject = "Completa la registrazione - Fanta Pronostici";
-  const html = `
-    <div style="font-family:Arial,sans-serif;line-height:1.5">
-      <h2>Completa la registrazione</h2>
-      <p>Hai creato un account su Fanta Pronostici.</p>
-      <p>Inserisci questo codice per verificare la tua email (valido 10 minuti):</p>
-      <div style="font-size:28px;font-weight:700;letter-spacing:4px;margin:16px 0">${code}</div>
-      <p>Apri la pagina di verifica (opzionale):</p>
-      <p><a href="${verifyUrl}">${verifyUrl}</a></p>
-      <p>Se non sei stato tu, puoi ignorare questa email.</p>
-    </div>
-  `;
-  const text = `Completa la registrazione su Fanta Pronostici.\n\nCodice di verifica (valido 10 minuti): ${code}\n\nApri la pagina di verifica (opzionale): ${verifyUrl}`;
-
-  const sendRes = await sendEmail({ to: email, subject, html, text });
-
-  if (!sendRes?.ok) {
-    // eslint-disable-next-line no-console
-    console.error("[auth] Verification email send failed", {
-      to: email,
-      provider: env.RESEND_API_KEY ? "resend" : env.SENDGRID_API_KEY ? "sendgrid" : "none",
-      skipped: (sendRes as any)?.skipped,
-    });
-  }
-
-  // In development, always log the OTP if the email could not be sent (or no provider is configured).
-  if (env.NODE_ENV !== "production" && (!sendRes?.ok || (!env.RESEND_API_KEY && !env.SENDGRID_API_KEY))) {
-    // eslint-disable-next-line no-console
-    console.log(`[auth] DEV email verification code for ${email}: ${code}`);
-  }
-
-  return res.status(201).json({ ok: true, requiresVerification: true, email });
+  const token = signToken({ sub: user.id });
+  return res.status(201).json({
+    ok: true,
+    requiresVerification: false,
+    email,
+    token,
+    user: { id: user.id, email: user.email, displayName: user.displayName, globalRole: user.globalRole },
+  });
 });
 
 const VerifyEmailSchema = z.object({
@@ -123,89 +78,15 @@ const VerifyEmailSchema = z.object({
 });
 
 authRouter.post("/verify-email", async (req, res) => {
-  const { email, code } = VerifyEmailSchema.parse(req.body);
-  const user = await prisma.user.findUnique({ where: { email } });
-  if (!user || !user.isActive) return res.status(400).json({ message: "Codice non valido o scaduto" });
-
-  const now = new Date();
-  const emailVerificationToken = (prisma as any).emailVerificationToken;
-  const candidates = await emailVerificationToken.findMany({
-    where: { userId: user.id, usedAt: null, expiresAt: { gt: now } },
-    orderBy: { createdAt: "desc" },
-    take: 5,
-  });
-
-  let matched: { id: string } | null = null;
-  for (const c of candidates) {
-    const ok = await bcrypt.compare(code, c.codeHash);
-    if (ok) {
-      matched = { id: c.id };
-      break;
-    }
-  }
-
-  if (!matched) return res.status(400).json({ message: "Codice non valido o scaduto" });
-
-  await prisma.$transaction([
-    prisma.user.update({ where: { id: user.id }, data: { ...({ emailVerifiedAt: (user as any).emailVerifiedAt ?? new Date() } as any) } }),
-    emailVerificationToken.update({ where: { id: matched.id }, data: { usedAt: new Date() } }),
-  ]);
-
-  const token = signToken({ sub: user.id });
-  return res.json({ token, user: { id: user.id, email: user.email, displayName: user.displayName, globalRole: user.globalRole } });
+  VerifyEmailSchema.parse(req.body);
+  return res.status(410).json({ message: "Verifica email temporaneamente disattivata" });
 });
 
 const ResendSchema = z.object({ email: z.string().email() });
 
 authRouter.post("/resend-verification", async (req, res) => {
-  const { email } = ResendSchema.parse(req.body);
-
-  // Privacy: always return ok.
-  const user = await prisma.user.findUnique({ where: { email } });
-  if (!user || !user.isActive) return res.json({ ok: true });
-  if ((user as any).emailVerifiedAt) return res.json({ ok: true });
-
-  const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, "0");
-  const codeHash = await bcrypt.hash(code, 10);
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-
-  const emailVerificationToken = (prisma as any).emailVerificationToken;
-  await prisma.$transaction([
-    emailVerificationToken.updateMany({ where: { userId: user.id, usedAt: null }, data: { usedAt: new Date() } }),
-    emailVerificationToken.create({ data: { userId: user.id, codeHash, expiresAt } }),
-  ]);
-
-  const verifyUrl = `${env.WEB_ORIGIN}/verify-email?email=${encodeURIComponent(email)}`;
-  const subject = "Nuovo codice di verifica - Fanta Pronostici";
-  const html = `
-    <div style="font-family:Arial,sans-serif;line-height:1.5">
-      <h2>Nuovo codice di verifica</h2>
-      <p>Hai richiesto un nuovo codice per verificare la tua email.</p>
-      <p>Inserisci questo codice (valido 10 minuti):</p>
-      <div style="font-size:28px;font-weight:700;letter-spacing:4px;margin:16px 0">${code}</div>
-      <p>Apri la pagina di verifica (opzionale):</p>
-      <p><a href="${verifyUrl}">${verifyUrl}</a></p>
-      <p>Se non sei stato tu, puoi ignorare questa email.</p>
-    </div>
-  `;
-  const text = `Nuovo codice di verifica (valido 10 minuti): ${code}\n\nApri la pagina di verifica (opzionale): ${verifyUrl}`;
-  const sendRes = await sendEmail({ to: email, subject, html, text });
-
-  if (!sendRes?.ok) {
-    // eslint-disable-next-line no-console
-    console.error("[auth] Resend verification email send failed", {
-      to: email,
-      provider: env.RESEND_API_KEY ? "resend" : env.SENDGRID_API_KEY ? "sendgrid" : "none",
-      skipped: (sendRes as any)?.skipped,
-    });
-  }
-
-  if (env.NODE_ENV !== "production" && (!sendRes?.ok || (!env.RESEND_API_KEY && !env.SENDGRID_API_KEY))) {
-    // eslint-disable-next-line no-console
-    console.log(`[auth] DEV resend verification code for ${email}: ${code}`);
-  }
-
-  return res.json({ ok: true });
+  ResendSchema.parse(req.body);
+  return res.status(410).json({ message: "Verifica email temporaneamente disattivata" });
 });
 
 // Password reset (email-based)
@@ -214,44 +95,8 @@ const ForgotPasswordSchema = z.object({
 });
 
 authRouter.post("/forgot-password", async (req, res) => {
-  const { email } = ForgotPasswordSchema.parse(req.body);
-
-  // Always return success for privacy.
-  const user = await prisma.user.findUnique({ where: { email } });
-  if (!user || !user.isActive) {
-    return res.json({ ok: true });
-  }
-
-  const rawToken = crypto.randomBytes(32).toString("hex");
-  const tokenHash = await bcrypt.hash(rawToken, 10);
-  const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1h
-
-  await prisma.passwordResetToken.create({
-    data: {
-      userId: user.id,
-      tokenHash,
-      expiresAt,
-    },
-  });
-
-  const resetUrl = `${env.WEB_ORIGIN}/reset-password?email=${encodeURIComponent(email)}&token=${rawToken}`;
-
-  await sendEmail({
-    to: email,
-    subject: "Recupero password - Fanta Pronostici",
-    html: `
-      <div style="font-family:Arial,sans-serif;line-height:1.5">
-        <h2>Recupero password</h2>
-        <p>Hai richiesto il reset della password.</p>
-        <p>Clicca qui per impostare una nuova password (valido 1 ora):</p>
-        <p><a href="${resetUrl}">${resetUrl}</a></p>
-        <p>Se non sei stato tu, puoi ignorare questa email.</p>
-      </div>
-    `,
-    text: `Recupero password. Apri questo link (valido 1 ora): ${resetUrl}`,
-  });
-
-  return res.json({ ok: true });
+  ForgotPasswordSchema.parse(req.body);
+  return res.status(410).json({ message: "Recupero password via email temporaneamente disattivato" });
 });
 
 const ResetPasswordSchema = z.object({
@@ -261,35 +106,234 @@ const ResetPasswordSchema = z.object({
 });
 
 authRouter.post("/reset-password", async (req, res) => {
-  const { email, token, newPassword } = ResetPasswordSchema.parse(req.body);
-  const user = await prisma.user.findUnique({ where: { email } });
-  if (!user || !user.isActive) return res.status(400).json({ message: "Token non valido o scaduto" });
+  ResetPasswordSchema.parse(req.body);
+  return res.status(410).json({ message: "Recupero password via email temporaneamente disattivato" });
+});
 
-  const now = new Date();
-  const candidates = await prisma.passwordResetToken.findMany({
-    where: { userId: user.id, usedAt: null, expiresAt: { gt: now } },
-    orderBy: { createdAt: "desc" },
-    take: 5,
+// -------- OAuth (Google / Microsoft) --------
+
+const OauthStartSchema = z.object({
+  returnTo: z.string().optional(),
+});
+
+function signOauthState(payload: object) {
+  return jwt.sign(payload, env.JWT_SECRET, { expiresIn: "10m" });
+}
+
+function verifyOauthState(token: string) {
+  return jwt.verify(token, env.JWT_SECRET) as any;
+}
+
+function getApiBase(req: any) {
+  return `${req.protocol}://${req.get("host")}`;
+}
+
+async function ensureUniqueDisplayName(base: string) {
+  const normalized = base.trim().slice(0, 30) || "utente";
+  let candidate = normalized;
+  for (let i = 0; i < 10; i++) {
+    const exists = await prisma.user.findUnique({ where: { displayName: candidate } });
+    if (!exists) return candidate;
+    candidate = `${normalized}-${Math.floor(Math.random() * 9999)}`;
+  }
+  return `${normalized}-${crypto.randomInt(10000, 99999)}`;
+}
+
+async function upsertOAuthUser(params: {
+  provider: "GOOGLE" | "MICROSOFT";
+  providerUserId: string;
+  email?: string | null;
+  displayName?: string | null;
+}) {
+  const { provider, providerUserId, email, displayName } = params;
+
+  const existingAccount = await prisma.oAuthAccount.findUnique({
+    where: { provider_providerUserId: { provider: provider as any, providerUserId } },
+    include: { user: true },
   });
+  if (existingAccount?.user) return existingAccount.user;
 
-  let matched: { id: string } | null = null;
-  for (const c of candidates) {
-    const ok = await bcrypt.compare(token, c.tokenHash);
-    if (ok) {
-      matched = { id: c.id };
-      break;
-    }
+  let user = email ? await prisma.user.findUnique({ where: { email } }) : null;
+
+  if (!user) {
+    const baseName = displayName || (email ? email.split("@")[0] : "utente");
+    const uniqueName = await ensureUniqueDisplayName(baseName);
+    const passwordHash = await bcrypt.hash(crypto.randomBytes(32).toString("hex"), 10);
+    user = await prisma.user.create({
+      data: {
+        email: email || `${provider.toLowerCase()}_${providerUserId}@local.invalid`,
+        displayName: uniqueName,
+        passwordHash,
+        globalRole: "USER",
+        isActive: true,
+        ...({ emailVerifiedAt: new Date() } as any),
+      },
+    });
   }
 
-  if (!matched) return res.status(400).json({ message: "Token non valido o scaduto" });
+  await prisma.oAuthAccount.create({
+    data: {
+      provider: provider as any,
+      providerUserId,
+      email: email || null,
+      userId: user.id,
+    },
+  });
 
-  const passwordHash = await bcrypt.hash(newPassword, 10);
-  await prisma.$transaction([
-    prisma.user.update({ where: { id: user.id }, data: { passwordHash } }),
-    prisma.passwordResetToken.update({ where: { id: matched.id }, data: { usedAt: new Date() } }),
-  ]);
+  return user;
+}
 
-  return res.json({ ok: true });
+authRouter.get("/oauth/google/start", async (req, res) => {
+  if (!env.GOOGLE_OAUTH_CLIENT_ID || !env.GOOGLE_OAUTH_CLIENT_SECRET) {
+    return res.status(500).send("Google OAuth non configurato");
+  }
+  const { returnTo } = OauthStartSchema.parse(req.query);
+  const state = signOauthState({ provider: "GOOGLE", returnTo: returnTo || env.WEB_BASE_URL });
+  const redirectUri = `${getApiBase(req)}/api/auth/oauth/google/callback`;
+  const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+  url.searchParams.set("client_id", env.GOOGLE_OAUTH_CLIENT_ID);
+  url.searchParams.set("redirect_uri", redirectUri);
+  url.searchParams.set("response_type", "code");
+  url.searchParams.set("scope", "openid email profile");
+  url.searchParams.set("state", state);
+  url.searchParams.set("prompt", "select_account");
+  return res.redirect(url.toString());
+});
+
+authRouter.get("/oauth/google/callback", async (req, res) => {
+  try {
+    const code = String(req.query.code || "");
+    const stateToken = String(req.query.state || "");
+    if (!code || !stateToken) return res.status(400).send("OAuth callback non valido");
+    const state = verifyOauthState(stateToken);
+    const redirectUri = `${getApiBase(req)}/api/auth/oauth/google/callback`;
+
+    const body = new URLSearchParams({
+      code,
+      client_id: env.GOOGLE_OAUTH_CLIENT_ID,
+      client_secret: env.GOOGLE_OAUTH_CLIENT_SECRET,
+      redirect_uri: redirectUri,
+      grant_type: "authorization_code",
+    });
+
+    const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+    });
+    if (!tokenRes.ok) return res.status(400).send("OAuth token exchange fallito");
+    const tokenJson: any = await tokenRes.json();
+    const accessToken = tokenJson.access_token as string;
+
+    const userinfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!userinfoRes.ok) return res.status(400).send("OAuth userinfo fallito");
+    const u: any = await userinfoRes.json();
+
+    const user = await upsertOAuthUser({
+      provider: "GOOGLE",
+      providerUserId: String(u.sub),
+      email: u.email,
+      displayName: u.name,
+    });
+
+    const token = signToken({ sub: user.id });
+    const dest = `${String(state.returnTo || env.WEB_BASE_URL).replace(/\/$/, "")}/oauth/callback#token=${encodeURIComponent(token)}`;
+    return res.redirect(dest);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error("[oauth] google callback error", e);
+    return res.status(500).send("Errore OAuth");
+  }
+});
+
+authRouter.get("/oauth/microsoft/start", async (req, res) => {
+  if (!env.MICROSOFT_OAUTH_CLIENT_ID || !env.MICROSOFT_OAUTH_CLIENT_SECRET) {
+    return res.status(500).send("Microsoft OAuth non configurato");
+  }
+  const { returnTo } = OauthStartSchema.parse(req.query);
+  const state = signOauthState({ provider: "MICROSOFT", returnTo: returnTo || env.WEB_BASE_URL });
+  const redirectUri = `${getApiBase(req)}/api/auth/oauth/microsoft/callback`;
+  const url = new URL(`https://login.microsoftonline.com/${env.MICROSOFT_OAUTH_TENANT || "common"}/oauth2/v2.0/authorize`);
+  url.searchParams.set("client_id", env.MICROSOFT_OAUTH_CLIENT_ID);
+  url.searchParams.set("redirect_uri", redirectUri);
+  url.searchParams.set("response_type", "code");
+  url.searchParams.set("response_mode", "query");
+  url.searchParams.set("scope", "openid email profile User.Read");
+  url.searchParams.set("state", state);
+  url.searchParams.set("prompt", "select_account");
+  return res.redirect(url.toString());
+});
+
+authRouter.get("/oauth/microsoft/callback", async (req, res) => {
+  try {
+    const code = String(req.query.code || "");
+    const stateToken = String(req.query.state || "");
+    if (!code || !stateToken) return res.status(400).send("OAuth callback non valido");
+    const state = verifyOauthState(stateToken);
+    const redirectUri = `${getApiBase(req)}/api/auth/oauth/microsoft/callback`;
+
+    const body = new URLSearchParams({
+      code,
+      client_id: env.MICROSOFT_OAUTH_CLIENT_ID,
+      client_secret: env.MICROSOFT_OAUTH_CLIENT_SECRET,
+      redirect_uri: redirectUri,
+      grant_type: "authorization_code",
+    });
+
+    const tokenRes = await fetch(`https://login.microsoftonline.com/${env.MICROSOFT_OAUTH_TENANT || "common"}/oauth2/v2.0/token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+    });
+    if (!tokenRes.ok) return res.status(400).send("OAuth token exchange fallito");
+    const tokenJson: any = await tokenRes.json();
+    const accessToken = tokenJson.access_token as string;
+
+    let email: string | null = null;
+    let providerUserId: string | null = null;
+    let displayName: string | null = null;
+
+    const userinfoRes = await fetch("https://graph.microsoft.com/oidc/userinfo", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (userinfoRes.ok) {
+      const ui: any = await userinfoRes.json();
+      providerUserId = ui.sub ? String(ui.sub) : null;
+      email = ui.email ? String(ui.email) : (ui.preferred_username ? String(ui.preferred_username) : null);
+      displayName = ui.name ? String(ui.name) : null;
+    }
+
+    if (!providerUserId || !email) {
+      const meRes = await fetch("https://graph.microsoft.com/v1.0/me", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (meRes.ok) {
+        const me: any = await meRes.json();
+        providerUserId = providerUserId || (me.id ? String(me.id) : null);
+        email = email || (me.mail ? String(me.mail) : (me.userPrincipalName ? String(me.userPrincipalName) : null));
+        displayName = displayName || (me.displayName ? String(me.displayName) : null);
+      }
+    }
+
+    if (!providerUserId) return res.status(400).send("OAuth userinfo fallito");
+
+    const user = await upsertOAuthUser({
+      provider: "MICROSOFT",
+      providerUserId,
+      email,
+      displayName,
+    });
+
+    const token = signToken({ sub: user.id });
+    const dest = `${String(state.returnTo || env.WEB_BASE_URL).replace(/\/$/, "")}/oauth/callback#token=${encodeURIComponent(token)}`;
+    return res.redirect(dest);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error("[oauth] microsoft callback error", e);
+    return res.status(500).send("Errore OAuth");
+  }
 });
 
 // NOTE: endpoints defined above.

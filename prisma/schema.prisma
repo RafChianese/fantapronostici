@@ -12,6 +12,11 @@ enum GlobalRole {
   SUPER_ADMIN
 }
 
+enum OAuthProvider {
+  GOOGLE
+  MICROSOFT
+}
+
 enum LeagueRole {
   MEMBER
   ADMIN
@@ -85,11 +90,28 @@ model User {
   // Email verification
   emailVerificationTokens EmailVerificationToken[]
 
+  // OAuth logins (Google / Microsoft)
+  oauthAccounts OAuthAccount[]
+
   // Push subscriptions
   pushSubscriptions PushSubscription[]
 
   // Password reset
   passwordResetTokens PasswordResetToken[]
+}
+
+model OAuthAccount {
+  id             String        @id @default(cuid())
+  provider       OAuthProvider
+  providerUserId String
+  email          String?
+  userId         String
+  createdAt      DateTime      @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUserId])
+  @@index([userId])
 }
 
 model PasswordResetToken {

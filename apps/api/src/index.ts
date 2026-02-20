@@ -11,6 +11,8 @@ import { startScheduler } from "./jobs/syncJob.js";
 import { bootstrapDefaults } from "./bootstrapDefaults.js";
 
 const app = express();
+// Needed on Render / reverse proxies so req.protocol uses X-Forwarded-Proto.
+app.set("trust proxy", 1);
 app.use(helmet());
 // CORS
 // WEB_ORIGIN can be a comma-separated allowlist.

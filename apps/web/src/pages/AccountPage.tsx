@@ -6,6 +6,27 @@ import { Alert, Button, Card, CardContent, CardHeader, Input } from "../componen
 import { LeagueAvatar } from "../components/LeagueAvatar";
 import { UserAvatar, normalizeAvatar } from "../components/Avatar";
 
+type AvatarTab = "pelle" | "capelli" | "sopracciglia" | "occhi" | "maglia";
+
+const COLOR_OPTIONS = {
+  skin: ["light", "tan", "brown", "dark"] as const,
+  hair: ["black", "brown", "blonde", "red", "gray"] as const,
+  eyes: ["brown", "blue", "green", "gray"] as const,
+  outfit: ["black", "blue", "red", "green", "purple", "orange", "gray"] as const,
+};
+
+function Tile({ active, onClick, children }: { active?: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex h-10 w-10 items-center justify-center rounded-xl ring-1 transition ${active ? "ring-slate-900 shadow" : "ring-slate-200 hover:ring-slate-300"}`}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function AccountPage() {
   const { user, memberships, refreshMe, activeLeagueId } = useAuth();
   const toast = useToast();
@@ -20,6 +41,7 @@ export default function AccountPage() {
 
   // Avatar
   const [avatar, setAvatar] = useState<AvatarConfig>({});
+  const [avatarTab, setAvatarTab] = useState<AvatarTab>("pelle");
   const [savingAvatar, setSavingAvatar] = useState(false);
   const [avatarOk, setAvatarOk] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
@@ -103,97 +125,158 @@ export default function AccountPage() {
           {avatarOk ? <Alert tone="success">Avatar aggiornato</Alert> : null}
 
           {user ? (
-            <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <UserAvatar userId={user.id} avatar={avatar} size={64} className="shadow" />
-              <div className="min-w-0">
-                <div className="text-sm font-semibold text-slate-900">Anteprima</div>
-                <div className="mt-0.5 text-xs text-slate-600">Le combinazioni sono salvate nel tuo profilo.</div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <UserAvatar userId={user.id} avatar={avatar} size={86} className="shadow" />
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-slate-900">Personalizza avatar</div>
+                    <div className="mt-0.5 text-xs text-slate-600">Scegli stile e colori, poi salva.</div>
+                  </div>
+                </div>
+                <div className="hidden sm:block">
+                  <FieldSelect
+                    label="Sesso"
+                    value={avatar.sex || ""}
+                    onChange={(v) => setAvatar((p) => ({ ...p, sex: v as any }))}
+                    options={[
+                      { value: "male", label: "Maschile" },
+                      { value: "female", label: "Femminile" },
+                    ]}
+                  />
+                </div>
+              </div>
+
+              {/* Tabs like the reference UI */}
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button type="button" className={`rounded-xl px-3 py-1.5 text-sm ring-1 ${avatarTab === "pelle" ? "bg-slate-900 text-white ring-slate-900" : "bg-white ring-slate-200 hover:ring-slate-300"}`} onClick={() => setAvatarTab("pelle")}>
+                  Pelle
+                </button>
+                <button type="button" className={`rounded-xl px-3 py-1.5 text-sm ring-1 ${avatarTab === "capelli" ? "bg-slate-900 text-white ring-slate-900" : "bg-white ring-slate-200 hover:ring-slate-300"}`} onClick={() => setAvatarTab("capelli")}>
+                  Capelli
+                </button>
+                <button type="button" className={`rounded-xl px-3 py-1.5 text-sm ring-1 ${avatarTab === "sopracciglia" ? "bg-slate-900 text-white ring-slate-900" : "bg-white ring-slate-200 hover:ring-slate-300"}`} onClick={() => setAvatarTab("sopracciglia")}>
+                  Sopracciglia
+                </button>
+                <button type="button" className={`rounded-xl px-3 py-1.5 text-sm ring-1 ${avatarTab === "occhi" ? "bg-slate-900 text-white ring-slate-900" : "bg-white ring-slate-200 hover:ring-slate-300"}`} onClick={() => setAvatarTab("occhi")}>
+                  Occhi
+                </button>
+                <button type="button" className={`rounded-xl px-3 py-1.5 text-sm ring-1 ${avatarTab === "maglia" ? "bg-slate-900 text-white ring-slate-900" : "bg-white ring-slate-200 hover:ring-slate-300"}`} onClick={() => setAvatarTab("maglia")}>
+                  Maglia
+                </button>
+              </div>
+
+              {/* Panels */}
+              <div className="mt-4">
+                {avatarTab === "pelle" ? (
+                  <div className="space-y-2">
+                    <div className="text-xs font-semibold text-slate-700">Tonalità pelle</div>
+                    <div className="flex flex-wrap gap-2">
+                      {COLOR_OPTIONS.skin.map((k) => (
+                        <Tile key={k} active={(avatar.skin || "") === k} onClick={() => setAvatar((p) => ({ ...p, skin: k as any }))}>
+                          <div className={`h-7 w-7 rounded-lg ${
+                            k === "light" ? "bg-[#F6D2B8]" : k === "tan" ? "bg-[#E5B28C]" : k === "brown" ? "bg-[#C6895E]" : "bg-[#8D5A3C]"
+                          }`} />
+                        </Tile>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {avatarTab === "capelli" ? (
+                  <div className="space-y-3">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <FieldSelect
+                        label="Stile"
+                        value={avatar.hairType || ""}
+                        onChange={(v) => setAvatar((p) => ({ ...p, hairType: v as any }))}
+                        options={[
+                          { value: "short", label: "Corti" },
+                          { value: "medium", label: "Medi" },
+                          { value: "long", label: "Lunghi" },
+                          { value: "curly", label: "Ricci" },
+                          { value: "bald", label: "Calvo" },
+                        ]}
+                      />
+                      <div className="space-y-2">
+                        <div className="text-sm font-medium">Colore</div>
+                        <div className="flex flex-wrap gap-2">
+                          {COLOR_OPTIONS.hair.map((k) => (
+                            <Tile key={k} active={(avatar.hairColor || "") === k} onClick={() => setAvatar((p) => ({ ...p, hairColor: k as any }))}>
+                              <div className={`h-7 w-7 rounded-lg ${
+                                k === "black" ? "bg-[#111827]" : k === "brown" ? "bg-[#4B2E1E]" : k === "blonde" ? "bg-[#E7C46B]" : k === "red" ? "bg-[#B45309]" : "bg-[#9CA3AF]"
+                              }`} />
+                            </Tile>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+
+                {avatarTab === "sopracciglia" ? (
+                  <div className="space-y-2">
+                    <div className="text-xs font-semibold text-slate-700">Colore sopracciglia</div>
+                    <div className="flex flex-wrap gap-2">
+                      {COLOR_OPTIONS.hair.map((k) => (
+                        <Tile key={k} active={(avatar.eyebrowsColor || "") === k} onClick={() => setAvatar((p) => ({ ...p, eyebrowsColor: k as any }))}>
+                          <div className={`h-7 w-7 rounded-lg ${
+                            k === "black" ? "bg-[#111827]" : k === "brown" ? "bg-[#4B2E1E]" : k === "blonde" ? "bg-[#E7C46B]" : k === "red" ? "bg-[#B45309]" : "bg-[#9CA3AF]"
+                          }`} />
+                        </Tile>
+                      ))}
+                    </div>
+                    <div className="text-xs text-slate-600">(Se non scegli nulla, usa il colore capelli.)</div>
+                  </div>
+                ) : null}
+
+                {avatarTab === "occhi" ? (
+                  <div className="space-y-2">
+                    <div className="text-xs font-semibold text-slate-700">Colore occhi</div>
+                    <div className="flex flex-wrap gap-2">
+                      {COLOR_OPTIONS.eyes.map((k) => (
+                        <Tile key={k} active={(avatar.eyes || "") === k} onClick={() => setAvatar((p) => ({ ...p, eyes: k as any }))}>
+                          <div className={`h-7 w-7 rounded-lg ${
+                            k === "brown" ? "bg-[#5A3E2B]" : k === "blue" ? "bg-[#2D6CDF]" : k === "green" ? "bg-[#2E8B57]" : "bg-[#6B7280]"
+                          }`} />
+                        </Tile>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {avatarTab === "maglia" ? (
+                  <div className="space-y-3">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <FieldSelect
+                        label="Tipo"
+                        value={avatar.outfitType || ""}
+                        onChange={(v) => setAvatar((p) => ({ ...p, outfitType: v as any }))}
+                        options={[
+                          { value: "tshirt", label: "T-shirt" },
+                          { value: "hoodie", label: "Felpa" },
+                          { value: "jersey", label: "Maglia" },
+                          { value: "suit", label: "Completo" },
+                        ]}
+                      />
+                      <div className="space-y-2">
+                        <div className="text-sm font-medium">Colore</div>
+                        <div className="flex flex-wrap gap-2">
+                          {COLOR_OPTIONS.outfit.map((k) => (
+                            <Tile key={k} active={(avatar.outfitColor || "") === k} onClick={() => setAvatar((p) => ({ ...p, outfitColor: k as any }))}>
+                              <div className={`h-7 w-7 rounded-lg ${
+                                k === "black" ? "bg-[#111827]" : k === "blue" ? "bg-[#2563EB]" : k === "red" ? "bg-[#DC2626]" : k === "green" ? "bg-[#16A34A]" : k === "purple" ? "bg-[#7C3AED]" : k === "orange" ? "bg-[#F97316]" : "bg-[#6B7280]"
+                              }`} />
+                            </Tile>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </div>
           ) : null}
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <FieldSelect
-              label="Sesso"
-              value={avatar.sex || ""}
-              onChange={(v) => setAvatar((p) => ({ ...p, sex: v as any }))}
-              options={[
-                { value: "male", label: "Maschile" },
-                { value: "female", label: "Femminile" },
-              ]}
-            />
-            <FieldSelect
-              label="Pelle"
-              value={avatar.skin || ""}
-              onChange={(v) => setAvatar((p) => ({ ...p, skin: v as any }))}
-              options={[
-                { value: "light", label: "Chiara" },
-                { value: "tan", label: "Media" },
-                { value: "brown", label: "Scura" },
-                { value: "dark", label: "Molto scura" },
-              ]}
-            />
-            <FieldSelect
-              label="Occhi"
-              value={avatar.eyes || ""}
-              onChange={(v) => setAvatar((p) => ({ ...p, eyes: v as any }))}
-              options={[
-                { value: "brown", label: "Marroni" },
-                { value: "blue", label: "Blu" },
-                { value: "green", label: "Verdi" },
-                { value: "gray", label: "Grigi" },
-              ]}
-            />
-            <FieldSelect
-              label="Capelli"
-              value={avatar.hairType || ""}
-              onChange={(v) => setAvatar((p) => ({ ...p, hairType: v as any }))}
-              options={[
-                { value: "short", label: "Corti" },
-                { value: "medium", label: "Medi" },
-                { value: "long", label: "Lunghi" },
-                { value: "curly", label: "Ricci" },
-                { value: "bald", label: "Calvo" },
-              ]}
-            />
-            <FieldSelect
-              label="Colore capelli"
-              value={avatar.hairColor || ""}
-              onChange={(v) => setAvatar((p) => ({ ...p, hairColor: v as any }))}
-              options={[
-                { value: "black", label: "Neri" },
-                { value: "brown", label: "Castani" },
-                { value: "blonde", label: "Biondi" },
-                { value: "red", label: "Rossi" },
-                { value: "gray", label: "Grigi" },
-              ]}
-            />
-            <FieldSelect
-              label="Vestito"
-              value={avatar.outfitType || ""}
-              onChange={(v) => setAvatar((p) => ({ ...p, outfitType: v as any }))}
-              options={[
-                { value: "tshirt", label: "T-shirt" },
-                { value: "hoodie", label: "Felpa" },
-                { value: "jersey", label: "Maglia" },
-                { value: "suit", label: "Completo" },
-              ]}
-            />
-            <FieldSelect
-              label="Colore vestito"
-              value={avatar.outfitColor || ""}
-              onChange={(v) => setAvatar((p) => ({ ...p, outfitColor: v as any }))}
-              options={[
-                { value: "black", label: "Nero" },
-                { value: "blue", label: "Blu" },
-                { value: "red", label: "Rosso" },
-                { value: "green", label: "Verde" },
-                { value: "purple", label: "Viola" },
-                { value: "orange", label: "Arancione" },
-                { value: "gray", label: "Grigio" },
-              ]}
-            />
-          </div>
 
           <Button
             disabled={savingAvatar || !user}

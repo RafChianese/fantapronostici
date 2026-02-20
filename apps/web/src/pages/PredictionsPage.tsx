@@ -5,6 +5,7 @@ import { useAuth } from "../lib/auth";
 import { useLoading } from "../lib/loading";
 import { Alert, Badge, Button, Card, CardContent, CardHeader, Input, Skeleton } from "../components/ui";
 import { SearchableSelect } from "../components/SearchableSelect";
+import { AnimatedNumber } from "../components/AnimatedNumber";
 
 type Match = {
   id: string;
@@ -51,13 +52,13 @@ function PredictionsTabs({ tab, setTab }: { tab: "MATCHES" | "TOURNAMENT"; setTa
   return (
     <div className="flex items-center gap-2">
       <button
-        className={`rounded-xl px-3 py-2 text-sm font-semibold border ${tab === "MATCHES" ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-700 border-slate-200"}`}
+        className={`rounded-xl px-3 py-2 text-sm font-semibold border transition-all ${tab === "MATCHES" ? "bg-[#2EC4B6] text-white border-[#2EC4B6] shadow-sm" : "bg-white text-slate-700 border-slate-200"}`}
         onClick={() => setTab("MATCHES")}
       >
         Partite
       </button>
       <button
-        className={`rounded-xl px-3 py-2 text-sm font-semibold border ${tab === "TOURNAMENT" ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-700 border-slate-200"}`}
+        className={`rounded-xl px-3 py-2 text-sm font-semibold border transition-all ${tab === "TOURNAMENT" ? "bg-[#2EC4B6] text-white border-[#2EC4B6] shadow-sm" : "bg-white text-slate-700 border-slate-200"}`}
         onClick={() => setTab("TOURNAMENT")}
       >
         Pronostici torneo
@@ -862,7 +863,7 @@ export default function PredictionsPage() {
                         <span className="text-slate-500">Risultato reale:</span> <span className="font-medium">{real}</span>
                         {m.status === "FINISHED" && p ? (
                           <span className="ml-3 text-slate-500">
-                            Punti: <span className="font-semibold text-slate-800">{p.totalPoints}</span>{" "}
+                            Punti: <span className="font-semibold text-slate-800"><AnimatedNumber value={Number(p.totalPoints ?? 0)} /></span>{" "}
                             <span className="text-xs">({buildBreakdown(p, !!config?.features?.underOver25)})</span>
                           </span>
                         ) : null}
