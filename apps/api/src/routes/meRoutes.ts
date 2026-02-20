@@ -12,6 +12,7 @@ import {
   extractScorersFromMatchDetail,
   fetchCompetitionScorers,
   fetchCompetitionTeams,
+  fetchCompetitionPlayerOptions,
   fetchMatchDetail,
 } from "../services/footballDataService.js";
 
@@ -379,6 +380,44 @@ meRouter.get("/competition-predictions", requireLeagueMember, async (req: Authed
       scorers = Array.isArray((resp as any)?.scorers) ? (resp as any).scorers : [];
     } catch {
       scorers = [];
+    }
+
+    // Best-effort fallback: if scorers endpoint returns empty, use cached/derived squad players.
+    if (!scorers.length) {
+      const cache = await prisma.competitionOutcome.findUnique({ where: { leagueId } }).catch(() => null as any);
+      const fresh = cache?.playerOptionsFetchedAt
+        ? Date.now() - new Date(cache.playerOptionsFetchedAt).getTime() < 24 * 60 * 60 * 1000
+        : false;
+
+      if (fresh && cache?.playerOptionsJson) {
+        scorers = Array.isArray(cache.playerOptionsJson) ? cache.playerOptionsJson : [];
+      } else {
+        try {
+          const players = await fetchCompetitionPlayerOptions({ competitionCode });
+          scorers = players.map((p) => ({ id: p.id, name: p.name, teamName: p.teamName ?? null, goals: 0 }));
+
+          await prisma.competitionOutcome.upsert({
+            where: { leagueId },
+            create: {
+              leagueId,
+              provider: "FOOTBALL_DATA",
+              competitionCode,
+              ...(season ? { season: Number(season) } : {}),
+              playerOptionsJson: players as any,
+              playerOptionsFetchedAt: new Date(),
+            },
+            update: {
+              provider: "FOOTBALL_DATA",
+              competitionCode,
+              ...(season ? { season: Number(season) } : { season: null }),
+              playerOptionsJson: players as any,
+              playerOptionsFetchedAt: new Date(),
+            },
+          });
+        } catch {
+          scorers = [];
+        }
+      }
     }
   }
 

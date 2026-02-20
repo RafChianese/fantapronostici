@@ -387,6 +387,12 @@ model CompetitionOutcome {
   competitionCode String?
   season    Int?
 
+  // Cached options for competition top-scorer selection.
+  // football-data.org scorers endpoint may be empty depending on competition/plan;
+  // we fallback to team squads and cache the merged player list.
+  playerOptionsJson      Json?
+  playerOptionsFetchedAt DateTime?
+
   winnerTeamExternalId Int?
   winnerTeamName       String?
   topScorerPlayerExternalId Int?

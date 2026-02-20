@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Lock, X, Info } from "lucide-react";
-import { api } from "../lib/api";
+import { api, CompetitionPredictionsResponse } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { useLoading } from "../lib/loading";
 import { Alert, Badge, Button, Card, CardContent, CardHeader, Input, Skeleton } from "../components/ui";
@@ -35,10 +35,187 @@ type PredictionState = {
   totalPoints?: number;
 };
 
-function statusBadge(s: Match["status"]) {
-  if (s === "FINISHED") return <Badge tone="green">FINITA</Badge>;
-  if (s === "IN_PROGRESS") return <Badge tone="blue">IN CORSO</Badge>;
-  return <Badge>NON INIZIATA</Badge>;
+function StatusDot({ status }: { status: string }) {
+  const s = String(status || "").toUpperCase();
+  const base = "inline-block h-2.5 w-2.5 rounded-full";
+  if (s === "IN_PROGRESS" || s === "LIVE") return <span className={`${base} bg-green-500 animate-pulse`} title="In corso" />;
+  if (s === "FINISHED") return <span className={`${base} bg-slate-400`} title="Finita" />;
+  if (s === "POSTPONED" || s === "CANCELLED" || s === "CANCELED" || s === "SUSPENDED") return <span className={`${base} bg-orange-500`} title="Rimandata/Annullata" />;
+  return <span className={`${base} bg-blue-500`} title="Non iniziata" />;
+}
+
+function PredictionsTabs({ tab, setTab }: { tab: "MATCHES" | "TOURNAMENT"; setTab: (t: "MATCHES" | "TOURNAMENT") => void }) {
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        className={`rounded-xl px-3 py-2 text-sm font-semibold border ${tab === "MATCHES" ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-700 border-slate-200"}`}
+        onClick={() => setTab("MATCHES")}
+      >
+        Partite
+      </button>
+      <button
+        className={`rounded-xl px-3 py-2 text-sm font-semibold border ${tab === "TOURNAMENT" ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-700 border-slate-200"}`}
+        onClick={() => setTab("TOURNAMENT")}
+      >
+        Pronostici torneo
+      </button>
+    </div>
+  );
+}
+
+function CompetitionPredictionsPanel() {
+  const { activeLeagueId } = useAuth();
+  const [data, setData] = useState<CompetitionPredictionsResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>("");
+  const [saving, setSaving] = useState(false);
+
+  const [winnerId, setWinnerId] = useState<string>("");
+  const [scorerId, setScorerId] = useState<string>("");
+
+  async function load() {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await api.competitionPredictions();
+      setData(res);
+      setWinnerId(res.picks.winner?.teamExternalId ? String(res.picks.winner.teamExternalId) : "");
+      setScorerId(res.picks.topScorer?.playerExternalId ? String(res.picks.topScorer.playerExternalId) : "");
+    } catch (e: any) {
+      setError(e?.message || "Errore");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!activeLeagueId) {
+      setData(null);
+      setLoading(false);
+      return;
+    }
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeLeagueId]);
+
+  const enabledAny = !!data?.enabled?.winner || !!data?.enabled?.topScorer;
+  const canEdit = !!data?.canEdit;
+
+  const deadlineLabel = useMemo(() => {
+    if (!data?.deadline) return "";
+    try {
+      return new Date(data.deadline).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    } catch {
+      return data.deadline;
+    }
+  }, [data?.deadline]);
+
+  async function save() {
+    if (!data) return;
+    setSaving(true);
+    setError("");
+    try {
+      const winner = data.options.teams.find((t) => String(t.id) === winnerId);
+      const scorer = data.options.scorers.find((s) => String(s.id) === scorerId);
+
+      const res = await api.saveCompetitionPredictions({
+        winnerTeamId: winnerId ? Number(winnerId) : null,
+        winnerTeamName: winner?.name ?? null,
+        topScorerPlayerId: scorerId ? Number(scorerId) : null,
+        topScorerPlayerName: scorer?.name ?? null,
+      });
+      setData(res);
+    } catch (e: any) {
+      setError(e?.message || "Errore");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader title="Pronostici torneo" subtitle="Vincitore e capocannoniere" right={<Button variant="secondary" onClick={load}>Aggiorna</Button>} />
+        <CardContent className="space-y-4">
+          {loading ? (
+            <div className="flex items-center gap-3 text-sm text-slate-700">
+              <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700" />
+              Caricamento…
+            </div>
+          ) : null}
+
+          {!loading && error ? <Alert tone="danger">{error}</Alert> : null}
+
+          {!loading && data && !enabledAny ? <Alert>In questa lega i pronostici torneo non sono attivi.</Alert> : null}
+
+          {!loading && data && enabledAny ? (
+            <>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 space-y-1">
+                <div>
+                  <b>Deadline:</b> {deadlineLabel || "(automatica)"}
+                </div>
+                <div>
+                  <b>Modificabile:</b> {canEdit ? "Sì" : "No"}
+                </div>
+              </div>
+
+              {data.enabled.winner ? (
+                <div className="space-y-2">
+                  <div className="text-sm font-semibold text-slate-900">Vincitore torneo (+{data.points.winner} punti)</div>
+                  <select
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                    disabled={!canEdit || saving}
+                    value={winnerId}
+                    onChange={(e) => setWinnerId(e.target.value)}
+                  >
+                    <option value="">Seleziona squadra…</option>
+                    {data.options.teams.map((t) => (
+                      <option key={t.id} value={String(t.id)}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                  {data.picks.winner?.pointsAwarded ? <div className="text-xs text-slate-600">Punti assegnati: {data.picks.winner.pointsAwarded}</div> : null}
+                </div>
+              ) : null}
+
+              {data.enabled.topScorer ? (
+                <div className="space-y-2">
+                  <div className="text-sm font-semibold text-slate-900">Capocannoniere (+{data.points.topScorer} punti)</div>
+                  <select
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                    disabled={!canEdit || saving || (data.options.scorers?.length ?? 0) === 0}
+                    value={scorerId}
+                    onChange={(e) => setScorerId(e.target.value)}
+                  >
+                    <option value="">Seleziona giocatore…</option>
+                    {data.options.scorers.map((s) => (
+                      <option key={s.id} value={String(s.id)}>
+                        {s.name}{s.teamName ? ` (${s.teamName})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  {(data.options.scorers?.length ?? 0) === 0 ? (
+                    <Alert>
+                      Lista giocatori non disponibile da football-data per questa competizione. Se vuoi la lista completa serve un provider con coverage “squad/scorers”.
+                    </Alert>
+                  ) : null}
+                  {data.picks.topScorer?.pointsAwarded ? <div className="text-xs text-slate-600">Punti assegnati: {data.picks.topScorer.pointsAwarded}</div> : null}
+                </div>
+              ) : null}
+
+              <div className="flex gap-2">
+                <Button onClick={save} disabled={!canEdit || saving}>
+                  {saving ? "Salvo…" : "Salva"}
+                </Button>
+                {!canEdit ? <span className="text-xs text-slate-500 self-center">Scelte bloccate dopo la deadline.</span> : null}
+              </div>
+            </>
+          ) : null}
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
 
 function buildBreakdown(p: PredictionState, underOverEnabled: boolean) {
@@ -70,6 +247,8 @@ export default function PredictionsPage() {
   const [detailData, setDetailData] = useState<any>(null);
   const [detailPlayerId, setDetailPlayerId] = useState<number | null>(null);
   const [detailSaving, setDetailSaving] = useState(false);
+
+  const [tab, setTab] = useState<"MATCHES" | "TOURNAMENT">("MATCHES");
 
   const autosaveTimerRef = useRef<number | null>(null);
   const predsRef = useRef<Record<string, PredictionState>>({});
@@ -420,6 +599,15 @@ export default function PredictionsPage() {
         </CardContent>
       </Card>
 
+      <div className="flex items-center justify-between">
+        <PredictionsTabs tab={tab} setTab={setTab} />
+      </div>
+
+      {tab === "TOURNAMENT" ? <CompetitionPredictionsPanel /> : null}
+
+      {tab === "MATCHES" ? (
+        <>
+
       {byMatchday.length ? (
         <Card>
           <CardHeader title="Vai a giornata" subtitle="Seleziona una giornata e scorri automaticamente." />
@@ -587,7 +775,7 @@ export default function PredictionsPage() {
                     <div key={m.id} className="relative rounded-2xl border border-slate-100 bg-white/70 p-3 transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-md">
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
-                          {statusBadge(m.status)}
+                          <StatusDot status={m.status} />
                           {m.isJolly ? (
                             <span title="Partita Jolly" className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700">⭐ Jolly</span>
                           ) : null}
@@ -720,6 +908,9 @@ export default function PredictionsPage() {
           </div>
         );
       })}
+
+        </>
+      ) : null}
 
       {hasLockedPrediction && !isLocked ? (
         <Alert tone="danger">

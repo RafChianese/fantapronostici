@@ -455,10 +455,12 @@ export default function UserSummaryPage() {
     );
   };
 
-  const statusBadge = (s: "NOT_STARTED" | "IN_PROGRESS" | "FINISHED") => {
-    if (s === "FINISHED") return <Badge tone="green">FINITA</Badge>;
-    if (s === "IN_PROGRESS") return <Badge tone="blue">IN CORSO</Badge>;
-    return <Badge>NON INIZIATA</Badge>;
+  const StatusDot = ({ status }: { status: string }) => {
+    const s = String(status || "").toUpperCase();
+    const base = "inline-block h-2.5 w-2.5 rounded-full";
+    if (s === "IN_PROGRESS" || s === "LIVE") return <span className={`${base} bg-green-500 animate-pulse`} title="In corso" />;
+    if (s === "FINISHED") return <span className={`${base} bg-slate-400`} title="Finita" />;
+    return <span className={`${base} bg-blue-500`} title="Non iniziata" />;
   };
 
   // --- Mini dashboard (Step 3): statistiche + andamento punti ---
@@ -654,7 +656,7 @@ export default function UserSummaryPage() {
                       <div key={m?.id ?? `${m?.kickoffAt}-${m?.homeTeam}`} className="rounded-2xl border border-slate-100 bg-white/70 p-3">
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2">
-                            {statusBadge(status)}
+                            <StatusDot status={status} />
                           </div>
                           <Badge tone={pts > 0 ? "green" : "gray"}>{pts} pt</Badge>
                         </div>

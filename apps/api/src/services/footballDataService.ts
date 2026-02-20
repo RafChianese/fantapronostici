@@ -114,6 +114,79 @@ export async function fetchTeamDetail(args: { teamId: number }) {
   return data as any;
 }
 
+export type CompetitionPlayerOption = {
+  id: number;
+  name: string;
+  teamId?: number | null;
+  teamName?: string | null;
+};
+
+function uniqById<T extends { id: number }>(items: T[]) {
+  const seen = new Set<number>();
+  const out: T[] = [];
+  for (const it of items) {
+    if (!Number.isFinite(it.id)) continue;
+    if (seen.has(it.id)) continue;
+    seen.add(it.id);
+    out.push(it);
+  }
+  return out;
+}
+
+/**
+ * Best-effort list of players for a competition.
+ * If the scorers endpoint is empty (common on some plans/competitions), we fallback to team squads.
+ */
+export async function fetchCompetitionPlayerOptions(args: { competitionCode: string }) {
+  const teams = await fetchCompetitionTeams({ competitionCode: args.competitionCode });
+
+  // If squads are embedded in the teams response, use them.
+  const embedded: CompetitionPlayerOption[] = [];
+  for (const t of teams) {
+    const squad = (t as any)?.squad;
+    if (!Array.isArray(squad)) continue;
+    for (const p of squad) {
+      const id = Number((p as any)?.id);
+      const name = typeof (p as any)?.name === "string" ? (p as any).name.trim() : "";
+      if (!Number.isFinite(id) || !name) continue;
+      embedded.push({ id, name, teamId: Number(t.id), teamName: String(t.shortName || t.name || "").trim() || null });
+    }
+  }
+  if (embedded.length) return uniqById(embedded);
+
+  // Fallback: fetch each team detail to obtain squad.
+  const teamIds = teams
+    .map((t) => Number((t as any)?.id))
+    .filter((id) => Number.isFinite(id));
+
+  const limit = 3;
+  const queue = [...teamIds];
+  const out: CompetitionPlayerOption[] = [];
+
+  async function worker() {
+    while (queue.length) {
+      const teamId = queue.shift();
+      if (!teamId) return;
+      try {
+        const detail = await fetchTeamDetail({ teamId });
+        const teamName = String(detail?.name || detail?.shortName || "").trim() || null;
+        const squad = Array.isArray(detail?.squad) ? detail.squad : [];
+        for (const p of squad) {
+          const id = Number((p as any)?.id);
+          const name = typeof (p as any)?.name === "string" ? (p as any).name.trim() : "";
+          if (!Number.isFinite(id) || !name) continue;
+          out.push({ id, name, teamId, teamName });
+        }
+      } catch {
+        // ignore single team errors
+      }
+    }
+  }
+
+  await Promise.all(new Array(limit).fill(0).map(() => worker()));
+  return uniqById(out).sort((a, b) => a.name.localeCompare(b.name, "it"));
+}
+
 export function extractScorersFromMatchDetail(detail: any): Array<{ id: number | null; name: string }> {
   const out: Array<{ id: number | null; name: string }> = [];
   const push = (id: any, name: any) => {
