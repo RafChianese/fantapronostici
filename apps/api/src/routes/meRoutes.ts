@@ -15,6 +15,7 @@ import {
   fetchCompetitionPlayerOptions,
   fetchMatchDetail,
 } from "../services/footballDataService.js";
+import { AvatarPresetIdSchema } from "../lib/avatarPresets.js";
 
 export const meRouter = Router();
 
@@ -23,7 +24,7 @@ meRouter.use(requireAuth);
 meRouter.get("/", async (req: AuthedRequest, res) => {
   const user = await prisma.user.findUnique({
     where: { id: req.user!.id },
-    select: { id: true, email: true, displayName: true, avatarJson: true, globalRole: true, isActive: true, createdAt: true },
+    select: { id: true, email: true, displayName: true, avatarId: true, avatarJson: true, globalRole: true, isActive: true, createdAt: true },
   });
 
   const memberships = await prisma.leagueMember.findMany({
@@ -38,43 +39,27 @@ meRouter.get("/", async (req: AuthedRequest, res) => {
 
 // Update profile (display name)
 const UpdateProfileSchema = z.object({
-  displayName: z.string().trim().min(2).max(60),
-  avatar: z
-    .object({
-      version: z.literal(2).optional(),
-      sex: z.enum(["male", "female"]),
-      bodyType: z.enum(["slim", "average", "athletic"]),
-      skin: z.enum(["light", "tan", "brown", "dark"]),
-      eyes: z.enum(["brown", "blue", "green", "gray"]),
-      hairType: z.enum(["short", "medium", "long", "curly", "bald"]),
-      hairColor: z.enum(["black", "brown", "blonde", "red", "gray"]),
-      eyebrowsType: z.enum(["straight", "arched", "thick"]),
-      eyebrowsColor: z.enum(["black", "brown", "blonde", "red", "gray"]),
-      outfitType: z.enum(["tshirt", "hoodie", "jersey", "tracksuit", "dress", "suit"]),
-      outfitColor: z.enum(["black", "blue", "red", "green", "purple", "orange", "gray", "teal", "pink"]),
-      outfitAccentColor: z.enum(["white", "black", "yellow", "blue", "red", "green", "purple", "orange", "gray", "teal", "pink"]),
-      jerseyNumber: z.number().int().min(0).max(99),
-      jerseyName: z.string().trim().min(1).max(12),
-      jerseyStyle: z.enum(["solid", "stripes_v", "stripes_h", "sleeves"]),
-      accessoryHat: z.enum(["none", "cap", "beanie"]),
-      accessoryGlasses: z.enum(["none", "round", "square"]),
-    })
-    .partial()
-    .optional(),
+  // Allow updating either displayName, avatarId, or both.
+  displayName: z.string().trim().min(2).max(60).optional(),
+  avatarId: AvatarPresetIdSchema.optional(),
 });
 
 meRouter.put("/profile", async (req: AuthedRequest, res) => {
-  const { displayName, avatar } = UpdateProfileSchema.parse(req.body);
+  const { displayName, avatarId } = UpdateProfileSchema.parse(req.body);
+
+  if (!displayName && !avatarId) {
+    return res.status(400).json({ message: "Nessun campo da aggiornare" });
+  }
 
   let user;
   try {
     user = await prisma.user.update({
       where: { id: req.user!.id },
       data: {
-        displayName,
-        avatarJson: avatar ? (avatar as any) : undefined,
+        ...(displayName ? { displayName } : {}),
+        ...(avatarId ? { avatarId } : {}),
       },
-      select: { id: true, email: true, displayName: true, avatarJson: true, globalRole: true, isActive: true, createdAt: true },
+      select: { id: true, email: true, displayName: true, avatarId: true, avatarJson: true, globalRole: true, isActive: true, createdAt: true },
     });
   } catch (e: any) {
     if (e?.code === "P2002") {

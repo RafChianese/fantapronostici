@@ -62,6 +62,8 @@ model User {
   id           String       @id @default(cuid())
   email        String       @unique
   displayName  String       @unique
+  // Selected preset avatar (static PNG) from apps/web/public/avatars
+  avatarId     String?
   avatarJson   Json?
   passwordHash String
   globalRole   GlobalRole   @default(USER)

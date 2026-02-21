@@ -230,6 +230,7 @@ publicRouter.get("/leaderboard", async (req, res) => {
   let rows = members.map((m) => ({
     userId: m.user.id,
     displayName: m.user.displayName,
+    avatarId: (m.user as any).avatarId ?? null,
     avatarJson: (m.user as any).avatarJson ?? null,
     totalPoints: agg.get(m.user.id)?.totalPoints ?? 0,
     competitionPoints: agg.get(m.user.id)?.competitionPoints ?? 0,
@@ -382,7 +383,13 @@ publicRouter.get("/users/:id/summary", async (req, res) => {
   res.json({
     league: { id: league.id, code: league.code, name: league.name },
     features: { underOver25: !!rules?.enableUnderOver25, matchdayAwards: !!rules?.enableMatchdayAwards, jolly: !!rules?.enableJolly, jollyMultiplier: rules?.jollyMultiplier ?? 2 },
-    user: { id: member.user.id, displayName: member.user.displayName, email: member.user.email, avatarJson: (member.user as any).avatarJson ?? null },
+    user: {
+      id: member.user.id,
+      displayName: member.user.displayName,
+      email: member.user.email,
+      avatarId: (member.user as any).avatarId ?? null,
+      avatarJson: (member.user as any).avatarJson ?? null,
+    },
     detail,
     totals,
   });

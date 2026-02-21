@@ -4,7 +4,7 @@ export type GlobalRole = "USER" | "SUPER_ADMIN";
 export type LeagueRole = "MEMBER" | "ADMIN";
 export type MembershipStatus = "PENDING" | "APPROVED" | "REJECTED";
 
-export type User = { id: string; email: string; displayName: string; globalRole: GlobalRole };
+export type User = { id: string; email: string; displayName: string; globalRole: GlobalRole; avatarId?: string | null };
 
 export type AvatarConfig = {
   /** Schema version (v2 full-body avatar). Optional for backward compatibility. */
@@ -207,7 +207,7 @@ export const api = {
   me: () => request(`/api/me`) as Promise<{ user: UserWithAvatar; memberships: Membership[] }>,
   changePassword: (currentPassword: string, newPassword: string) =>
     request(`/api/me/password`, { method: "PUT", body: JSON.stringify({ currentPassword, newPassword }) }),
-  updateProfile: (payload: { displayName: string; avatar?: AvatarConfig }) =>
+  updateProfile: (payload: { displayName?: string; avatarId?: string | null }) =>
     request(`/api/me/profile`, { method: "PUT", body: JSON.stringify(payload) }),
   adUnlockStatus: () => request(`/api/me/ad-unlock`),
   adUnlock: () => request(`/api/me/ad-unlock`, { method: "POST" }),

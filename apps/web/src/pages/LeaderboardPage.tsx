@@ -10,7 +10,8 @@ import { AnimatedNumber } from "../components/AnimatedNumber";
 type Row = {
   userId: string;
   displayName: string;
-  avatarJson?: any;
+  avatarId?: string | null;
+  avatarJson?: any; // backward compat (not used in UI)
   totalPoints: number;
   exactHits: number;
   outcomeHits: number;
@@ -204,7 +205,7 @@ export default function LeaderboardPage() {
                         ) : null}
                       </div>
                       <div className="flex items-center gap-2">
-                        <UserAvatar userId={r.userId} avatar={r.avatarJson || null} size={26} className={`shadow-sm ${idx <= 2 ? "tm-top3-avatar" : ""}`} />
+                        <UserAvatar avatarId={(r as any).avatarId || null} size={26} className={`shadow-sm ${idx <= 2 ? "tm-top3-avatar" : ""}`} />
                         <Link className="font-medium hover:underline" to={`/users/${r.userId}`}>{r.displayName}</Link>
                         {idx <= 2 ? <Badge tone={medalTone}>Top {idx + 1}</Badge> : null}
                       </div>

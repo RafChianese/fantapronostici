@@ -572,7 +572,7 @@ export default function UserSummaryPage() {
         />
         <CardContent className="space-y-4">
           <div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
-            <UserAvatar userId={safeUser.id || ""} avatar={(safeUser as any).avatarJson || null} size={60} mode="full" className="shadow-sm" />
+            <UserAvatar avatarId={(safeUser as any).avatarId || null} size={60} mode="full" className="shadow-sm" />
             <div className="min-w-0">
               <div className="truncate text-sm font-semibold text-slate-900">{safeUser.displayName}</div>
               <div className="mt-0.5 text-xs text-slate-600">{safeLeague.name}</div>

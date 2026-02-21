@@ -425,15 +425,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   </div>
                 ) : null}
                 <div className="hidden items-center gap-2 text-sm text-slate-700 md:flex">
-                  {/* Use the full-body avatar renderer (no circular crop) to avoid "mostro" artifacts in header */}
-                  <UserAvatar
-                    userId={user.id}
-                    avatar={(user as any).avatarJson || null}
-                    mode="full"
-                    shape="card"
-                    size={44}
-                    className="shadow-sm"
-                  />
+                  <UserAvatar avatarId={(user as any).avatarId || null} mode="full" size={44} className="shadow-sm" />
                   <span>Ciao, {user.displayName}</span>
                 </div>
                 <Button
