@@ -452,12 +452,19 @@ export function UserAvatar({
   size = 32,
   className = "",
   mode = "badge",
+  shape,
 }: {
   userId: string;
   avatar?: AvatarConfig | null;
   size?: number;
   className?: string;
   mode?: "badge" | "full";
+  /**
+   * Visual container shape.
+   * - badge defaults to circle
+   * - full defaults to card (rounded)
+   */
+  shape?: "circle" | "card";
 }) {
   const uid = useId();
   const a = useMemo(() => normalizeAvatar(userId, avatar), [userId, avatar]);
@@ -473,16 +480,24 @@ export function UserAvatar({
   const clipId = `clip-${uid}`;
   const bgId = `bg-${uid}`;
 
+  const resolvedShape: "circle" | "card" = shape || (mode === "full" ? "card" : "circle");
+
   return (
     <div
-      className={`inline-flex items-center justify-center rounded-full bg-white/70 ring-1 ring-slate-200 ${className}`}
+      className={`inline-flex items-center justify-center bg-white/70 ring-1 ring-slate-200 ${
+        resolvedShape === "circle" ? "rounded-full" : "rounded-2xl"
+      } ${className}`}
       style={{ width: size, height: size }}
       aria-hidden="true"
     >
       <svg width={size} height={size} viewBox={viewBox} role="img">
         <defs>
           <clipPath id={clipId}>
-            <circle cx="60" cy="60" r="58" />
+            {resolvedShape === "circle" ? (
+              <circle cx="60" cy="60" r="58" />
+            ) : (
+              <rect x="2" y="2" width="116" height={mode === "full" ? 156 : 116} rx="18" ry="18" />
+            )}
           </clipPath>
           <linearGradient id={bgId} x1="0" y1="0" x2="1" y2="1">
             <stop offset="0" stopColor="#F8FAFC" />
