@@ -7,6 +7,7 @@ import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { signToken } from "../lib/auth.js";
 import { env } from "../lib/env.js";
+import { verifyMicrosoftIdToken } from "../lib/microsoftOidc.js";
 
 /**
  * OAuth-only auth router.
@@ -178,7 +179,10 @@ authRouter.get("/oauth/microsoft/start", async (req, res) => {
   url.searchParams.set("client_id", env.MICROSOFT_OAUTH_CLIENT_ID);
   url.searchParams.set("redirect_uri", redirectUri);
   url.searchParams.set("response_type", "code");
-  url.searchParams.set("scope", "openid email profile offline_access");
+  // NOTE:
+  // - We primarily rely on id_token claims (stable) and only use Graph as a fallback.
+  // - User.Read makes the Graph fallback (/v1.0/me) much more reliable across tenants.
+  url.searchParams.set("scope", "openid email profile offline_access User.Read");
   url.searchParams.set("state", state);
   url.searchParams.set("prompt", "select_account");
   return res.redirect(url.toString());
@@ -208,28 +212,70 @@ authRouter.get("/oauth/microsoft/callback", async (req, res) => {
         body,
       }
     );
-    if (!tokenRes.ok) return res.status(400).send("OAuth token exchange fallito");
+    if (!tokenRes.ok) {
+      const errText = await tokenRes.text().catch(() => "");
+      console.error("[microsoft-oauth] token exchange failed", {
+        status: tokenRes.status,
+        body: errText?.slice(0, 2000),
+      });
+      return res.status(400).send("OAuth token exchange fallito");
+    }
     const tokenJson: any = await tokenRes.json();
     const accessToken = tokenJson.access_token as string;
 
-    // Prefer OIDC userinfo.
-    let info: any = null;
-    const userinfoRes = await fetch("https://graph.microsoft.com/oidc/userinfo", {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    if (userinfoRes.ok) {
-      info = await userinfoRes.json();
-    } else {
-      const meRes = await fetch("https://graph.microsoft.com/v1.0/me", {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (!meRes.ok) return res.status(400).send("OAuth userinfo fallito");
-      info = await meRes.json();
+    // Prefer id_token claims (most stable; avoids Graph permissions quirks).
+    let providerUserId: string | null = null;
+    let userEmail: string | null = null;
+    let userDisplayName: string | null = null;
+
+    const idToken = tokenJson.id_token as string | undefined;
+    if (idToken) {
+      try {
+        const claims = await verifyMicrosoftIdToken(idToken, env.MICROSOFT_OAUTH_CLIENT_ID);
+        providerUserId = String((claims as any).oid || (claims as any).sub || "") || null;
+        userEmail =
+          (claims as any).email || (claims as any).preferred_username || (claims as any).upn || null;
+        userDisplayName = (claims as any).name || null;
+      } catch (e: any) {
+        // Non-fatal: we can still try OIDC userinfo / Graph.
+        console.error("[microsoft-oauth] id_token verify failed", { message: e?.message || String(e) });
+      }
     }
 
-    const providerUserId = String(info.sub || info.id || "");
-    const userEmail = info.email || info.preferred_username || null;
-    const userDisplayName = info.name || info.displayName || null;
+    // If essential claims are missing, try userinfo first, then /me.
+    if (!providerUserId || !userEmail || !userDisplayName) {
+      let info: any = null;
+      const userinfoRes = await fetch("https://graph.microsoft.com/oidc/userinfo", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (userinfoRes.ok) {
+        info = await userinfoRes.json();
+      } else {
+        const txt = await userinfoRes.text().catch(() => "");
+        console.error("[microsoft-oauth] oidc userinfo failed", {
+          status: userinfoRes.status,
+          body: txt?.slice(0, 1500),
+        });
+        const meRes = await fetch("https://graph.microsoft.com/v1.0/me", {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (!meRes.ok) {
+          const meTxt = await meRes.text().catch(() => "");
+          console.error("[microsoft-oauth] graph /me failed", {
+            status: meRes.status,
+            body: meTxt?.slice(0, 1500),
+          });
+          return res.status(400).send("OAuth userinfo fallito");
+        }
+        info = await meRes.json();
+      }
+
+      providerUserId = providerUserId || String(info.sub || info.id || info.userPrincipalName || "") || null;
+      userEmail = userEmail || info.email || info.preferred_username || info.userPrincipalName || null;
+      userDisplayName = userDisplayName || info.name || info.displayName || null;
+    }
+
+    if (!providerUserId) return res.status(400).send("OAuth userinfo fallito");
 
     const user = await upsertOAuthUser({
       provider: "MICROSOFT",
