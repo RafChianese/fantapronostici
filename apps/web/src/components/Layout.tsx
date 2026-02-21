@@ -440,7 +440,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </>
             ) : (
               <div className="flex items-center gap-2">
-                <Button onClick={() => nav("/register")}>Registrati</Button>
                 <Button variant="secondary" onClick={() => nav("/login")}>
                   Accedi
                 </Button>

@@ -1,114 +1,21 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
-import { z } from "zod";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
+import { z } from "zod";
+
 import { prisma } from "../lib/prisma.js";
 import { signToken } from "../lib/auth.js";
 import { env } from "../lib/env.js";
-// Email flows are temporarily disabled (no paid provider required).
-// import { sendEmail } from "../services/email.js";
 
+/**
+ * OAuth-only auth router.
+ *
+ * Legacy email/password routes are intentionally NOT mounted.
+ * If you ever need to restore them, re-mount the router exported by:
+ *   src/routes/legacyEmailAuth.ts
+ */
 export const authRouter = Router();
-
-const LoginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
-});
-
-authRouter.post("/login", async (req, res) => {
-  const { email, password } = LoginSchema.parse(req.body);
-  const user = await prisma.user.findUnique({ where: { email } });
-  if (!user || !user.isActive) return res.status(401).json({ message: "Credenziali non valide" });
-
-  const ok = await bcrypt.compare(password, user.passwordHash);
-  if (!ok) return res.status(401).json({ message: "Credenziali non valide" });
-
-  const token = signToken({ sub: user.id });
-  return res.json({ token, user: { id: user.id, email: user.email, displayName: user.displayName, globalRole: user.globalRole } });
-});
-
-// Optional self-register (can be disabled by admin by simply not using it in UI)
-const RegisterSchema = z.object({
-  email: z.string().email(),
-  displayName: z.string().min(2).max(50),
-  password: z.string().min(8),
-});
-
-authRouter.post("/register", async (req, res) => {
-  const { email, displayName, password } = RegisterSchema.parse(req.body);
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) return res.status(400).json({ message: "Email già registrata" });
-
-  // Enforce unique display name so league member display names can't collide.
-  const existingName = await prisma.user.findUnique({ where: { displayName } });
-  if (existingName) return res.status(400).json({ message: "Nome visualizzato già in uso" });
-
-  const passwordHash = await bcrypt.hash(password, 10);
-  let user;
-  try {
-    user = await prisma.user.create({
-      // Email verification is temporarily bypassed.
-      data: { email, displayName, passwordHash, globalRole: "USER", isActive: true, ...({ emailVerifiedAt: new Date() } as any) },
-    });
-  } catch (e: any) {
-    // Prisma unique constraint (race condition safe)
-    if (e?.code === "P2002") {
-      const target = Array.isArray(e?.meta?.target) ? e.meta.target.join(",") : String(e?.meta?.target || "");
-      if (target.includes("email")) return res.status(400).json({ message: "Email già registrata" });
-      if (target.includes("displayName")) return res.status(400).json({ message: "Nome visualizzato già in uso" });
-      return res.status(400).json({ message: "Dati già presenti" });
-    }
-    throw e;
-  }
-
-  const token = signToken({ sub: user.id });
-  return res.status(201).json({
-    ok: true,
-    requiresVerification: false,
-    email,
-    token,
-    user: { id: user.id, email: user.email, displayName: user.displayName, globalRole: user.globalRole },
-  });
-});
-
-const VerifyEmailSchema = z.object({
-  email: z.string().email(),
-  code: z.string().regex(/^\d{6}$/),
-});
-
-authRouter.post("/verify-email", async (req, res) => {
-  VerifyEmailSchema.parse(req.body);
-  return res.status(410).json({ message: "Verifica email temporaneamente disattivata" });
-});
-
-const ResendSchema = z.object({ email: z.string().email() });
-
-authRouter.post("/resend-verification", async (req, res) => {
-  ResendSchema.parse(req.body);
-  return res.status(410).json({ message: "Verifica email temporaneamente disattivata" });
-});
-
-// Password reset (email-based)
-const ForgotPasswordSchema = z.object({
-  email: z.string().email(),
-});
-
-authRouter.post("/forgot-password", async (req, res) => {
-  ForgotPasswordSchema.parse(req.body);
-  return res.status(410).json({ message: "Recupero password via email temporaneamente disattivato" });
-});
-
-const ResetPasswordSchema = z.object({
-  email: z.string().email(),
-  token: z.string().min(10),
-  newPassword: z.string().min(8),
-});
-
-authRouter.post("/reset-password", async (req, res) => {
-  ResetPasswordSchema.parse(req.body);
-  return res.status(410).json({ message: "Recupero password via email temporaneamente disattivato" });
-});
 
 // -------- OAuth (Google / Microsoft) --------
 
@@ -169,6 +76,7 @@ async function upsertOAuthUser(params: {
   if (!user) {
     const baseName = displayName || (email ? email.split("@")[0] : "utente");
     const uniqueName = await ensureUniqueDisplayName(baseName);
+    // Random hash (not used for login in OAuth-only mode).
     const passwordHash = await bcrypt.hash(crypto.randomBytes(32).toString("hex"), 10);
     user = await prisma.user.create({
       data: {
@@ -240,38 +148,37 @@ authRouter.get("/oauth/google/callback", async (req, res) => {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     if (!userinfoRes.ok) return res.status(400).send("OAuth userinfo fallito");
-    const u: any = await userinfoRes.json();
+    const info: any = await userinfoRes.json();
 
     const user = await upsertOAuthUser({
       provider: "GOOGLE",
-      providerUserId: String(u.sub),
-      email: u.email,
-      displayName: u.name,
+      providerUserId: String(info.sub || info.id || ""),
+      email: info.email || null,
+      displayName: info.name || info.given_name || null,
     });
 
     const token = signToken({ sub: user.id });
-    const dest = `${normalizeReturnTo(state.returnTo || env.WEB_BASE_URL)}/oauth/callback#token=${encodeURIComponent(token)}`;
-    return res.redirect(dest);
-  } catch (e) {
-    // eslint-disable-next-line no-console
-    console.error("[oauth] google callback error", e);
-    return res.status(500).send("Errore OAuth");
+    const returnTo = normalizeReturnTo(String(state?.returnTo || env.WEB_BASE_URL));
+    return res.redirect(`${returnTo}/oauth/callback#token=${encodeURIComponent(token)}`);
+  } catch (e: any) {
+    return res.status(400).send(e?.message || "OAuth error");
   }
 });
 
 authRouter.get("/oauth/microsoft/start", async (req, res) => {
-  if (!env.MICROSOFT_OAUTH_CLIENT_ID || !env.MICROSOFT_OAUTH_CLIENT_SECRET) {
+  if (!env.MS_OAUTH_CLIENT_ID || !env.MS_OAUTH_CLIENT_SECRET || !env.MS_OAUTH_TENANT_ID) {
     return res.status(500).send("Microsoft OAuth non configurato");
   }
   const { returnTo } = OauthStartSchema.parse(req.query);
   const state = signOauthState({ provider: "MICROSOFT", returnTo: returnTo || env.WEB_BASE_URL });
   const redirectUri = `${getApiBase(req)}/api/auth/oauth/microsoft/callback`;
-  const url = new URL(`https://login.microsoftonline.com/${env.MICROSOFT_OAUTH_TENANT || "common"}/oauth2/v2.0/authorize`);
-  url.searchParams.set("client_id", env.MICROSOFT_OAUTH_CLIENT_ID);
+  const url = new URL(
+    `https://login.microsoftonline.com/${env.MS_OAUTH_TENANT_ID}/oauth2/v2.0/authorize`
+  );
+  url.searchParams.set("client_id", env.MS_OAUTH_CLIENT_ID);
   url.searchParams.set("redirect_uri", redirectUri);
   url.searchParams.set("response_type", "code");
-  url.searchParams.set("response_mode", "query");
-  url.searchParams.set("scope", "openid email profile User.Read");
+  url.searchParams.set("scope", "openid email profile offline_access");
   url.searchParams.set("state", state);
   url.searchParams.set("prompt", "select_account");
   return res.redirect(url.toString());
@@ -287,64 +194,59 @@ authRouter.get("/oauth/microsoft/callback", async (req, res) => {
 
     const body = new URLSearchParams({
       code,
-      client_id: env.MICROSOFT_OAUTH_CLIENT_ID,
-      client_secret: env.MICROSOFT_OAUTH_CLIENT_SECRET,
+      client_id: env.MS_OAUTH_CLIENT_ID,
+      client_secret: env.MS_OAUTH_CLIENT_SECRET,
       redirect_uri: redirectUri,
       grant_type: "authorization_code",
     });
 
-    const tokenRes = await fetch(`https://login.microsoftonline.com/${env.MICROSOFT_OAUTH_TENANT || "common"}/oauth2/v2.0/token`, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body,
-    });
+    const tokenRes = await fetch(
+      `https://login.microsoftonline.com/${env.MS_OAUTH_TENANT_ID}/oauth2/v2.0/token`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body,
+      }
+    );
     if (!tokenRes.ok) return res.status(400).send("OAuth token exchange fallito");
     const tokenJson: any = await tokenRes.json();
     const accessToken = tokenJson.access_token as string;
 
-    let email: string | null = null;
-    let providerUserId: string | null = null;
-    let displayName: string | null = null;
-
+    // Prefer OIDC userinfo.
+    let info: any = null;
     const userinfoRes = await fetch("https://graph.microsoft.com/oidc/userinfo", {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     if (userinfoRes.ok) {
-      const ui: any = await userinfoRes.json();
-      providerUserId = ui.sub ? String(ui.sub) : null;
-      email = ui.email ? String(ui.email) : (ui.preferred_username ? String(ui.preferred_username) : null);
-      displayName = ui.name ? String(ui.name) : null;
-    }
-
-    if (!providerUserId || !email) {
+      info = await userinfoRes.json();
+    } else {
       const meRes = await fetch("https://graph.microsoft.com/v1.0/me", {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      if (meRes.ok) {
-        const me: any = await meRes.json();
-        providerUserId = providerUserId || (me.id ? String(me.id) : null);
-        email = email || (me.mail ? String(me.mail) : (me.userPrincipalName ? String(me.userPrincipalName) : null));
-        displayName = displayName || (me.displayName ? String(me.displayName) : null);
-      }
+      if (!meRes.ok) return res.status(400).send("OAuth userinfo fallito");
+      info = await meRes.json();
     }
 
-    if (!providerUserId) return res.status(400).send("OAuth userinfo fallito");
+    const providerUserId = String(info.sub || info.id || "");
+    const userEmail = info.email || info.preferred_username || null;
+    const userDisplayName = info.name || info.displayName || null;
 
     const user = await upsertOAuthUser({
       provider: "MICROSOFT",
       providerUserId,
-      email,
-      displayName,
+      email: userEmail,
+      displayName: userDisplayName,
     });
 
     const token = signToken({ sub: user.id });
-    const dest = `${normalizeReturnTo(state.returnTo || env.WEB_BASE_URL)}/oauth/callback#token=${encodeURIComponent(token)}`;
-    return res.redirect(dest);
-  } catch (e) {
-    // eslint-disable-next-line no-console
-    console.error("[oauth] microsoft callback error", e);
-    return res.status(500).send("Errore OAuth");
+    const returnTo = normalizeReturnTo(String(state?.returnTo || env.WEB_BASE_URL));
+    return res.redirect(`${returnTo}/oauth/callback#token=${encodeURIComponent(token)}`);
+  } catch (e: any) {
+    return res.status(400).send(e?.message || "OAuth error");
   }
 });
 
-// NOTE: endpoints defined above.
+// Optional FE-only logout is enough; this exists for symmetry.
+authRouter.post("/logout", async (_req, res) => {
+  return res.json({ ok: true });
+});

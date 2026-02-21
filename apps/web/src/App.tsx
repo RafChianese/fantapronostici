@@ -7,10 +7,6 @@ import { LockProvider } from "./lib/lock";
 import { FullScreenLoaderOverlay } from "./components/FullScreenLoaderOverlay";
 import { Layout } from "./components/Layout";
 import LoginPage from "./pages/LoginPage";
-import RegisterPage from "./pages/RegisterPage";
-import VerifyEmailPage from "./pages/VerifyEmailPage";
-import ForgotPasswordPage from "./pages/ForgotPasswordPage";
-import ResetPasswordPage from "./pages/ResetPasswordPage";
 import OAuthCallbackPage from "./pages/OAuthCallbackPage";
 import AccountPage from "./pages/AccountPage";
 import OnboardingPage from "./pages/OnboardingPage";
@@ -95,13 +91,7 @@ export default function App() {
             <HashTokenBootstrapper />
             <Routes>
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
           <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
-
-          {/* Email verification / password reset are temporarily disabled */}
-          <Route path="/verify-email" element={<VerifyEmailPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
 
           <Route
             path="/account"
@@ -117,24 +107,6 @@ export default function App() {
             element={
               <RequireAuth>
                 <OnboardingPage />
-              </RequireAuth>
-            }
-          />
-
-          <Route
-            path="/account"
-            element={
-              <RequireAuth>
-                <AccountPage />
-              </RequireAuth>
-            }
-          />
-
-          <Route
-            path="/account"
-            element={
-              <RequireAuth>
-                <AccountPage />
               </RequireAuth>
             }
           />
