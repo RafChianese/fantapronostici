@@ -128,6 +128,17 @@ function getApiBase(req: any) {
   return `${req.protocol}://${req.get("host")}`;
 }
 
+function normalizeReturnTo(input: string) {
+  // Some static hosts expose the SPA at /index.html; we always want an app base URL.
+  let s = String(input || "").trim();
+  if (!s) return env.WEB_BASE_URL;
+  // Drop trailing index.html
+  s = s.replace(/\/index\.html\/?$/i, "");
+  // Drop trailing slash
+  s = s.replace(/\/$/, "");
+  return s;
+}
+
 async function ensureUniqueDisplayName(base: string) {
   const normalized = base.trim().slice(0, 30) || "utente";
   let candidate = normalized;
@@ -239,7 +250,7 @@ authRouter.get("/oauth/google/callback", async (req, res) => {
     });
 
     const token = signToken({ sub: user.id });
-    const dest = `${String(state.returnTo || env.WEB_BASE_URL).replace(/\/$/, "")}/oauth/callback#token=${encodeURIComponent(token)}`;
+    const dest = `${normalizeReturnTo(state.returnTo || env.WEB_BASE_URL)}/oauth/callback#token=${encodeURIComponent(token)}`;
     return res.redirect(dest);
   } catch (e) {
     // eslint-disable-next-line no-console
@@ -327,7 +338,7 @@ authRouter.get("/oauth/microsoft/callback", async (req, res) => {
     });
 
     const token = signToken({ sub: user.id });
-    const dest = `${String(state.returnTo || env.WEB_BASE_URL).replace(/\/$/, "")}/oauth/callback#token=${encodeURIComponent(token)}`;
+    const dest = `${normalizeReturnTo(state.returnTo || env.WEB_BASE_URL)}/oauth/callback#token=${encodeURIComponent(token)}`;
     return res.redirect(dest);
   } catch (e) {
     // eslint-disable-next-line no-console

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./lib/auth";
 import { LoadingProvider } from "./lib/loading";
@@ -22,6 +22,25 @@ import UserSummaryPage from "./pages/UserSummaryPage";
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
 import SuperAdminPage from "./pages/SuperAdminPage";
 import RegolamentoPage from "./pages/RegolamentoPage";
+import { setToken } from "./lib/api";
+
+function HashTokenBootstrapper() {
+  const loc = useLocation();
+  useEffect(() => {
+    // Robustness: if a host redirects to /index.html#token=... (or any route), still accept it.
+    const hash = window.location.hash || "";
+    if (!hash) return;
+    const params = new URLSearchParams(hash.startsWith("#") ? hash.slice(1) : hash);
+    const token = params.get("token");
+    if (!token) return;
+    // Avoid double-handling on the dedicated callback route.
+    if (loc.pathname === "/oauth/callback") return;
+    setToken(token);
+    // Clean hash + reload to let AuthProvider pick it up.
+    window.location.replace("/");
+  }, [loc.pathname]);
+  return null;
+}
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -73,6 +92,7 @@ export default function App() {
         <ToastProvider>
           <LockProvider>
             <Layout>
+            <HashTokenBootstrapper />
             <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
