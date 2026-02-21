@@ -166,16 +166,16 @@ authRouter.get("/oauth/google/callback", async (req, res) => {
 });
 
 authRouter.get("/oauth/microsoft/start", async (req, res) => {
-  if (!env.MS_OAUTH_CLIENT_ID || !env.MS_OAUTH_CLIENT_SECRET || !env.MS_OAUTH_TENANT_ID) {
+  if (!env.MICROSOFT_OAUTH_CLIENT_ID || !env.MICROSOFT_OAUTH_CLIENT_SECRET || !env.MICROSOFT_OAUTH_TENANT) {
     return res.status(500).send("Microsoft OAuth non configurato");
   }
   const { returnTo } = OauthStartSchema.parse(req.query);
   const state = signOauthState({ provider: "MICROSOFT", returnTo: returnTo || env.WEB_BASE_URL });
   const redirectUri = `${getApiBase(req)}/api/auth/oauth/microsoft/callback`;
   const url = new URL(
-    `https://login.microsoftonline.com/${env.MS_OAUTH_TENANT_ID}/oauth2/v2.0/authorize`
+    `https://login.microsoftonline.com/${env.MICROSOFT_OAUTH_TENANT}/oauth2/v2.0/authorize`
   );
-  url.searchParams.set("client_id", env.MS_OAUTH_CLIENT_ID);
+  url.searchParams.set("client_id", env.MICROSOFT_OAUTH_CLIENT_ID);
   url.searchParams.set("redirect_uri", redirectUri);
   url.searchParams.set("response_type", "code");
   url.searchParams.set("scope", "openid email profile offline_access");
@@ -194,14 +194,14 @@ authRouter.get("/oauth/microsoft/callback", async (req, res) => {
 
     const body = new URLSearchParams({
       code,
-      client_id: env.MS_OAUTH_CLIENT_ID,
-      client_secret: env.MS_OAUTH_CLIENT_SECRET,
+      client_id: env.MICROSOFT_OAUTH_CLIENT_ID,
+      client_secret: env.MICROSOFT_OAUTH_CLIENT_SECRET,
       redirect_uri: redirectUri,
       grant_type: "authorization_code",
     });
 
     const tokenRes = await fetch(
-      `https://login.microsoftonline.com/${env.MS_OAUTH_TENANT_ID}/oauth2/v2.0/token`,
+      `https://login.microsoftonline.com/${env.MICROSOFT_OAUTH_TENANT}/oauth2/v2.0/token`,
       {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
