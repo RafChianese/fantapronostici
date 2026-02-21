@@ -35,3 +35,12 @@
 .tm-medal-glow { animation: tmGlow 2.2s ease-in-out infinite; }
 .tm-badge-pop { animation: tmBadgePop 420ms ease-out; }
 .tm-xp-float { animation: tmFloatUp 900ms ease-out forwards; }
+
+/* Subtle, lightweight "podium" highlight (Top 3). */
+.tm-top3-row {
+  background: linear-gradient(90deg, rgba(46,196,182,0.08), rgba(46,196,182,0));
+}
+
+.tm-top3-avatar {
+  box-shadow: 0 0 18px rgba(46,196,182,0.25);
+}

@@ -41,14 +41,23 @@ const UpdateProfileSchema = z.object({
   displayName: z.string().trim().min(2).max(60),
   avatar: z
     .object({
+      version: z.literal(2).optional(),
       sex: z.enum(["male", "female"]),
+      bodyType: z.enum(["slim", "average", "athletic"]),
       skin: z.enum(["light", "tan", "brown", "dark"]),
       eyes: z.enum(["brown", "blue", "green", "gray"]),
       hairType: z.enum(["short", "medium", "long", "curly", "bald"]),
       hairColor: z.enum(["black", "brown", "blonde", "red", "gray"]),
+      eyebrowsType: z.enum(["straight", "arched", "thick"]),
       eyebrowsColor: z.enum(["black", "brown", "blonde", "red", "gray"]),
-      outfitType: z.enum(["tshirt", "hoodie", "jersey", "suit"]),
-      outfitColor: z.enum(["black", "blue", "red", "green", "purple", "orange", "gray"]),
+      outfitType: z.enum(["tshirt", "hoodie", "jersey", "tracksuit", "dress", "suit"]),
+      outfitColor: z.enum(["black", "blue", "red", "green", "purple", "orange", "gray", "teal", "pink"]),
+      outfitAccentColor: z.enum(["white", "black", "yellow", "blue", "red", "green", "purple", "orange", "gray", "teal", "pink"]),
+      jerseyNumber: z.number().int().min(0).max(99),
+      jerseyName: z.string().trim().min(1).max(12),
+      jerseyStyle: z.enum(["solid", "stripes_v", "stripes_h", "sleeves"]),
+      accessoryHat: z.enum(["none", "cap", "beanie"]),
+      accessoryGlasses: z.enum(["none", "round", "square"]),
     })
     .partial()
     .optional(),

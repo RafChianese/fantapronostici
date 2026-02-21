@@ -7,13 +7,27 @@ export type MembershipStatus = "PENDING" | "APPROVED" | "REJECTED";
 export type User = { id: string; email: string; displayName: string; globalRole: GlobalRole };
 
 export type AvatarConfig = {
+  /** Schema version (v2 full-body avatar). Optional for backward compatibility. */
+  version?: 2;
   sex?: "male" | "female";
+  bodyType?: "slim" | "average" | "athletic";
   skin?: "light" | "tan" | "brown" | "dark";
   eyes?: "brown" | "blue" | "green" | "gray";
   hairType?: "short" | "medium" | "long" | "curly" | "bald";
   hairColor?: "black" | "brown" | "blonde" | "red" | "gray";
-  outfitType?: "tshirt" | "hoodie" | "jersey" | "suit";
-  outfitColor?: "black" | "blue" | "red" | "green" | "purple" | "orange" | "gray";
+  eyebrowsType?: "straight" | "arched" | "thick";
+  eyebrowsColor?: "black" | "brown" | "blonde" | "red" | "gray";
+  outfitType?: "tshirt" | "hoodie" | "jersey" | "tracksuit" | "dress" | "suit";
+  outfitColor?: "black" | "blue" | "red" | "green" | "purple" | "orange" | "gray" | "teal" | "pink";
+  /** Secondary/accent color for outfits (eg stripes/collar). */
+  outfitAccentColor?: "white" | "black" | "blue" | "red" | "green" | "purple" | "orange" | "gray" | "teal" | "pink" | "yellow";
+  /** Jersey personalization (displayed on kit). */
+  jerseyNumber?: number; // 0..99
+  jerseyName?: string; // 0..12 chars
+  /** Jersey style/pattern. Optional for backward compatibility. */
+  jerseyStyle?: "solid" | "stripes_v" | "stripes_h" | "sleeves";
+  accessoryHat?: "none" | "cap" | "beanie";
+  accessoryGlasses?: "none" | "round" | "square";
 };
 
 export type UserWithAvatar = User & { avatarJson?: AvatarConfig | null };
