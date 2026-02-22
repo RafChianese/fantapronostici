@@ -1044,6 +1044,7 @@ function ToggleRow({ label, checked, onChange }: { label: string; checked: boole
 
 function HelpHint({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
+  const isMobile = typeof window !== "undefined" ? window.matchMedia("(max-width: 640px)").matches : false;
 
   return (
     <span className="relative inline-flex">
@@ -1057,14 +1058,36 @@ function HelpHint({ text }: { text: string }) {
       </button>
 
       {open ? (
-        <div className="absolute z-30 top-7 right-0 w-72 rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-700 shadow-lg">
-          <div className="whitespace-pre-wrap">{text}</div>
-          <div className="mt-2 flex justify-end">
-            <button type="button" className="text-xs text-slate-500 hover:text-slate-700" onClick={() => setOpen(false)}>
-              Chiudi
-            </button>
+        isMobile ? (
+          <div className="fixed inset-0 z-[80]">
+            <button
+              className="absolute inset-0 bg-black/40"
+              aria-label="Chiudi aiuto"
+              onClick={() => setOpen(false)}
+            />
+            <div className="absolute bottom-0 left-0 right-0 rounded-t-2xl bg-white p-4 shadow-2xl">
+              <div className="mb-2 flex items-center justify-between">
+                <div className="text-base font-semibold text-slate-900">Info</div>
+                <button type="button" className="text-sm font-semibold text-slate-600" onClick={() => setOpen(false)}>
+                  Chiudi
+                </button>
+              </div>
+              <div className="max-h-[60vh] overflow-auto whitespace-pre-wrap text-sm text-slate-700 pr-1">
+                {text}
+              </div>
+              <div className="h-[calc(env(safe-area-inset-bottom)+8px)]" />
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="absolute z-30 top-7 right-0 w-72 rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-700 shadow-lg">
+            <div className="whitespace-pre-wrap">{text}</div>
+            <div className="mt-2 flex justify-end">
+              <button type="button" className="text-xs text-slate-500 hover:text-slate-700" onClick={() => setOpen(false)}>
+                Chiudi
+              </button>
+            </div>
+          </div>
+        )
       ) : null}
     </span>
   );

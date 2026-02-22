@@ -6,6 +6,7 @@ import { useLock } from "../lib/lock";
 import { Button, Card, CardContent, CardHeader, Skeleton, Badge } from "../components/ui";
 import { AnimatedNumber } from "../components/AnimatedNumber";
 import { AchievementsStrip } from "../components/Achievements";
+import { UserAvatar } from "../components/Avatar";
 
 function getInitials(name: string) {
   const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
@@ -95,12 +96,7 @@ export default function DashboardPage() {
   const leagueName = activeMembership?.league?.name || summary?.league?.name || "Lega";
   const displayName = user?.displayName || summary?.user?.displayName || "Partecipante";
 
-  const logoUrl =
-    activeMembership?.league?.branding?.logoDataUrl ||
-    activeMembership?.league?.branding?.logoUrl ||
-    summary?.league?.branding?.logoDataUrl ||
-    summary?.league?.branding?.logoUrl ||
-    "";
+  // League branding/logo is no longer shown on Home (mobile), we show the user's avatar instead.
 
   const totals = summary?.totals ?? { total: 0, exact: 0, outcome: 0, sumGoals: 0 };
   // XP-style micro feedback when points change.
@@ -271,19 +267,11 @@ export default function DashboardPage() {
         <div className="text-2xl font-extrabold tracking-tight text-slate-900">{displayName}</div>
       </div>
 
-      {/* 3) League logo */}
+      {/* 3) User avatar (full-body) */}
       <div className="my-4 flex items-center justify-center">
-        {logoUrl ? (
-          <img
-            src={logoUrl}
-            alt={leagueName}
-            className="h-24 w-24 rounded-3xl object-cover shadow-sm ring-1 ring-slate-200"
-          />
-        ) : (
-          <div className="flex h-24 w-24 items-center justify-center rounded-3xl bg-slate-100 text-sm font-bold text-slate-500 ring-1 ring-slate-200">
-            {leagueName.slice(0, 2).toUpperCase()}
-          </div>
-        )}
+        <div className="rounded-[28px] bg-white/70 p-2 ring-1 ring-slate-200 shadow-sm">
+          <UserAvatar avatarId={(user as any)?.avatarId} size={120} mode="full" className="rounded-3xl" />
+        </div>
       </div>
 
       {/* 4) Personal standings card */}

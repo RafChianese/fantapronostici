@@ -27,6 +27,9 @@ export type UserAvatarProps = {
 export function UserAvatar({ avatarId, size = 40, className = "", mode = "badge" }: UserAvatarProps) {
   const src = useMemo(() => getAvatarSrc(avatarId), [avatarId]);
   const radius = mode === "badge" ? 999 : 18;
+  // Badge is typically used in tight UI spots (often masked/cropped), so "cover" is OK.
+  // Full-body avatar must not be cropped.
+  const objectFit = mode === "full" ? "contain" : "cover";
 
   return (
     <img
@@ -40,7 +43,7 @@ export function UserAvatar({ avatarId, size = 40, className = "", mode = "badge"
         width: size,
         height: size,
         borderRadius: radius,
-        objectFit: "cover",
+        objectFit,
         display: "block",
       }}
     />

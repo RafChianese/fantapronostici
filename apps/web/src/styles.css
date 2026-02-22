@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Mobile: prevent accidental horizontal scroll caused by sheets/tooltips. */
+html, body {
+  overflow-x: hidden;
+}
+
+#root {
+  overflow-x: hidden;
+}
+
 @keyframes tmFlashUp {
   0% { background-color: rgba(34,197,94,0.18); }
   100% { background-color: transparent; }

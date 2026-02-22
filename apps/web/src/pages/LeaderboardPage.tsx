@@ -133,7 +133,7 @@ export default function LeaderboardPage() {
             aria-label="Chiudi ordinamento"
             onClick={() => setSortOpen(false)}
           />
-          <div className="absolute bottom-0 left-0 right-0 rounded-t-2xl bg-white p-4 shadow-2xl">
+          <div className="absolute bottom-0 left-0 right-0 max-h-[80vh] overflow-auto rounded-t-2xl bg-white p-4 pb-[calc(env(safe-area-inset-bottom)+16px)] shadow-2xl">
             <div className="mb-2 flex items-center justify-between">
               <div className="text-base font-semibold">Ordina per</div>
               <Button variant="ghost" onClick={() => setSortOpen(false)} aria-label="Chiudi">✕</Button>
