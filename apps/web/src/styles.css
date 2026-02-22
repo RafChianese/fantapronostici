@@ -2,14 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Mobile: prevent accidental horizontal scroll caused by sheets/tooltips. */
-html, body {
-  overflow-x: hidden;
-}
-
-#root {
-  overflow-x: hidden;
-}
+/* NOTE:
+   Avoid forcing overflow-x hidden globally.
+   It can hide controls on small screens if some component mis-sizes.
+   We instead fix the root causes (responsive paddings + safe sheets). */
 
 @keyframes tmFlashUp {
   0% { background-color: rgba(34,197,94,0.18); }

@@ -42,12 +42,22 @@ export function Input(
 }
 
 export function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <div className={`rounded-2xl border border-slate-200/70 bg-gradient-to-b from-white to-slate-50/60 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg ${className}`}>{children}</div>;
+  // IMPORTANT:
+  // Avoid transforms on hover because on mobile browsers a "stuck" hover state can
+  // create a transformed ancestor. This breaks `position: fixed` sheets/modals,
+  // making them appear anchored in the middle of the page.
+  return (
+    <div
+      className={`rounded-2xl border border-slate-200/70 bg-gradient-to-b from-white to-slate-50/60 shadow-sm transition-shadow duration-200 hover:shadow-lg ${className}`}
+    >
+      {children}
+    </div>
+  );
 }
 
 export function CardHeader({ title, subtitle, right }: { title: string; subtitle?: string; right?: React.ReactNode }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-slate-200/60 p-5 bg-gradient-to-r from-white to-slate-50">
+    <div className="flex items-start justify-between gap-4 border-b border-slate-200/60 p-4 sm:p-5 bg-gradient-to-r from-white to-slate-50">
       <div>
         <div className="text-lg font-semibold">{title}</div>
         {subtitle ? <div className="mt-1 text-sm text-slate-600">{subtitle}</div> : null}
@@ -58,7 +68,7 @@ export function CardHeader({ title, subtitle, right }: { title: string; subtitle
 }
 
 export function CardContent({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <div className={`p-5 ${className}`}>{children}</div>;
+  return <div className={`p-4 sm:p-5 ${className}`}>{children}</div>;
 }
 
 export function Badge({ children, tone = "gray" }: { children: React.ReactNode; tone?: "gray" | "green" | "amber" | "blue" | "rose" }) {

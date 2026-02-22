@@ -1120,10 +1120,10 @@ function SwitchRow({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3">
-      <div className="min-w-0">
-        <div className="text-sm text-slate-700 flex items-center gap-2">
-          <span className="truncate">{label}</span>
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="min-w-0 flex-1">
+        <div className="text-sm text-slate-700 flex items-start gap-2">
+          <span className="break-words">{label}</span>
           {hint ? <HelpHint text={hint} /> : null}
         </div>
       </div>
@@ -1133,7 +1133,7 @@ function SwitchRow({
         role="switch"
         aria-checked={checked}
         onClick={() => onChange(!checked)}
-        className={`relative inline-flex h-6 w-11 items-center rounded-full border transition ${
+        className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition ${
           checked ? "bg-slate-900 border-slate-900" : "bg-slate-200 border-slate-200"
         }`}
       >
