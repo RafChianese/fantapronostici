@@ -242,6 +242,7 @@ export default function PredictionsPage() {
   const [detailData, setDetailData] = useState<any>(null);
   const [detailPlayerId, setDetailPlayerId] = useState<number | null>(null);
   const [detailSaving, setDetailSaving] = useState(false);
+  const [detailTab, setDetailTab] = useState<"summary" | "lineups">("summary");
 
   const [tab, setTab] = useState<"MATCHES" | "TOURNAMENT">("MATCHES");
 
@@ -278,6 +279,7 @@ export default function PredictionsPage() {
   const openDetail = async (matchId: string) => {
     setDetailOpen(true);
     setDetailMatchId(matchId);
+    setDetailTab("summary");
     setDetailLoading(true);
     setDetailData(null);
     setDetailPlayerId(null);
@@ -300,6 +302,140 @@ export default function PredictionsPage() {
     setDetailData(null);
     setDetailPlayerId(null);
     setDetailSaving(false);
+    setDetailTab("summary");
+  };
+
+  const renderLineups = (lineups: any[]) => {
+    const teams = Array.isArray(lineups) ? lineups : [];
+    if (!teams.length) {
+      return <div className="text-sm text-slate-600">Formazioni non disponibili.</div>;
+    }
+
+    const PlayerRow = ({ p }: { p: any }) => {
+      const num = Number.isFinite(Number(p?.number)) ? String(p.number) : "";
+      const pos = typeof p?.position === "string" && p.position ? p.position : "";
+      return (
+        <div className="flex items-center justify-between gap-3 py-1 text-sm">
+          <div className="min-w-0 truncate font-medium text-slate-800">
+            {num ? (
+              <span className="mr-2 inline-flex w-7 justify-center rounded-md bg-slate-100 px-1 py-0.5 text-xs font-bold text-slate-700">{num}</span>
+            ) : null}
+            <span className="truncate">{p?.name || "—"}</span>
+          </div>
+          <div className="shrink-0 text-xs font-semibold text-slate-500">{pos}</div>
+        </div>
+      );
+    };
+
+    return (
+      <div className="space-y-4">
+        {teams.map((t, idx) => {
+          const teamName = t?.team?.name || "Team";
+          const logo = t?.team?.logo || null;
+          const startXI = Array.isArray(t?.startXI) ? t.startXI : [];
+          const subs = Array.isArray(t?.substitutes) ? t.substitutes : [];
+          return (
+            <div key={idx} className="rounded-2xl border border-slate-100 bg-white p-4">
+              <div className="flex items-center gap-2">
+                {logo ? <img src={logo} alt={teamName} className="h-7 w-7 rounded-full object-contain" /> : null}
+                <div className="min-w-0 truncate text-sm font-semibold text-slate-900">{teamName}</div>
+              </div>
+
+              <div className="mt-3">
+                <div className="text-xs font-semibold text-slate-600">Titolari</div>
+                <div className="mt-1 divide-y divide-slate-100">
+                  {startXI.length ? startXI.map((p: any, i: number) => <PlayerRow key={i} p={p} />) : <div className="py-2 text-sm text-slate-600">—</div>}
+                </div>
+              </div>
+
+              <div className="mt-3">
+                <div className="text-xs font-semibold text-slate-600">Panchina</div>
+                <div className="mt-1 divide-y divide-slate-100">
+                  {subs.length ? subs.map((p: any, i: number) => <PlayerRow key={i} p={p} />) : <div className="py-2 text-sm text-slate-600">—</div>}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderEventsSummary = (events: any[]) => {
+    const items = Array.isArray(events) ? events : [];
+    if (!items.length) return <div className="text-sm text-slate-600">Nessun evento disponibile.</div>;
+
+    const normalizeMinute = (ev: any) => {
+      const m = Number(ev?.minute);
+      if (Number.isFinite(m)) return m;
+      const elapsed = Number(ev?.time?.elapsed);
+      const extra = Number(ev?.time?.extra);
+      if (Number.isFinite(elapsed)) return elapsed + (Number.isFinite(extra) ? extra : 0);
+      return null;
+    };
+
+    const fmtMinute = (ev: any) => {
+      const m = Number(ev?.minute);
+      if (Number.isFinite(m)) return `${m}'`;
+      const elapsed = ev?.time?.elapsed;
+      if (elapsed) return `${elapsed}${ev?.time?.extra ? `+${ev.time.extra}` : ""}'`;
+      return "";
+    };
+
+    const firstHalf: any[] = [];
+    const secondHalf: any[] = [];
+    for (const ev of items) {
+      const m = normalizeMinute(ev);
+      if (m !== null && m <= 45) firstHalf.push(ev);
+      else secondHalf.push(ev);
+    }
+
+    const Icon = ({ type }: { type: string }) => {
+      if (type === "GOAL") return <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-xs">⚽</span>;
+      if (type === "CARD") return <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-xs">🟨</span>;
+      if (type === "SUBSTITUTION") return <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-sky-100 text-xs">🔁</span>;
+      return <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-xs">•</span>;
+    };
+
+    const Row = ({ ev, idx }: { ev: any; idx: number }) => {
+      const team = ev?.team?.name || ev?.team || "";
+      const player = ev?.player?.name || ev?.player || "";
+      const assist = ev?.assist?.name || ev?.assist || "";
+      const detail = ev?.detail || ev?.type || "";
+      const right = fmtMinute(ev);
+      return (
+        <li key={idx} className="flex items-start justify-between gap-3 text-sm">
+          <div className="flex min-w-0 gap-2">
+            <Icon type={String(ev?.type || "")} />
+            <div className="min-w-0">
+              <div className="truncate font-medium text-slate-800">{detail || "Evento"}</div>
+              <div className="truncate text-xs text-slate-500">
+                {team}{player ? ` · ${player}` : ""}{assist ? ` → ${assist}` : ""}
+              </div>
+            </div>
+          </div>
+          <div className="shrink-0 text-xs font-semibold text-slate-500">{right}</div>
+        </li>
+      );
+    };
+
+    const Section = ({ title, rows }: { title: string; rows: any[] }) => (
+      <div>
+        <div className="text-xs font-semibold text-slate-500">{title}</div>
+        <ul className="mt-2 space-y-2">
+          {rows.map((ev, idx) => (
+            <Row key={idx} ev={ev} idx={idx} />
+          ))}
+        </ul>
+      </div>
+    );
+
+    return (
+      <div className="space-y-5">
+        {firstHalf.length ? <Section title="1 TEMPO" rows={firstHalf} /> : null}
+        {secondHalf.length ? <Section title="2 TEMPO" rows={secondHalf} /> : null}
+      </div>
+    );
   };
 
   const matchById = useMemo(() => {
@@ -952,147 +1088,163 @@ export default function PredictionsPage() {
               ) : !detailData ? (
                 <Alert tone="danger">Impossibile caricare il dettaglio del match.</Alert>
               ) : (
-                <div className="space-y-6">
-                  {/* Scorer */}
-                  <div className="rounded-2xl border border-slate-100 bg-slate-50/40 p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="text-sm font-semibold text-slate-900">Marcatore</div>
-                        <div className="mt-0.5 text-xs text-slate-600">
-                          {detailData.scorerEnabled
-                            ? detailData.canPickScorer
-                              ? `Se il giocatore segna: +${detailData.pointsScorer} punti`
-                              : "Non modificabile per lock o partita iniziata"
-                            : "Feature non attiva in questa lega"}
-                        </div>
-                      </div>
-                      {detailData.scorerEnabled && detailData.lineupAvailable ? (
-                        <span className="text-xs font-medium text-slate-600">Giocatori: disponibili</span>
-                      ) : (
-                        <span className="text-xs font-medium text-slate-600">Giocatori: —</span>
-                      )}
-                    </div>
+                <div className="space-y-4">
+                  {/* Tabs */}
+                  <div className="flex items-center gap-2 rounded-2xl border border-slate-100 bg-slate-50/40 p-2">
+                    <button
+                      type="button"
+                      onClick={() => setDetailTab("summary")}
+                      className={`flex-1 rounded-xl px-3 py-2 text-xs font-extrabold tracking-wide ${detailTab === "summary" ? "bg-[#E6007E] text-white" : "text-slate-700 hover:bg-white"}`}
+                    >
+                      RIASSUNTO
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDetailTab("lineups")}
+                      className={`flex-1 rounded-xl px-3 py-2 text-xs font-extrabold tracking-wide ${detailTab === "lineups" ? "bg-[#E6007E] text-white" : "text-slate-700 hover:bg-white"}`}
+                    >
+                      FORMAZIONI
+                    </button>
+                  </div>
 
-                    {detailData.scorerEnabled && detailData.lineupAvailable ? (
-                      <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
-                        <label className="block text-sm">
-                          <span className="mb-1 block text-xs font-medium text-slate-700">Seleziona giocatore</span>
-                          <SearchableSelect
-                            disabled={!detailData.canPickScorer}
-                            value={detailPlayerId === null ? "" : String(detailPlayerId)}
-                            placeholder="Seleziona giocatore…"
-                            emptyLabel="—"
-                            onChange={(v) => {
-                              const n = v ? Number(v) : NaN;
-                              setDetailPlayerId(Number.isFinite(n) ? n : null);
-                            }}
-                            options={(() => {
-                              const items: Array<{ value: string; label: string }> = [];
-                              for (const t of detailData.lineups || []) {
-                                const teamName = t?.team?.name || "";
-                                for (const p of [...(t.startXI || []), ...(t.substitutes || [])]) {
-                                  if (!p?.id || !p?.name) continue;
-                                  const num = p?.number ? `#${p.number} ` : "";
-                                  items.push({ value: String(p.id), label: `${teamName} · ${num}${p.name}` });
-                                }
-                              }
-                              const seen = new Set<string>();
-                              return items
-                                .filter((x) => {
-                                  if (seen.has(x.value)) return false;
-                                  seen.add(x.value);
-                                  return true;
-                                })
-                                .sort((a, b) => a.label.localeCompare(b.label, "it"));
+                  {detailTab === "summary" ? (
+                    <div className="space-y-6">
+                      {/* Scorer */}
+                      <div className="rounded-2xl border border-slate-100 bg-slate-50/40 p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="text-sm font-semibold text-slate-900">Marcatore</div>
+                            <div className="mt-0.5 text-xs text-slate-600">
+                              {detailData.scorerEnabled
+                                ? detailData.canPickScorer
+                                  ? `Se il giocatore segna: +${detailData.pointsScorer} punti`
+                                  : "Non modificabile per lock o partita iniziata"
+                                : "Feature non attiva in questa lega"}
+                            </div>
+                          </div>
+                          {detailData.scorerEnabled && detailData.lineupAvailable ? (
+                            <span className="text-xs font-medium text-slate-600">Giocatori: disponibili</span>
+                          ) : (
+                            <span className="text-xs font-medium text-slate-600">Giocatori: —</span>
+                          )}
+                        </div>
+
+                        {detailData.scorerEnabled && detailData.lineupAvailable ? (
+                          <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
+                            <label className="block text-sm">
+                              <span className="mb-1 block text-xs font-medium text-slate-700">Seleziona giocatore</span>
+                              <SearchableSelect
+                                disabled={!detailData.canPickScorer}
+                                value={detailPlayerId === null ? "" : String(detailPlayerId)}
+                                placeholder="Seleziona giocatore…"
+                                emptyLabel="—"
+                                onChange={(v) => {
+                                  const n = v ? Number(v) : NaN;
+                                  setDetailPlayerId(Number.isFinite(n) ? n : null);
+                                }}
+                                options={(() => {
+                                  const items: Array<{ value: string; label: string }> = [];
+                                  for (const t of detailData.lineups || []) {
+                                    const teamName = t?.team?.name || "";
+                                    for (const p of [...(t.startXI || []), ...(t.substitutes || [])]) {
+                                      if (!p?.id || !p?.name) continue;
+                                      const num = p?.number ? `#${p.number} ` : "";
+                                      items.push({ value: String(p.id), label: `${teamName} · ${num}${p.name}` });
+                                    }
+                                  }
+                                  const seen = new Set<string>();
+                                  return items
+                                    .filter((x) => {
+                                      if (seen.has(x.value)) return false;
+                                      seen.add(x.value);
+                                      return true;
+                                    })
+                                    .sort((a, b) => a.label.localeCompare(b.label, "it"));
+                                })()}
+                              />
+                            </label>
+
+                            <div className="flex gap-2">
+                              <Button
+                                variant="secondary"
+                                disabled={!detailData.canPickScorer || detailSaving}
+                                onClick={async () => {
+                                  setDetailSaving(true);
+                                  try {
+                                    await api.setScorer(detailMatchId!, { playerId: null });
+                                    setToast({ tone: "success", msg: "Marcatore rimosso" });
+                                    const d = await api.matchDetail(detailMatchId!);
+                                    setDetailData(d);
+                                    setDetailPlayerId(null);
+                                    await reloadAll({ silent: true });
+                                  } catch (e: any) {
+                                    setToast({ tone: "danger", msg: e?.message || "Errore" });
+                                  } finally {
+                                    setDetailSaving(false);
+                                  }
+                                }}
+                              >
+                                Rimuovi
+                              </Button>
+                              <Button
+                                disabled={!detailData.canPickScorer || detailSaving || detailPlayerId === null}
+                                onClick={async () => {
+                                  setDetailSaving(true);
+                                  try {
+                                    await api.setScorer(detailMatchId!, { playerId: detailPlayerId });
+                                    setToast({ tone: "success", msg: "Marcatore salvato" });
+                                    const d = await api.matchDetail(detailMatchId!);
+                                    setDetailData(d);
+                                    await reloadAll({ silent: true });
+                                  } catch (e: any) {
+                                    setToast({ tone: "danger", msg: e?.message || "Errore" });
+                                  } finally {
+                                    setDetailSaving(false);
+                                  }
+                                }}
+                              >
+                                Salva
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="mt-3 text-sm text-slate-600">{detailData.scorerEnabled ? "Lista giocatori non disponibile per questo match." : ""}</div>
+                        )}
+
+                        {detailData.scorer ? (
+                          <div className="mt-2 text-xs text-slate-600">
+                            Selezionato: <span className="font-semibold text-slate-800">{detailData.scorer.playerName}</span>
+                            {(() => {
+                              const sel = String(detailData?.scorer?.playerExternalId || "");
+                              const m = sel.match(/^(?:afp:|fdp:)?(\d+)$/i);
+                              const pid = m ? Number(m[1]) : NaN;
+                              const scorers = Array.isArray(detailData?.goalScorers) ? detailData.goalScorers : [];
+                              const hit = Number.isFinite(pid) ? scorers.some((x: any) => Number(x?.id) === pid) : false;
+                              if (detailData?.match?.status !== "FINISHED") return null;
+                              return hit ? (
+                                <span className="ml-2 inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-extrabold text-emerald-800">+{detailData.pointsScorer} punti</span>
+                              ) : (
+                                <span className="ml-2 inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">0 punti</span>
+                              );
                             })()}
-                          />
-                        </label>
+                          </div>
+                        ) : null}
+                      </div>
 
-                        <div className="flex gap-2">
-                          <Button
-                            variant="secondary"
-                            disabled={!detailData.canPickScorer || detailSaving}
-                            onClick={async () => {
-                              setDetailSaving(true);
-                              try {
-                                await api.setScorer(detailMatchId!, { playerId: null });
-                                setToast({ tone: "success", msg: "Marcatore rimosso" });
-                                const d = await api.matchDetail(detailMatchId!);
-                                setDetailData(d);
-                                setDetailPlayerId(null);
-                                await reloadAll({ silent: true });
-                              } catch (e: any) {
-                                setToast({ tone: "danger", msg: e?.message || "Errore" });
-                              } finally {
-                                setDetailSaving(false);
-                              }
-                            }}
-                          >
-                            Rimuovi
-                          </Button>
-                          <Button
-                            disabled={!detailData.canPickScorer || detailSaving || detailPlayerId === null}
-                            onClick={async () => {
-                              setDetailSaving(true);
-                              try {
-                                await api.setScorer(detailMatchId!, { playerId: detailPlayerId });
-                                setToast({ tone: "success", msg: "Marcatore salvato" });
-                                const d = await api.matchDetail(detailMatchId!);
-                                setDetailData(d);
-                                await reloadAll({ silent: true });
-                              } catch (e: any) {
-                                setToast({ tone: "danger", msg: e?.message || "Errore" });
-                              } finally {
-                                setDetailSaving(false);
-                              }
-                            }}
-                          >
-                            Salva
-                          </Button>
+                      {/* Events */}
+                      <div>
+                        <div className="text-sm font-semibold text-slate-900">Eventi</div>
+                        <div className="mt-2 rounded-2xl border border-slate-100 bg-white p-4">
+                          {renderEventsSummary(detailData.events || [])}
                         </div>
                       </div>
-                    ) : (
-                      <div className="mt-3 text-sm text-slate-600">{detailData.scorerEnabled ? "Lista giocatori non disponibile per questo match." : ""}</div>
-                    )}
-
-                    {detailData.scorer ? (
-                      <div className="mt-2 text-xs text-slate-600">
-                        Selezionato: <span className="font-semibold text-slate-800">{detailData.scorer.playerName}</span>
-                      </div>
-                    ) : null}
-                  </div>
-
-                  {/* Events */}
-                  <div>
-                    <div className="text-sm font-semibold text-slate-900">Eventi</div>
-                    <div className="mt-2 rounded-2xl border border-slate-100 bg-white p-4">
-                      {(detailData.events || []).length === 0 ? (
-                        <div className="text-sm text-slate-600">Nessun evento disponibile.</div>
-                      ) : (
-                        <ul className="space-y-2">
-                          {(detailData.events || []).slice(0, 200).map((ev: any, idx: number) => {
-                            const minute = Number.isFinite(Number(ev?.minute))
-                              ? String(ev.minute)
-                              : ev?.time?.elapsed
-                                ? `${ev.time.elapsed}${ev.time.extra ? `+${ev.time.extra}` : ""}`
-                                : "";
-                            const team = ev?.team?.name || ev?.team || "";
-                            const player = ev?.player?.name || ev?.player || "";
-                            const detail = ev?.detail || ev?.type || "";
-                            return (
-                              <li key={idx} className="flex items-start justify-between gap-3 text-sm">
-                                <div className="min-w-0">
-                                  <div className="truncate font-medium text-slate-800">{detail}</div>
-                                  <div className="truncate text-xs text-slate-500">{team}{player ? ` · ${player}` : ""}</div>
-                                </div>
-                                <div className="shrink-0 text-xs font-semibold text-slate-500">{minute ? `${minute}'` : ""}</div>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      )}
                     </div>
-                  </div>
+                  ) : (
+                    <div>
+                      <div className="text-sm font-semibold text-slate-900">Formazioni</div>
+                      <div className="mt-2">{renderLineups(detailData.lineups || [])}</div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

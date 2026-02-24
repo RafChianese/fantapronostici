@@ -9,6 +9,7 @@ import { recalcAllScoresForLeague } from "../lib/scoring.js";
 import { getMonetizationConfig } from "../lib/monetization.js";
 import {
   extractEventsFromMatchDetail,
+  extractLineupsFromMatchDetail,
   extractScorersFromMatchDetail,
   fetchCompetitionScorers,
   fetchCompetitionTeams,
@@ -126,55 +127,71 @@ meRouter.get("/matches/:matchId/detail", requireLeagueMember, async (req: Authed
   const scorerEnabled = !!(rules as any)?.enableScorer;
   const pointsScorer = Number((rules as any)?.pointsScorer ?? 3) || 3;
 
-  // football-data.org does not provide real lineups. We expose squads (if available) as a "lineup-like" list.
+  // football-data.org may provide real lineups in /v4/matches/{id} depending on plan.
+  // We normalize those if available; otherwise we fallback to squads from /competitions/{code}/teams.
   const fdMatchId = (match as any)?.footballDataMatchId ? Number((match as any).footballDataMatchId) : null;
   const competitionCode = String((match as any)?.footballDataCompetitionCode || "").trim();
 
+  let lineups: any[] = [];
   let events: any[] = [];
   let goalScorers: Array<{ id: number | null; name: string }> = [];
   if (fdMatchId) {
     try {
       const detail = await fetchMatchDetail({ matchId: fdMatchId });
+      lineups = extractLineupsFromMatchDetail(detail);
       events = extractEventsFromMatchDetail(detail);
       goalScorers = extractScorersFromMatchDetail(detail);
+
+      // Prefer DB logos (often already normalized / stable) when present.
+      const htId = Number((match as any)?.footballDataHomeTeamId);
+      const atId = Number((match as any)?.footballDataAwayTeamId);
+      for (const l of lineups) {
+        const tid = Number(l?.team?.id);
+        if (Number.isFinite(tid)) {
+          if (tid === htId && (match as any)?.homeLogo) l.team.logo = (match as any).homeLogo;
+          if (tid === atId && (match as any)?.awayLogo) l.team.logo = (match as any).awayLogo;
+        }
+      }
     } catch (e: any) {
       // best-effort
+      lineups = [];
       events = [];
       goalScorers = [];
     }
   }
 
-  // Build pseudo-lineups from squads (if football-data returns squads for competition teams).
-  let lineups: any[] = [];
-  try {
-    if (competitionCode) {
-      const teams = await fetchCompetitionTeams({ competitionCode });
-      const htId = Number((match as any)?.footballDataHomeTeamId);
-      const atId = Number((match as any)?.footballDataAwayTeamId);
-      const homeTeam = teams.find((t: any) => Number(t?.id) === htId);
-      const awayTeam = teams.find((t: any) => Number(t?.id) === atId);
+  // Fallback: Build pseudo-lineups from squads (if match detail does not include real lineups).
+  if (!lineups.length) {
+    try {
+      if (competitionCode) {
+        const teams = await fetchCompetitionTeams({ competitionCode });
+        const htId = Number((match as any)?.footballDataHomeTeamId);
+        const atId = Number((match as any)?.footballDataAwayTeamId);
+        const homeTeam = teams.find((t: any) => Number(t?.id) === htId);
+        const awayTeam = teams.find((t: any) => Number(t?.id) === atId);
 
-      const mapSquad = (t: any) => {
-        const tid = Number(t?.id) || null;
-        const logo =
-          tid && tid === Number(htId)
-            ? (match as any)?.homeLogo ?? null
-            : tid && tid === Number(atId)
-              ? (match as any)?.awayLogo ?? null
-              : (t as any)?.crest ?? null;
-        const squad = Array.isArray(t?.squad) ? t.squad : [];
-        return {
-          team: { id: tid, name: String(t?.shortName || t?.name || "").trim() || "Team", logo },
-          startXI: squad.map((p: any) => ({ id: Number(p?.id) || null, name: String(p?.name || "").trim() })),
-          substitutes: [],
+        const mapSquad = (t: any) => {
+          const tid = Number(t?.id) || null;
+          const logo =
+            tid && tid === Number(htId)
+              ? (match as any)?.homeLogo ?? null
+              : tid && tid === Number(atId)
+                ? (match as any)?.awayLogo ?? null
+                : (t as any)?.crest ?? null;
+          const squad = Array.isArray(t?.squad) ? t.squad : [];
+          return {
+            team: { id: tid, name: String(t?.shortName || t?.name || "").trim() || "Team", logo },
+            startXI: squad.map((p: any) => ({ id: Number(p?.id) || null, name: String(p?.name || "").trim(), number: null, position: null })),
+            substitutes: [],
+          };
         };
-      };
 
-      if (homeTeam) lineups.push(mapSquad(homeTeam));
-      if (awayTeam) lineups.push(mapSquad(awayTeam));
+        if (homeTeam) lineups.push(mapSquad(homeTeam));
+        if (awayTeam) lineups.push(mapSquad(awayTeam));
+      }
+    } catch {
+      lineups = [];
     }
-  } catch {
-    lineups = [];
   }
 
   const lineupAvailable = Array.isArray(lineups) && lineups.some((t) => (t.startXI?.length || 0) > 0 || (t.substitutes?.length || 0) > 0);

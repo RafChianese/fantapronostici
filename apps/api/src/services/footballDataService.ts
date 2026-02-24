@@ -274,6 +274,57 @@ export function extractEventsFromMatchDetail(detail: any) {
   return events;
 }
 
+export function extractLineupsFromMatchDetail(detail: any): any[] {
+  // football-data.org v4 /matches/{id} (on some plans) may include:
+  // homeTeam.lineup, homeTeam.bench, awayTeam.lineup, awayTeam.bench
+  // We normalize to the shape used by FE: [{ team, startXI, substitutes }]
+  const out: any[] = [];
+
+  const mapPlayer = (p: any) => {
+    const id = Number(p?.id);
+    const name = typeof p?.name === "string" ? p.name.trim() : "";
+    if (!name) return null;
+    return {
+      id: Number.isFinite(id) ? id : null,
+      name,
+      number: Number.isFinite(Number(p?.shirtNumber)) ? Number(p.shirtNumber) : null,
+      position: typeof p?.position === "string" ? p.position : null,
+    };
+  };
+
+  const mapTeam = (t: any) => {
+    if (!t) return null;
+    const tid = Number(t?.id);
+    return {
+      id: Number.isFinite(tid) ? tid : null,
+      name:
+        typeof t?.shortName === "string" && t.shortName.trim()
+          ? t.shortName.trim()
+          : typeof t?.name === "string"
+            ? t.name.trim()
+            : "Team",
+      logo: typeof t?.crest === "string" ? t.crest : null,
+    };
+  };
+
+  const ht = (detail as any)?.homeTeam;
+  const at = (detail as any)?.awayTeam;
+  const homeLineup = Array.isArray(ht?.lineup) ? ht.lineup.map(mapPlayer).filter(Boolean) : [];
+  const homeBench = Array.isArray(ht?.bench) ? ht.bench.map(mapPlayer).filter(Boolean) : [];
+  const awayLineup = Array.isArray(at?.lineup) ? at.lineup.map(mapPlayer).filter(Boolean) : [];
+  const awayBench = Array.isArray(at?.bench) ? at.bench.map(mapPlayer).filter(Boolean) : [];
+
+  // Only return if at least one team has data.
+  if (homeLineup.length || homeBench.length) {
+    out.push({ team: mapTeam(ht), startXI: homeLineup, substitutes: homeBench });
+  }
+  if (awayLineup.length || awayBench.length) {
+    out.push({ team: mapTeam(at), startXI: awayLineup, substitutes: awayBench });
+  }
+
+  return out;
+}
+
 export function mapFootballDataStatus(status: string) {
   switch (status) {
     case "FINISHED":
