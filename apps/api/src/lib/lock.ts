@@ -117,6 +117,17 @@ async function computeDynamicLockInfo(leagueId: string, predictionMode: Predicti
 }
 
 export async function getLockInfo(leagueId: string) {
+  // Very hot endpoint (/api/lock is frequently polled by the UI).
+  // To avoid exhausting Prisma's connection pool under load, we cache both the
+  // in-flight promise and the last successful result for a short TTL.
+  (globalThis as any).__LOCKINFO_CACHE__ ??= new Map();
+  const cache: Map<string, { exp: number; value?: any; inflight?: Promise<any> }> = (globalThis as any).__LOCKINFO_CACHE__;
+  const now = Date.now();
+  const hit = cache.get(leagueId);
+  if (hit?.value && hit.exp > now) return hit.value;
+  if (hit?.inflight) return hit.inflight;
+
+  const p = (async () => {
   // Auto-heal: ensure Setting/Rule exist for the league.
   await ensureLeagueConfig(leagueId);
 
@@ -130,7 +141,7 @@ export async function getLockInfo(leagueId: string) {
   // If an older league still has a non-sentinel lockUntil, we treat it as "automatic with defaults".
   const auto = await computeDynamicLockInfo(leagueId, decoded.predictionMode, decoded.lockOffsetMinutes);
   const isLocked = setting.isForceLocked || auto.isLocked;
-  return {
+  const result = {
     ...setting,
     lockUntil: auto.lockUntil,
     lockedByTime: auto.lockedByTime,
@@ -138,6 +149,21 @@ export async function getLockInfo(leagueId: string) {
     leagueSettings: decoded,
     auto,
   } as any;
+
+  cache.set(leagueId, { value: result, exp: Date.now() + 5_000 }); // 5s TTL
+  return result;
+  })();
+
+  cache.set(leagueId, { exp: now + 1_000, inflight: p });
+  try {
+    return await p;
+  } finally {
+    const cur = cache.get(leagueId);
+    if (cur?.inflight === p) {
+      // keep last value if it was set, otherwise clear
+      cache.set(leagueId, { value: cur.value, exp: cur.exp ?? 0 });
+    }
+  }
 }
 
 export async function assertPredictionsEditableForMatches(leagueId: string, matchIds: string[]) {

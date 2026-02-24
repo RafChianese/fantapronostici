@@ -12,11 +12,20 @@ async function resolveLeague(req: any) {
   const leagueCode = (req.query.leagueCode as string | undefined) || undefined;
 
   if (leagueId) {
-    const league = await prisma.league.findUnique({ where: { id: leagueId } });
-    return league;
+    // IMPORTANT: avoid DB lookup when we already have a leagueId.
+    // This endpoint is hit frequently (e.g. /lock polling). We only need the id downstream.
+    return { id: leagueId } as any;
   }
   if (leagueCode) {
-    const league = await prisma.league.findUnique({ where: { code: leagueCode.toUpperCase() } });
+    const code = leagueCode.toUpperCase();
+    // Small in-memory cache to reduce DB pressure.
+    (globalThis as any).__LEAGUE_CODE_CACHE__ ??= new Map();
+    const cache: Map<string, { league: any; exp: number }> = (globalThis as any).__LEAGUE_CODE_CACHE__;
+    const now = Date.now();
+    const hit = cache.get(code);
+    if (hit && hit.exp > now) return hit.league;
+    const league = await prisma.league.findUnique({ where: { code } });
+    if (league) cache.set(code, { league, exp: now + 5 * 60_000 }); // 5 minutes
     return league;
   }
   return null;
@@ -65,9 +74,12 @@ publicRouter.get("/matches", async (req, res) => {
 publicRouter.get("/lock", async (req, res) => {
   const league = await resolveLeague(req);
   if (!league) return res.status(400).json({ message: "Missing leagueId or leagueCode" });
-  await ensureLeagueConfig(league.id);
-  const rules = await prisma.rule.findUnique({ where: { leagueId: league.id } });
-  const info = await getLockInfo(league.id);
+
+  // NOTE: getLockInfo already calls ensureLeagueConfig.
+  const [rules, info] = await Promise.all([
+    prisma.rule.findUnique({ where: { leagueId: league.id } }),
+    getLockInfo(league.id),
+  ]);
   res.json({
     lock: {
       lockUntil: info.lockUntil,
