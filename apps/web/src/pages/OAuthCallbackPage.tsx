@@ -1,9 +1,13 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { setToken } from "../lib/api";
+import { useAuth } from "../lib/auth";
+import { AuthBootstrapOverlay } from "../components/AuthBootstrapOverlay";
 
 export default function OAuthCallbackPage() {
   const nav = useNavigate();
+  const { refreshMe, authStatus, bootstrapError, retryBootstrap, logout } = useAuth();
+  const [handled, setHandled] = useState(false);
 
   useEffect(() => {
     // We receive the token in the URL fragment to avoid server logs.
@@ -13,20 +17,51 @@ export default function OAuthCallbackPage() {
 
     if (token) {
       setToken(token);
-      // Full reload so AuthProvider picks up the token from storage.
-      window.location.replace("/");
+      // Bootstraps /api/me with a robust loader; avoids redirect loops on slow networks.
+      setHandled(true);
+      refreshMe();
       return;
     }
 
     nav("/login");
-  }, [nav]);
+  }, [nav, refreshMe]);
 
-  return (
-    <div className="mx-auto max-w-lg">
-      <div className="rounded-2xl border bg-white p-6 shadow-sm">
-        <div className="text-lg font-semibold">Accesso in corso…</div>
-        <div className="mt-2 text-sm text-slate-600">Stiamo completando l’accesso. Se non vieni reindirizzato, torna al login.</div>
+  useEffect(() => {
+    if (!handled) return;
+    if (authStatus === "authed") {
+      nav("/", { replace: true });
+    }
+    if (authStatus === "unauthed") {
+      nav("/login", { replace: true });
+    }
+  }, [handled, authStatus, nav]);
+
+  if (!handled) {
+    return (
+      <div className="mx-auto max-w-lg">
+        <div className="rounded-2xl border bg-white p-6 shadow-sm">
+          <div className="text-lg font-semibold">Accesso in corso…</div>
+          <div className="mt-2 text-sm text-slate-600">
+            Stiamo completando l’accesso. Se non vieni reindirizzato, torna al login.
+          </div>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  if (authStatus === "loading") {
+    return (
+      <AuthBootstrapOverlay
+        label="Accesso in corso…"
+        error={bootstrapError}
+        onRetry={retryBootstrap}
+        onBackToLogin={() => {
+          logout();
+          nav("/login", { replace: true });
+        }}
+      />
+    );
+  }
+
+  return null;
 }

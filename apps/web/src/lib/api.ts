@@ -135,9 +135,12 @@ export function getToken() {
 }
 export function setToken(token: string) {
   localStorage.setItem("tm_token", token);
+  // Notify listeners (AuthProvider) even when we don't have direct access to React state here.
+  window.dispatchEvent(new Event("tm_auth_changed"));
 }
 export function clearToken() {
   localStorage.removeItem("tm_token");
+  window.dispatchEvent(new Event("tm_auth_changed"));
 }
 
 export function getActiveLeagueId() {
@@ -145,9 +148,11 @@ export function getActiveLeagueId() {
 }
 export function setActiveLeagueId(id: string) {
   localStorage.setItem("tm_league_id", id);
+  window.dispatchEvent(new Event("tm_auth_changed"));
 }
 export function clearActiveLeagueId() {
   localStorage.removeItem("tm_league_id");
+  window.dispatchEvent(new Event("tm_auth_changed"));
 }
 
 async function request(path: string, opts: RequestInit = {}) {
@@ -204,7 +209,9 @@ export const api = {
     request(`/api/auth/reset-password`, { method: "POST", body: JSON.stringify({ email, token, newPassword }) }),
 
   // me
-  me: () => request(`/api/me`) as Promise<{ user: UserWithAvatar; memberships: Membership[] }>,
+  // Optional signal is used by the auth bootstrapper to implement timeouts/retries.
+  me: (opts?: { signal?: AbortSignal }) =>
+    request(`/api/me`, { signal: opts?.signal }) as Promise<{ user: UserWithAvatar; memberships: Membership[] }>,
   changePassword: (currentPassword: string, newPassword: string) =>
     request(`/api/me/password`, { method: "PUT", body: JSON.stringify({ currentPassword, newPassword }) }),
   updateProfile: (payload: { displayName?: string; avatarId?: string | null }) =>

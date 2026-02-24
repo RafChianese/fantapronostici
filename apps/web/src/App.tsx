@@ -4,7 +4,7 @@ import { AuthProvider, useAuth } from "./lib/auth";
 import { LoadingProvider } from "./lib/loading";
 import { ToastProvider } from "./lib/toast";
 import { LockProvider } from "./lib/lock";
-import { FullScreenLoaderOverlay } from "./components/FullScreenLoaderOverlay";
+import { AuthBootstrapOverlay } from "./components/AuthBootstrapOverlay";
 import { Layout } from "./components/Layout";
 import LoginPage from "./pages/LoginPage";
 import OAuthCallbackPage from "./pages/OAuthCallbackPage";
@@ -39,18 +39,38 @@ function HashTokenBootstrapper() {
 }
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, authStatus, bootstrapError, retryBootstrap, logout } = useAuth();
   const loc = useLocation();
-  if (loading) return <FullScreenLoaderOverlay label="Caricamento…" />;
+  if (authStatus === "loading")
+    return (
+      <AuthBootstrapOverlay
+        label="Accesso in corso…"
+        error={bootstrapError}
+        onRetry={retryBootstrap}
+        onBackToLogin={() => {
+          logout();
+        }}
+      />
+    );
   // Default landing for unauthenticated users is Login.
   if (!user) return <Navigate to="/login" state={{ from: loc.pathname }} replace />;
   return <>{children}</>;
 }
 
 function RequireLeague({ children }: { children: React.ReactNode }) {
-  const { user, loading, memberships, activeLeagueId } = useAuth();
+  const { user, authStatus, bootstrapError, retryBootstrap, logout, memberships, activeLeagueId } = useAuth();
   const loc = useLocation();
-  if (loading) return <FullScreenLoaderOverlay label="Caricamento…" />;
+  if (authStatus === "loading")
+    return (
+      <AuthBootstrapOverlay
+        label="Accesso in corso…"
+        error={bootstrapError}
+        onRetry={retryBootstrap}
+        onBackToLogin={() => {
+          logout();
+        }}
+      />
+    );
   if (!user) return <Navigate to="/login" state={{ from: loc.pathname }} replace />;
 
   const approved = memberships.filter((m) => m.status === "APPROVED");
@@ -60,9 +80,19 @@ function RequireLeague({ children }: { children: React.ReactNode }) {
 }
 
 function RequireLeagueAdmin({ children }: { children: React.ReactNode }) {
-  const { user, loading, memberships, activeLeagueId } = useAuth();
+  const { user, authStatus, bootstrapError, retryBootstrap, logout, memberships, activeLeagueId } = useAuth();
   const loc = useLocation();
-  if (loading) return <FullScreenLoaderOverlay label="Caricamento…" />;
+  if (authStatus === "loading")
+    return (
+      <AuthBootstrapOverlay
+        label="Accesso in corso…"
+        error={bootstrapError}
+        onRetry={retryBootstrap}
+        onBackToLogin={() => {
+          logout();
+        }}
+      />
+    );
   if (!user) return <Navigate to="/login" state={{ from: loc.pathname }} replace />;
 
   if (user.globalRole === "SUPER_ADMIN") return <>{children}</>;
@@ -73,9 +103,19 @@ function RequireLeagueAdmin({ children }: { children: React.ReactNode }) {
 }
 
 function RequireSuperAdmin({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, authStatus, bootstrapError, retryBootstrap, logout } = useAuth();
   const loc = useLocation();
-  if (loading) return <FullScreenLoaderOverlay label="Caricamento…" />;
+  if (authStatus === "loading")
+    return (
+      <AuthBootstrapOverlay
+        label="Accesso in corso…"
+        error={bootstrapError}
+        onRetry={retryBootstrap}
+        onBackToLogin={() => {
+          logout();
+        }}
+      />
+    );
   if (!user) return <Navigate to="/login" state={{ from: loc.pathname }} replace />;
   if (user.globalRole !== "SUPER_ADMIN") return <Navigate to="/" replace />;
   return <>{children}</>;

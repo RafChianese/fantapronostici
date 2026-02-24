@@ -55,7 +55,8 @@ const corsOptions: import("cors").CorsOptions = {
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   // IMPORTANT: include custom headers used by the frontend (triggers preflight)
-  allowedHeaders: ["Content-Type", "Authorization", "X-League-Id"],
+  // Note: browsers may send requested headers in lowercase (x-league-id). Be permissive.
+  allowedHeaders: ["Content-Type", "Authorization", "X-League-Id", "x-league-id"],
   optionsSuccessStatus: 204,
 };
 
