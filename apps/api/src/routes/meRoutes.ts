@@ -207,7 +207,7 @@ meRouter.get("/matches/:matchId/detail", requireLeagueMember, async (req: Authed
     }
   }
 
-  res.json({
+  const payload = {
     match,
     lineupAvailable,
     lineups,
@@ -217,7 +217,28 @@ meRouter.get("/matches/:matchId/detail", requireLeagueMember, async (req: Authed
     scorerEnabled,
     pointsScorer,
     canPickScorer,
-  });
+  };
+
+  // DEBUG: log normalized response sent to FE (non-production only)
+  if (process.env.NODE_ENV !== "1") {
+    try {
+      console.log("📦 MATCH DETAIL NORMALIZED META:", {
+        matchId,
+        fdMatchId,
+        scorerEnabled,
+        lineupTeams: Array.isArray(lineups) ? lineups.length : 0,
+        startXI: Array.isArray(lineups) ? lineups.reduce((acc, t: any) => acc + ((t?.startXI?.length as number) || 0), 0) : 0,
+        subs: Array.isArray(lineups) ? lineups.reduce((acc, t: any) => acc + ((t?.substitutes?.length as number) || 0), 0) : 0,
+        events: Array.isArray(events) ? events.length : 0,
+        goalScorers: Array.isArray(goalScorers) ? goalScorers.length : 0,
+      });
+      console.log("📦 MATCH DETAIL NORMALIZED PAYLOAD:", JSON.stringify(payload, null, 2));
+    } catch {
+      // ignore logging failures
+    }
+  }
+
+  res.json(payload);
 });
 
 const PutScorerSchema = z.object({

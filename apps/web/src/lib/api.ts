@@ -130,6 +130,17 @@ export type RegolamentoConfigResponse = {
   };
 };
 
+// League statistics (current league)
+export type LeagueStatsResponse = {
+  bestAttack: { userId: string; displayName: string; value: number } | null;
+  bestDefense: { userId: string; displayName: string; value: number } | null;
+  avgPointsPerMatchday: number;
+  exactTotal: number;
+  distribution: Array<{ label: string; count: number }>;
+  bestMatchday: { matchday: number; avgPoints: number } | null;
+  worstMatchday: { matchday: number; avgPoints: number } | null;
+};
+
 export function getToken() {
   return localStorage.getItem("tm_token") || "";
 }
@@ -364,7 +375,7 @@ export const api = {
   },
   superImportFixtures: () => request(`/api/super/external/import-fixtures`, { method: "POST" }),
   // league stats
-  leagueStats: () => request(`/api/league/stats`),
+  leagueStats: () => request(`/api/league/stats`) as Promise<LeagueStatsResponse>,
 };
 
 export function apiUrl() {

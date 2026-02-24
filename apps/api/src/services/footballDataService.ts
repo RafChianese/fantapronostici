@@ -106,6 +106,24 @@ export function extractTopScorerFromScorers(scorers: any[]): { playerExternalId:
 
 export async function fetchMatchDetail(args: { matchId: number }) {
   const data = await client.getMatch(args.matchId);
+
+  // DEBUG: log raw football-data response for match detail (non-production only)
+  if (process.env.NODE_ENV !== "1") {
+    try {
+      console.log("⚽ FOOTBALL-DATA RAW MATCH DETAIL META:", {
+        matchId: args.matchId,
+        status: (data as any)?.status ?? (data as any)?.match?.status,
+        goals: Array.isArray((data as any)?.goals) ? (data as any).goals.length : 0,
+        bookings: Array.isArray((data as any)?.bookings) ? (data as any).bookings.length : 0,
+        substitutions: Array.isArray((data as any)?.substitutions) ? (data as any).substitutions.length : 0,
+        hasLineups: !!(data as any)?.homeTeam?.lineup || !!(data as any)?.awayTeam?.lineup,
+      });
+      console.log("⚽ FOOTBALL-DATA RAW MATCH DETAIL PAYLOAD:", JSON.stringify(data, null, 2));
+    } catch {
+      // ignore logging failures
+    }
+  }
+
   return data as any;
 }
 
