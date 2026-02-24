@@ -409,7 +409,11 @@ export default function DashboardPage() {
         <div className="flex gap-3 overflow-x-auto pb-4">
           {last5.map((it) => (
             <div key={it.md} className="flex flex-col items-center">
-              <Link to={`/?md=${it.md}`} className="flex flex-col items-center" aria-label={`Vai alla giornata ${it.md}`}>
+              <Link
+                to={`/predictions?md=${it.md}`}
+                className="flex flex-col items-center"
+                aria-label={`Vai alla giornata ${it.md}`}
+              >
                 <div
                   className={[
                     "relative flex h-14 w-14 items-center justify-center rounded-full text-sm font-extrabold text-white shadow-sm transition-transform duration-200 active:scale-95",
