@@ -52,6 +52,33 @@ function pillTone(kind: "green" | "yellow" | "orange" | "red" | "grey") {
   return "bg-rose-500";
 }
 
+function useIsMobile(breakpointPx = 768) {
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia(`(max-width: ${breakpointPx}px)`).matches;
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia(`(max-width: ${breakpointPx}px)`);
+    const onChange = () => setIsMobile(mq.matches);
+    // Safari <14
+    // @ts-ignore
+    if (mq.addEventListener) mq.addEventListener("change", onChange);
+    // @ts-ignore
+    else mq.addListener(onChange);
+    onChange();
+    return () => {
+      // @ts-ignore
+      if (mq.removeEventListener) mq.removeEventListener("change", onChange);
+      // @ts-ignore
+      else mq.removeListener(onChange);
+    };
+  }, [breakpointPx]);
+
+  return isMobile;
+}
+
 
 export default function DashboardPage() {
   const { user, memberships, activeLeagueId, setActiveLeague } = useAuth();
@@ -191,8 +218,59 @@ export default function DashboardPage() {
   const isLocked = !!lock?.isLocked;
   const canInsert = showInsert && !isLocked && hasPronosticabile;
 
-  const last5 = useMemo(() => {
-    const recent = [...matchdays].slice(-5);
+  const isMobile = useIsMobile(768);
+  const pillCount = isMobile ? 5 : 10;
+
+  const pillMatchdays = useMemo(() => {
+    // UX requirement:
+    // - show the last 4 *finished* matchdays
+    // - plus the current matchday (the first one that is not fully finished)
+    // Example:
+    //  - if md 15 is not finished => 11-12-13-14-15
+    //  - if md 15 is finished and md 16 exists (NOT_STARTED) => 12-13-14-15-16
+
+    if (!matchdays.length) return [] as number[];
+
+    const statusOf = (md: number): "IN_PROGRESS" | "NOT_STARTED" | "FINISHED" => {
+      const arr = byMatchday[md] || [];
+      if (!arr.length) return "NOT_STARTED";
+      const st = (it: any) => (it?.match?.status || it?.status) as string;
+      if (arr.every((it) => st(it) === "FINISHED")) return "FINISHED";
+      if (arr.every((it) => st(it) === "NOT_STARTED")) return "NOT_STARTED";
+      return "IN_PROGRESS";
+    };
+
+    const current = currentMatchday;
+    const finishedBefore = matchdays.filter((md) => md < current && statusOf(md) === "FINISHED");
+    const lastFinished = finishedBefore.slice(-(pillCount - 1));
+
+    const out: number[] = [...lastFinished, current];
+
+    // If we don't have enough finished matchdays yet (early season), pad with next matchdays
+    // so the UI always shows up to N pills.
+    if (out.length < pillCount) {
+      const after = matchdays.filter((md) => md > current);
+      for (const md of after) {
+        if (out.length >= pillCount) break;
+        out.push(md);
+      }
+    }
+
+    // As a final fallback, pad with earlier matchdays if still < N.
+    if (out.length < pillCount) {
+      const before = matchdays.filter((md) => md < current);
+      for (let i = before.length - 1; i >= 0 && out.length < pillCount; i--) {
+        const md = before[i];
+        if (!out.includes(md)) out.unshift(md);
+      }
+    }
+
+    // Keep sorted by matchday.
+    return Array.from(new Set(out)).sort((a, b) => a - b).slice(-pillCount);
+  }, [matchdays, byMatchday, currentMatchday, pillCount]);
+
+  const lastPills = useMemo(() => {
+    const recent = [...pillMatchdays];
     return recent.map((md) => {
       const arr = byMatchday[md] || [];
       const pts = arr.reduce((s, it) => s + Number(it?.points?.total ?? it?.points?.totalPoints ?? 0), 0);
@@ -225,7 +303,7 @@ export default function DashboardPage() {
 
       return { md, pts, tone, status };
     });
-  }, [matchdays, byMatchday]);
+  }, [pillMatchdays, byMatchday]);
 
   return (
     <div className="min-h-[calc(100dvh-64px)] bg-gradient-to-b from-slate-50 via-white to-slate-50">
@@ -388,9 +466,9 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
-      {/* 6) Last 5 matchdays */}
+      {/* 6) Recent matchdays */}
       <div className="mb-2 flex items-center justify-between">
-        <div className="text-sm font-bold text-slate-900">Ultime 5 giornate</div>
+        <div className="text-sm font-bold text-slate-900">Ultime {pillCount} giornate</div>
         <Link to="/leaderboard" className="text-xs font-semibold text-slate-600 underline">
           Vedi classifica
         </Link>
@@ -398,16 +476,16 @@ export default function DashboardPage() {
 
       {loading ? (
         <div className="flex gap-3 overflow-x-auto pb-4">
-          {Array.from({ length: 5 }).map((_, i) => (
+          {Array.from({ length: pillCount }).map((_, i) => (
             <div key={i} className="flex flex-col items-center gap-2">
-              <Skeleton className="h-14 w-14 rounded-full" />
+              <Skeleton className={isMobile ? "h-12 w-12 rounded-full" : "h-14 w-14 rounded-full"} />
               <Skeleton className="h-3 w-10 rounded-md" />
             </div>
           ))}
         </div>
       ) : (
         <div className="flex gap-3 overflow-x-auto pb-4">
-          {last5.map((it) => (
+          {lastPills.map((it) => (
             <div key={it.md} className="flex flex-col items-center">
               <Link
                 to={`/predictions?md=${it.md}`}
@@ -416,7 +494,7 @@ export default function DashboardPage() {
               >
                 <div
                   className={[
-                    "relative flex h-14 w-14 items-center justify-center rounded-full text-sm font-extrabold text-white shadow-sm transition-transform duration-200 active:scale-95",
+                    `relative flex ${isMobile ? "h-12 w-12" : "h-14 w-14"} items-center justify-center rounded-full text-sm font-extrabold text-white shadow-sm transition-transform duration-200 active:scale-95`,
                     pillTone(it.tone),
                   ].join(" ")}
                 >
