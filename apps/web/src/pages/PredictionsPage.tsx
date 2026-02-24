@@ -231,6 +231,11 @@ export default function PredictionsPage() {
   const [preds, setPreds] = useState<Record<string, PredictionState>>({});
   const [scorerPickByMatchId, setScorerPickByMatchId] = useState<Map<string, ScorerPickSummary>>(new Map());
   const [config, setConfig] = useState<any>(null);
+  // Keep a stable reference for timers/callbacks to avoid stale closures (and prevent runtime ReferenceError).
+  const configRef = useRef<any>(null);
+  useEffect(() => {
+    configRef.current = config;
+  }, [config]);
   const [collapsed, setCollapsed] = useState<Record<number, boolean>>({});
 
   const [loading, setLoading] = useState(true);
