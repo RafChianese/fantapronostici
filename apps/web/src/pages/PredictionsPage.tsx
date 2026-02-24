@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Lock, X, Info } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import { api, CompetitionPredictionsResponse } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { useLoading } from "../lib/loading";
@@ -223,6 +224,7 @@ function buildBreakdown(p: PredictionState, underOverEnabled: boolean) {
 }
 
 export default function PredictionsPage() {
+  const [searchParams] = useSearchParams();
   const { activeLeagueId } = useAuth();
   const { show, hide } = useLoading();
   const [matches, setMatches] = useState<Match[]>([]);
@@ -252,6 +254,7 @@ export default function PredictionsPage() {
   const isLockedRef = useRef<boolean>(false);
   const autosaveInitializedRef = useRef(false);
   const initialCollapseSetRef = useRef(false);
+  const hasAutoScrolledRef = useRef(false);
 
   const isLocked = !!config?.lock?.isLocked;
 
@@ -484,8 +487,8 @@ export default function PredictionsPage() {
     if (!activeLeagueId) return;
 
     let cancelled = false;
-    let interval: any = null;
     let timer: any = null;
+    let inflight: Promise<void> | null = null;
 
     const scheduleExactRefreshAt = (iso: string | undefined | null) => {
       if (timer) clearTimeout(timer);
@@ -507,36 +510,72 @@ export default function PredictionsPage() {
     scheduleExactRefreshAt(config?.lock?.lockUntil);
     let lastSig = makeSig(config);
 
-    interval = setInterval(async () => {
-      try {
-        const next = await api.publicConfig();
-        if (cancelled) return;
+    const scheduleNext = (next?: any) => {
+      if (timer) clearTimeout(timer);
 
-        const nextSig = makeSig(next);
-        const changed = nextSig !== lastSig;
-        lastSig = nextSig;
+      const iso = next?.lock?.lockUntil;
+      const t = iso ? new Date(iso).getTime() : NaN;
+      const now = Date.now();
 
-        // Refresh only when the lock state truly changes (isLocked OR locked matchdays/scope).
-        if (changed) {
-          setConfig(next);
-          await reloadAll({ silent: true });
-          if (next?.lock?.isLocked) setToast({ tone: "danger", msg: "Lock aggiornato: pagina aggiornata." });
-        } else {
-          // Still update config to keep countdown accurate.
-          setConfig(next);
-        }
-
-        // Re-schedule exact refresh (manual lockUntil) if it changes.
-        scheduleExactRefreshAt(next?.lock?.lockUntil);
-      } catch {
-        // ignore polling errors
+      // Default slow cadence: reduce pressure on /api/lock and DB.
+      let ms = 60_000;
+      if (Number.isFinite(t)) {
+        const delta = t - now;
+        // If a lock boundary is near (<=2min), schedule just after it.
+        if (delta > 0 && delta <= 120_000) ms = Math.max(750, delta + 350);
       }
-    }, 10_000);
+
+      timer = setTimeout(() => {
+        if (!cancelled) runOnce();
+      }, Math.min(ms, 2_147_483_600));
+    };
+
+    const runOnce = async () => {
+      if (inflight) return inflight;
+      inflight = (async () => {
+        try {
+          const next = await api.publicConfig();
+          if (cancelled) return;
+
+          const nextSig = makeSig(next);
+          const changed = nextSig !== lastSig;
+          lastSig = nextSig;
+
+          // Refresh only when the lock state truly changes (isLocked OR locked matchdays/scope).
+          if (changed) {
+            setConfig(next);
+            await reloadAll({ silent: true });
+            if (next?.lock?.isLocked) setToast({ tone: "danger", msg: "Lock aggiornato: pagina aggiornata." });
+          } else {
+            // Still update config to keep countdown accurate.
+            setConfig(next);
+          }
+
+          scheduleExactRefreshAt(next?.lock?.lockUntil);
+          scheduleNext(next);
+        } catch {
+          // ignore polling errors but keep slow retry cadence
+          scheduleNext(configRef.current);
+        } finally {
+          inflight = null;
+        }
+      })();
+      return inflight;
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") runOnce();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
+    // First run + schedule
+    runOnce();
+    scheduleNext(configRef.current);
 
     return () => {
       cancelled = true;
-      if (interval) clearInterval(interval);
       if (timer) clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeLeagueId]);
@@ -556,6 +595,10 @@ export default function PredictionsPage() {
   }, [preds, matchById, isLocked]);
 
   const byMatchday = useMemo(() => {
+    const requestedMdRaw = searchParams.get("md");
+    const requestedMd = requestedMdRaw ? Number(requestedMdRaw) : null;
+    const requestedMdIsValid = typeof requestedMd === "number" && Number.isFinite(requestedMd) && requestedMd > 0;
+
     const map = new Map<number, Match[]>();
     for (const m of matches) {
       const md = Number(m.matchday || 1);
@@ -566,6 +609,12 @@ export default function PredictionsPage() {
 
     const mode = (config?.leagueSettings?.predictionMode as any) || "MATCHDAY_BY_MATCHDAY";
     if (mode === "TOURNAMENT_PRE") return all;
+
+    // If the Home "Ultime 5 giornate" dots link passed a matchday (?md=...), show exactly that matchday.
+    if (requestedMdIsValid) {
+      const only = all.filter(([md]) => md === requestedMd);
+      return only.length ? only : all.slice(0, 1);
+    }
 
     const now = Date.now();
     const isFinished = (ms: Match[]) => ms.length > 0 && ms.every((x) => x.status === "FINISHED");
@@ -579,7 +628,24 @@ export default function PredictionsPage() {
     const visible = Array.from(new Set([ongoing, upcoming].filter((x): x is number => typeof x === "number" && Number.isFinite(x))));
     if (!visible.length) return all.slice(0, 1);
     return all.filter(([md]) => visible.includes(md));
-  }, [matches, config?.leagueSettings?.predictionMode]);
+  }, [matches, config?.leagueSettings?.predictionMode, searchParams]);
+
+  // When opening a specific matchday via ?md=, ensure it's expanded and we re-run the scroll effect.
+  useEffect(() => {
+    const raw = searchParams.get("md");
+    const md = raw ? Number(raw) : null;
+    if (!(typeof md === "number" && Number.isFinite(md) && md > 0)) return;
+    if (!byMatchday.length) return;
+
+    initialCollapseSetRef.current = false;
+    hasAutoScrolledRef.current = false;
+
+    setCollapsed(() => {
+      const next: Record<number, boolean> = {};
+      for (const [x] of byMatchday) next[x] = x !== md;
+      return next;
+    });
+  }, [searchParams, byMatchday]);
 
   const firstNotFinishedMatchday = useMemo(() => {
     const target = byMatchday.find(([, ms]) => !(ms.length > 0 && ms.every((x) => x.status === "FINISHED")));
@@ -598,8 +664,6 @@ export default function PredictionsPage() {
       return next;
     });
   }, [byMatchday, firstNotFinishedMatchday]);
-
-  const hasAutoScrolledRef = useRef(false);
 
   useEffect(() => {
     if (loading) return;

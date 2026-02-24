@@ -409,21 +409,23 @@ export default function DashboardPage() {
         <div className="flex gap-3 overflow-x-auto pb-4">
           {last5.map((it) => (
             <div key={it.md} className="flex flex-col items-center">
-              <div
-                className={[
-                  "relative flex h-14 w-14 items-center justify-center rounded-full text-sm font-extrabold text-white shadow-sm transition-transform duration-200 active:scale-95",
-                  pillTone(it.tone),
-                ].join(" ")}
-              >
-                {it.status === "IN_PROGRESS" ? (
-                  <span
-                    className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-sm ring-2 ring-white animate-pulse"
-                    aria-label="Giornata in corso"
-                  />
-                ) : null}
-                {it.md}
-              </div>
-              <div className="mt-2 text-[11px] font-bold text-slate-700">{it.pts} pt</div>
+              <Link to={`/?md=${it.md}`} className="flex flex-col items-center" aria-label={`Vai alla giornata ${it.md}`}>
+                <div
+                  className={[
+                    "relative flex h-14 w-14 items-center justify-center rounded-full text-sm font-extrabold text-white shadow-sm transition-transform duration-200 active:scale-95",
+                    pillTone(it.tone),
+                  ].join(" ")}
+                >
+                  {it.status === "IN_PROGRESS" ? (
+                    <span
+                      className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-sm ring-2 ring-white animate-pulse"
+                      aria-label="Giornata in corso"
+                    />
+                  ) : null}
+                  {it.md}
+                </div>
+                <div className="mt-2 text-[11px] font-bold text-slate-700">{it.pts} pt</div>
+              </Link>
             </div>
           ))}
         </div>

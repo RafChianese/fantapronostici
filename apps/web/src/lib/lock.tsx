@@ -71,110 +71,131 @@ export function LockProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    let interval: any = null;
     let timer: any = null;
+    let inflight: Promise<void> | null = null;
 
-    const scheduleExact = (iso?: string) => {
+    const schedule = (next?: LockResponse | null) => {
       if (timer) clearTimeout(timer);
-      if (!iso) return;
-      const t = new Date(iso).getTime();
-      if (!Number.isFinite(t)) return;
-      const ms = t - Date.now();
-      if (ms <= 0) return;
-      // refresh shortly after expected lock time
+
+      // Goal: avoid calling /api/lock every 10s. Instead, refresh:
+      // - once on mount/league change
+      // - shortly after the next known lock boundary (lockUntil)
+      // - otherwise on a slow cadence (60s)
+      // - also when the tab becomes visible again
+      const iso = next?.lock?.lockUntil;
+      const t = iso ? new Date(iso).getTime() : NaN;
+      const now = Date.now();
+
+      // Default slow cadence.
+      let ms = 60_000;
+
+      if (Number.isFinite(t)) {
+        const delta = t - now;
+        // If there's a lock boundary in the next 2 minutes, schedule exactly there (+350ms).
+        if (delta > 0 && delta <= 120_000) ms = Math.max(750, delta + 350);
+      }
+
       timer = setTimeout(() => {
-        if (!cancelled) refresh();
-      }, Math.min(ms + 350, 2_147_483_600));
+        if (!cancelled) runOnce();
+      }, Math.min(ms, 2_147_483_600));
     };
 
-    (async () => {
-      try {
-        await refresh();
-      } catch {
-        // ignore
+    const runOnce = async () => {
+      if (!activeLeagueId) {
+        setData(null);
+        return;
       }
-    })();
-
-    interval = setInterval(async () => {
-      try {
-        const next = (await api.publicConfig()) as LockResponse;
-        if (cancelled) return;
-
-        const prev = dataRef.current;
-        const prevLocked = !!prev?.lock?.isLocked;
-        const nextLocked = !!next?.lock?.isLocked;
-
-        // Only update React state if something relevant actually changed.
-        // This avoids heavy rerenders (and losing in-progress edits) while we poll.
-        const prevMds = (prev?.lock as any)?.lockedMatchdays ?? [];
-        const nextMds = (next?.lock as any)?.lockedMatchdays ?? [];
-        const sameMds =
-          Array.isArray(prevMds) &&
-          Array.isArray(nextMds) &&
-          prevMds.length === nextMds.length &&
-          [...prevMds].sort().every((v: any, i: number) => Number(v) === Number([...nextMds].sort()[i]));
-
-        const sameLock =
-          !!prev &&
-          prev.lock.isLocked === next.lock.isLocked &&
-          prev.lock.lockUntil === next.lock.lockUntil &&
-          prev.lock.isForceLocked === next.lock.isForceLocked &&
-          prev.lock.lockedByTime === next.lock.lockedByTime &&
-          (prev.lock as any).lockAll === (next.lock as any).lockAll &&
-          sameMds &&
-          (prev.leagueSettings?.lockMode ?? null) === (next.leagueSettings?.lockMode ?? null) &&
-          (prev.leagueSettings?.lockOffsetMinutes ?? null) === (next.leagueSettings?.lockOffsetMinutes ?? null) &&
-          (prev.leagueSettings?.predictionMode ?? null) === (next.leagueSettings?.predictionMode ?? null);
-
-        if (!sameLock) {
-          setData(next);
-          // Update the ref immediately too, so the next poll doesn't see stale state.
-          dataRef.current = next;
-        }
-
-        // Reload the predictions page only when the lock state actually changes.
-        // This guarantees the UI cannot keep editing across the lock boundary,
-        // without reloading on every poll.
+      if (inflight) return inflight;
+      inflight = (async () => {
         try {
-          const stored = sessionStorage.getItem(lockStateKey);
-          const storedLocked = stored === "1";
-          const storedIsValid = stored === "1" || stored === "0";
-          const lockChanged = storedIsValid ? storedLocked !== nextLocked : prevLocked !== nextLocked;
+          const next = (await api.publicConfig()) as LockResponse;
+          if (cancelled) return;
 
-          // Persist the new state so a reload while locked doesn't cause another reload loop.
-          sessionStorage.setItem(lockStateKey, nextLocked ? "1" : "0");
+          const prev = dataRef.current;
+          const prevLocked = !!prev?.lock?.isLocked;
+          const nextLocked = !!next?.lock?.isLocked;
 
-          if (lockChanged) {
-            // Prevent back-to-back reload storms (edge cases / flaky time sync)
-            const last = Number(sessionStorage.getItem(lastReloadAtKey) || "0");
-            const now = Date.now();
-            const allow = !Number.isFinite(last) || now - last > 5_000;
-            if (allow) {
-              sessionStorage.setItem(lastReloadAtKey, String(now));
-              const path = window.location.pathname;
-              const isPredictionsPage = path === "/"; // "I miei pronostici"
-              if (isPredictionsPage) {
-                push({ tone: "info", msg: "Lock aggiornato: ricarico i pronostici…", ttlMs: 1600 });
-                setTimeout(() => window.location.reload(), 150);
+          // Only update React state if something relevant actually changed.
+          const prevMds = (prev?.lock as any)?.lockedMatchdays ?? [];
+          const nextMds = (next?.lock as any)?.lockedMatchdays ?? [];
+          const sameMds =
+            Array.isArray(prevMds) &&
+            Array.isArray(nextMds) &&
+            prevMds.length === nextMds.length &&
+            [...prevMds].sort().every((v: any, i: number) => Number(v) === Number([...nextMds].sort()[i]));
+
+          const sameLock =
+            !!prev &&
+            prev.lock.isLocked === next.lock.isLocked &&
+            prev.lock.lockUntil === next.lock.lockUntil &&
+            prev.lock.isForceLocked === next.lock.isForceLocked &&
+            prev.lock.lockedByTime === next.lock.lockedByTime &&
+            (prev.lock as any).lockAll === (next.lock as any).lockAll &&
+            sameMds &&
+            (prev.leagueSettings?.lockMode ?? null) === (next.leagueSettings?.lockMode ?? null) &&
+            (prev.leagueSettings?.lockOffsetMinutes ?? null) === (next.leagueSettings?.lockOffsetMinutes ?? null) &&
+            (prev.leagueSettings?.predictionMode ?? null) === (next.leagueSettings?.predictionMode ?? null);
+
+          if (!sameLock) {
+            setData(next);
+            dataRef.current = next;
+          } else {
+            // Still update ref to keep schedule accurate
+            dataRef.current = next;
+          }
+
+          // Reload the predictions page only when the lock state actually changes.
+          try {
+            const stored = sessionStorage.getItem(lockStateKey);
+            const storedLocked = stored === "1";
+            const storedIsValid = stored === "1" || stored === "0";
+            const lockChanged = storedIsValid ? storedLocked !== nextLocked : prevLocked !== nextLocked;
+
+            sessionStorage.setItem(lockStateKey, nextLocked ? "1" : "0");
+
+            if (lockChanged) {
+              const last = Number(sessionStorage.getItem(lastReloadAtKey) || "0");
+              const now2 = Date.now();
+              const allow = !Number.isFinite(last) || now2 - last > 5_000;
+              if (allow) {
+                sessionStorage.setItem(lastReloadAtKey, String(now2));
+                const path = window.location.pathname;
+                const isPredictionsPage = path === "/"; // "I miei pronostici"
+                if (isPredictionsPage) {
+                  push({ tone: "info", msg: "Lock aggiornato: ricarico i pronostici…", ttlMs: 1600 });
+                  setTimeout(() => window.location.reload(), 150);
+                }
               }
             }
+          } catch {
+            // ignore
           }
+
+          schedule(next);
         } catch {
-          // ignore
+          // ignore polling errors, but keep a slow retry cadence
+          schedule(dataRef.current);
+        } finally {
+          inflight = null;
         }
+      })();
+      return inflight;
+    };
 
-        scheduleExact(next?.lock?.lockUntil);
-      } catch {
-        // ignore polling errors
-      }
-    }, 10_000);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") runOnce();
+    };
 
-    scheduleExact(dataRef.current?.lock?.lockUntil);
+    document.addEventListener("visibilitychange", onVisibility);
+
+    // First fetch + schedule
+    runOnce();
+    schedule(dataRef.current);
 
     return () => {
       cancelled = true;
-      if (interval) clearInterval(interval);
       if (timer) clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [activeLeagueId, push, refresh]);
 
