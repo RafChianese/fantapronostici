@@ -8,13 +8,9 @@ import { assertPredictionsEditableForMatches, getLockInfo } from "../lib/lock.js
 import { recalcAllScoresForLeague } from "../lib/scoring.js";
 import { getMonetizationConfig } from "../lib/monetization.js";
 import {
-  extractEventsFromMatchDetail,
-  extractLineupsFromMatchDetail,
-  extractScorersFromMatchDetail,
   fetchCompetitionScorers,
   fetchCompetitionTeams,
   fetchCompetitionPlayerOptions,
-  fetchMatchDetail,
 } from "../services/footballDataService.js";
 import { fetchFixtureEvents, fetchFixtureLineups } from "../services/apiFootball.js";
 import { AvatarPresetIdSchema } from "../lib/avatarPresets.js";
@@ -190,9 +186,6 @@ meRouter.get("/matches/:matchId/detail", requireLeagueMember, async (req: Authed
     return out;
   };
 
-  const fdMatchId = (match as any)?.footballDataMatchId ? Number((match as any).footballDataMatchId) : null;
-  const competitionCode = String((match as any)?.footballDataCompetitionCode || "").trim();
-
   let lineups: any[] = [];
   let events: any[] = [];
   let goalScorers: Array<{ id: number | null; name: string }> = [];
@@ -243,80 +236,15 @@ meRouter.get("/matches/:matchId/detail", requireLeagueMember, async (req: Authed
     }
   }
 
-  // --- 2) football-data.org fallback (legacy) ---
-  if (!fixtureId && fdMatchId) {
-    try {
-      const detail = await fetchMatchDetail({ matchId: fdMatchId });
-      lineups = extractLineupsFromMatchDetail(detail);
-      events = extractEventsFromMatchDetail(detail);
-      goalScorers = extractScorersFromMatchDetail(detail);
+    // --- No football-data fallback: we rely on API-Football caching only ---
 
-      const htId = Number((match as any)?.footballDataHomeTeamId);
-      const atId = Number((match as any)?.footballDataAwayTeamId);
-      for (const l of lineups) {
-        const tid = Number(l?.team?.id);
-        if (Number.isFinite(tid)) {
-          if (tid === htId && (match as any)?.homeLogo) l.team.logo = (match as any).homeLogo;
-          if (tid === atId && (match as any)?.awayLogo) l.team.logo = (match as any).awayLogo;
-        }
-      }
-    } catch {
-      lineups = [];
-      events = [];
-      goalScorers = [];
-    }
+// --- 3) Fallback pseudo-lineups from squads ---
+    // If we have cached scorers from DB (e.g. sync job), use them.
+  if (!goalScorers.length && (match as any)?.goalScorersJson) {
+    goalScorers = Array.isArray((match as any).goalScorersJson) ? (match as any).goalScorersJson : [];
   }
 
-  // --- 3) Fallback pseudo-lineups from squads ---
-  if (!lineups.length) {
-    try {
-      if (competitionCode) {
-        const teams = await fetchCompetitionTeams({ competitionCode });
-        const htId = Number((match as any)?.footballDataHomeTeamId);
-        const atId = Number((match as any)?.footballDataAwayTeamId);
-        const homeTeam = teams.find((t: any) => Number(t?.id) === htId);
-        const awayTeam = teams.find((t: any) => Number(t?.id) === atId);
-
-        const mapSquad = (t: any) => {
-          const tid = Number(t?.id) || null;
-          const logo =
-            tid && tid === Number(htId)
-              ? (match as any)?.homeLogo ?? null
-              : tid && tid === Number(atId)
-                ? (match as any)?.awayLogo ?? null
-                : (t as any)?.crest ?? null;
-          const squad = Array.isArray(t?.squad) ? t.squad : [];
-          const players = squad.map((p: any) => ({ id: Number(p?.id) || null, name: String(p?.name || "").trim(), number: null, position: null }));
-          return {
-            team: { id: tid, name: String(t?.shortName || t?.name || "").trim() || "Team", logo },
-            // best-effort split to avoid "all starters" issue
-            startXI: players.slice(0, 11),
-            substitutes: players.slice(11),
-          };
-        };
-
-        if (homeTeam) lineups.push(mapSquad(homeTeam));
-        if (awayTeam) lineups.push(mapSquad(awayTeam));
-      }
-    } catch {
-      lineups = [];
-    }
-  }
-
-  const lineupAvailable = Array.isArray(lineups) && lineups.some((t) => (t.startXI?.length || 0) > 0 || (t.substitutes?.length || 0) > 0);
-
-  // Can pick scorer only if feature enabled, lineup available, and match editable.
-  let canPickScorer = false;
-  if (scorerEnabled && lineupAvailable) {
-    try {
-      await assertPredictionsEditableForMatches(leagueId, [matchId]);
-      canPickScorer = match.status === "NOT_STARTED";
-    } catch {
-      canPickScorer = false;
-    }
-  }
-
-  const payload = {
+const payload = {
     match,
     lineupAvailable,
     lineups,
@@ -333,7 +261,6 @@ meRouter.get("/matches/:matchId/detail", requireLeagueMember, async (req: Authed
     try {
       console.log("📦 MATCH DETAIL NORMALIZED META:", {
         matchId,
-        fdMatchId,
         scorerEnabled,
         lineupTeams: Array.isArray(lineups) ? lineups.length : 0,
         startXI: Array.isArray(lineups) ? lineups.reduce((acc, t: any) => acc + ((t?.startXI?.length as number) || 0), 0) : 0,
@@ -384,9 +311,8 @@ meRouter.put("/matches/:matchId/scorer", requireLeagueMember, async (req: Authed
   }
 
   const fixtureId = (match as any)?.apiFootballFixtureId ? Number((match as any).apiFootballFixtureId) : null;
-  const competitionCode = String((match as any)?.footballDataCompetitionCode || "").trim();
-  if (!fixtureId && !competitionCode) {
-    return res.status(400).json({ message: "Rosa non disponibile per questo match", reason: "NO_SQUAD_PROVIDER" });
+  if (!fixtureId) {
+    return res.status(400).json({ message: "Rosa non disponibile per questo match (manca fixtureId)", reason: "NO_FIXTURE" });
   }
 
   // Clear
@@ -423,18 +349,6 @@ meRouter.put("/matches/:matchId/scorer", requireLeagueMember, async (req: Authed
     }
   }
 
-  // Fallback: football-data squads (legacy)
-  if (!allPlayers.length && competitionCode) {
-    const teams = await fetchCompetitionTeams({ competitionCode });
-    const htId = Number((match as any)?.footballDataHomeTeamId);
-    const atId = Number((match as any)?.footballDataAwayTeamId);
-    const homeTeam = teams.find((t: any) => Number(t?.id) === htId);
-    const awayTeam = teams.find((t: any) => Number(t?.id) === atId);
-    for (const t of [homeTeam, awayTeam]) {
-      const squad = Array.isArray((t as any)?.squad) ? (t as any).squad : [];
-      for (const p of squad) allPlayers.push({ id: Number((p as any).id), name: String((p as any).name) });
-    }
-  }
   if (!allPlayers.length) {
     return res.status(400).json({ message: "Lista giocatori non disponibile per questo match", reason: "NO_SQUAD" });
   }
@@ -444,7 +358,7 @@ meRouter.put("/matches/:matchId/scorer", requireLeagueMember, async (req: Authed
     return res.status(400).json({ message: "Giocatore non valido (non presente nella rosa)", reason: "INVALID_PLAYER" });
   }
 
-  const playerExternalId = fixtureId ? `afp:${pid}` : `fdp:${pid}`;
+  const playerExternalId = `afp:${pid}`;
   const playerName = String(data.playerName || hit.name).trim().slice(0, 120);
 
   const pick = await prisma.scorerPick.upsert({
