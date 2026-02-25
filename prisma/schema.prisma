@@ -238,6 +238,10 @@ model Match {
 
   // Optional: cached goal scorers from external provider (used for "marcatore" feature)
   goalScorersJson Json?
+
+  // Cached match detail payload from API-Football (lineups + events), to avoid hitting free-plan rate limits
+  apiFootballDetailJson      Json?
+  apiFootballDetailFetchedAt DateTime?
   // API-Football v3
   apiFootballFixtureId Int?    @unique
   apiLeagueId          Int?
