@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { prisma } from "../lib/prisma.js";
+import { env } from "../lib/env.js";
 import { ensureLeagueConfig } from "../services/ensureLeagueConfig.js";
 import { requireAuth, requireLeagueMember, resolveLeagueId, AuthedRequest } from "../middleware/authMiddleware.js";
 import { assertPredictionsEditableForMatches, getLockInfo } from "../lib/lock.js";
@@ -12,8 +13,66 @@ import {
   fetchCompetitionTeams,
   fetchCompetitionPlayerOptions,
 } from "../services/footballDataService.js";
-import { fetchFixtureEvents, fetchFixtureLineups } from "../services/apiFootball.js";
+import { fetchFixtureEvents, fetchFixtureLineups, fetchFixturesRange } from "../services/apiFootball.js";
 import { AvatarPresetIdSchema } from "../lib/avatarPresets.js";
+
+function normTeamName(s: string) {
+  return String(s || "")
+    .toLowerCase()
+    .replace(/\b(fc|cf|calcio|football|club)\b/g, "")
+    .replace(/[^a-z0-9]+/g, "")
+    .trim();
+}
+
+async function resolveFixtureIdForMatch(match: any): Promise<{ fixtureId: number | null; round?: string | null; leagueId?: number | null; season?: number | null }> {
+  // Already present
+  if (match?.apiFootballFixtureId) {
+    return { fixtureId: Number(match.apiFootballFixtureId), round: match.apiRound ?? null, leagueId: match.apiLeagueId ?? null, season: match.apiSeason ?? null };
+  }
+  // Need API key + super settings
+  if (!env.API_FOOTBALL_KEY?.trim()) return { fixtureId: null };
+  const ss = await prisma.superSetting.findFirst({ orderBy: { createdAt: "asc" } }).catch(() => null as any);
+  const leagueId = ss?.apiFootballLeagueId ?? null;
+  const season = ss?.apiFootballSeason ?? null;
+  const tz = ss?.apiFootballTimezone || "Europe/Rome";
+  if (!leagueId || !season) return { fixtureId: null };
+
+  // Query fixtures in a tight date window around kickoff (same day ±1)
+  const kickoff = new Date(match.kickoffAt);
+  const day = kickoff.toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
+  const d0 = new Date(kickoff);
+  d0.setUTCDate(d0.getUTCDate() - 1);
+  const d1 = new Date(kickoff);
+  d1.setUTCDate(d1.getUTCDate() + 1);
+  const from = d0.toISOString().slice(0, 10);
+  const to = d1.toISOString().slice(0, 10);
+
+  const rows = await fetchFixturesRange({ leagueId, season, timezone: tz, from, to }).catch(() => [] as any[]);
+  if (!rows.length) return { fixtureId: null };
+
+  const hn = normTeamName(match.homeTeam);
+  const an = normTeamName(match.awayTeam);
+
+  // Pick best candidate: name match + closest kickoff time
+  let best: any = null;
+  let bestScore = Infinity;
+  for (const r of rows) {
+    const rh = normTeamName(r?.teams?.home?.name);
+    const ra = normTeamName(r?.teams?.away?.name);
+    if (!rh || !ra) continue;
+    const namesOk = rh === hn && ra === an;
+    if (!namesOk) continue;
+    const k = new Date(r?.fixture?.date);
+    const diff = Math.abs(k.getTime() - kickoff.getTime());
+    if (diff < bestScore) {
+      bestScore = diff;
+      best = r;
+    }
+  }
+
+  if (!best?.fixture?.id) return { fixtureId: null };
+  return { fixtureId: Number(best.fixture.id), round: best?.league?.round ?? null, leagueId, season };
+}
 
 export const meRouter = Router();
 
@@ -126,7 +185,23 @@ meRouter.get("/matches/:matchId/detail", requireLeagueMember, async (req: Authed
 
   // Prefer API-Football for match detail (events + lineups). We cache the normalized payload on Match
   // to avoid consuming the free plan request quota (100/day).
-  const fixtureId = (match as any)?.apiFootballFixtureId ? Number((match as any).apiFootballFixtureId) : null;
+  // If fixtureId is missing (e.g. matches were synced from football-data), we try to resolve it once
+  // via a tight fixtures range query and then persist it on the Match.
+  const resolved = await resolveFixtureIdForMatch(match as any);
+  const fixtureId = resolved.fixtureId;
+
+  if (fixtureId && !(match as any)?.apiFootballFixtureId) {
+    // Persist resolved fixture id for future requests
+    await prisma.match.update({
+      where: { id: matchId },
+      data: {
+        apiFootballFixtureId: fixtureId,
+        apiLeagueId: resolved.leagueId ?? null,
+        apiSeason: resolved.season ?? null,
+        apiRound: resolved.round ?? null,
+      },
+    }).catch(() => null);
+  }
 
   const normalizeApiFootballEvents = (rows: any[]) => {
     const out: any[] = [];
@@ -323,7 +398,20 @@ meRouter.put("/matches/:matchId/scorer", requireLeagueMember, async (req: Authed
     return res.status(400).json({ message: "Non modificabile: partita iniziata/terminata", reason: "MATCH_STARTED" });
   }
 
-  const fixtureId = (match as any)?.apiFootballFixtureId ? Number((match as any).apiFootballFixtureId) : null;
+  const resolved = await resolveFixtureIdForMatch(match as any);
+  const fixtureId = resolved.fixtureId;
+
+  if (fixtureId && !(match as any)?.apiFootballFixtureId) {
+    await prisma.match.update({
+      where: { id: matchId },
+      data: {
+        apiFootballFixtureId: fixtureId,
+        apiLeagueId: resolved.leagueId ?? null,
+        apiSeason: resolved.season ?? null,
+        apiRound: resolved.round ?? null,
+      },
+    }).catch(() => null);
+  }
   if (!fixtureId) {
     return res.status(400).json({ message: "Rosa non disponibile per questo match (manca fixtureId)", reason: "NO_FIXTURE" });
   }

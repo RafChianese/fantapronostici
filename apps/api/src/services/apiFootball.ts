@@ -47,6 +47,23 @@ export async function fetchFixtures(params: { leagueId: number; season: number; 
   }) as Promise<ApiFootballFixtureRow[]>;
 }
 
+// Narrow fixtures query for a small date window (saves quota vs fetching all pages)
+export async function fetchFixturesRange(params: {
+  leagueId: number;
+  season: number;
+  timezone?: string;
+  from: string; // YYYY-MM-DD
+  to: string;   // YYYY-MM-DD
+}) {
+  return apiFootballClient.fixtures({
+    league: params.leagueId,
+    season: params.season,
+    timezone: params.timezone ?? "Europe/Rome",
+    from: params.from,
+    to: params.to,
+  }) as Promise<ApiFootballFixtureRow[]>;
+}
+
 export type ApiFootballLineupPlayer = {
   id: number;
   name: string;
