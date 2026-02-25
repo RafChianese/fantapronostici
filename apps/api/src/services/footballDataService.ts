@@ -108,7 +108,7 @@ export async function fetchMatchDetail(args: { matchId: number }) {
   const data = await client.getMatch(args.matchId);
 
   // DEBUG: log raw football-data response for match detail (non-production only)
-  if (process.env.NODE_ENV !== "1") {
+  if (process.env.NODE_ENV !== "production") {
     try {
       console.log("⚽ FOOTBALL-DATA RAW MATCH DETAIL META:", {
         matchId: args.matchId,

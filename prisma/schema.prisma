@@ -244,6 +244,10 @@ model Match {
   apiSeason            Int?
   apiRound             String?
 
+  // API-Football cached match detail (lineups + events) to save requests (free plan limit)
+  apiFootballDetailJson      Json?
+  apiFootballDetailFetchedAt DateTime?
+
   // football-data.org v4
   footballDataMatchId        Int?    @unique
   footballDataCompetitionCode String?

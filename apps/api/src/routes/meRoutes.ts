@@ -16,6 +16,7 @@ import {
   fetchCompetitionPlayerOptions,
   fetchMatchDetail,
 } from "../services/footballDataService.js";
+import { fetchFixtureEvents, fetchFixtureLineups } from "../services/apiFootball.js";
 import { AvatarPresetIdSchema } from "../lib/avatarPresets.js";
 
 export const meRouter = Router();
@@ -127,22 +128,129 @@ meRouter.get("/matches/:matchId/detail", requireLeagueMember, async (req: Authed
   const scorerEnabled = !!(rules as any)?.enableScorer;
   const pointsScorer = Number((rules as any)?.pointsScorer ?? 3) || 3;
 
-  // football-data.org may provide real lineups in /v4/matches/{id} depending on plan.
-  // We normalize those if available; otherwise we fallback to squads from /competitions/{code}/teams.
+  // Prefer API-Football for match detail (events + lineups). We cache the normalized payload on Match
+  // to avoid consuming the free plan request quota (100/day).
+  const fixtureId = (match as any)?.apiFootballFixtureId ? Number((match as any).apiFootballFixtureId) : null;
+
+  const normalizeApiFootballEvents = (rows: any[]) => {
+    const out: any[] = [];
+    for (const r of Array.isArray(rows) ? rows : []) {
+      const typeRaw = String(r?.type || "").toLowerCase();
+      let type = "";
+      if (typeRaw === "goal") type = "GOAL";
+      else if (typeRaw === "card") type = "CARD";
+      else if (typeRaw === "subst") type = "SUBSTITUTION";
+      else type = (r?.type as any) || "";
+      out.push({
+        type,
+        detail: r?.detail ?? null,
+        team: r?.team ? { id: r.team.id ?? null, name: r.team.name ?? null, logo: r.team.logo ?? null } : null,
+        player: r?.player ? { id: r.player.id ?? null, name: r.player.name ?? null } : null,
+        assist: r?.assist ? { id: r.assist.id ?? null, name: r.assist.name ?? null } : null,
+        time: r?.time ? { elapsed: r.time.elapsed ?? null, extra: r.time.extra ?? null } : null,
+      });
+    }
+    return out;
+  };
+
+  const normalizeApiFootballLineups = (rows: any[]) => {
+    const out: any[] = [];
+    for (const t of Array.isArray(rows) ? rows : []) {
+      const team = t?.team;
+      const mapP = (p: any) => ({
+        id: Number(p?.id) || null,
+        name: String(p?.name || "").trim(),
+        number: p?.number ?? null,
+        position: p?.pos ?? p?.position ?? null,
+      });
+      const startXI = Array.isArray(t?.startXI) ? t.startXI.map(mapP).filter((p: any) => p?.name) : [];
+      const substitutes = Array.isArray(t?.substitutes) ? t.substitutes.map(mapP).filter((p: any) => p?.name) : [];
+      if (!team?.id || !team?.name) continue;
+      out.push({
+        team: { id: Number(team.id), name: String(team.name), logo: team.logo ?? null },
+        startXI,
+        substitutes,
+      });
+    }
+    return out;
+  };
+
+  const buildGoalScorersFromEvents = (evs: any[]) => {
+    const seen = new Set<number>();
+    const out: Array<{ id: number | null; name: string }> = [];
+    for (const ev of Array.isArray(evs) ? evs : []) {
+      if (String(ev?.type || "") !== "GOAL") continue;
+      const pid = Number(ev?.player?.id);
+      const name = String(ev?.player?.name || "").trim();
+      if (!Number.isFinite(pid) || !name) continue;
+      if (seen.has(pid)) continue;
+      seen.add(pid);
+      out.push({ id: pid, name });
+    }
+    return out;
+  };
+
   const fdMatchId = (match as any)?.footballDataMatchId ? Number((match as any).footballDataMatchId) : null;
   const competitionCode = String((match as any)?.footballDataCompetitionCode || "").trim();
 
   let lineups: any[] = [];
   let events: any[] = [];
   let goalScorers: Array<{ id: number | null; name: string }> = [];
-  if (fdMatchId) {
+
+  // --- 1) API-Football path (preferred) ---
+  if (fixtureId) {
+    const cached = (match as any)?.apiFootballDetailJson;
+    const cachedAt = (match as any)?.apiFootballDetailFetchedAt ? new Date((match as any).apiFootballDetailFetchedAt) : null;
+
+    // TTL strategy:
+    // - FINISHED: cache basically forever (we still keep it in DB)
+    // - NOT_STARTED/IN_PROGRESS: refresh every 5 minutes
+    const ttlMs = match.status === "FINISHED" ? 365 * 24 * 60 * 60 * 1000 : 5 * 60 * 1000;
+    const cacheFresh = !!(cached && cachedAt && Date.now() - cachedAt.getTime() < ttlMs);
+
+    if (cacheFresh) {
+      lineups = Array.isArray((cached as any)?.lineups) ? (cached as any).lineups : [];
+      events = Array.isArray((cached as any)?.events) ? (cached as any).events : [];
+      goalScorers = Array.isArray((cached as any)?.goalScorers) ? (cached as any).goalScorers : [];
+    } else {
+      try {
+        const [rawLineups, rawEvents] = await Promise.all([
+          fetchFixtureLineups(fixtureId),
+          fetchFixtureEvents(fixtureId),
+        ]);
+
+        lineups = normalizeApiFootballLineups(rawLineups);
+        events = normalizeApiFootballEvents(rawEvents);
+        goalScorers = buildGoalScorersFromEvents(events);
+
+        // Save to DB to avoid repeated API calls (free plan is 100/day)
+        const detailJson = { provider: "api-football", fixtureId, lineups, events, goalScorers };
+        await prisma.match.update({
+          where: { id: matchId },
+          data: {
+            apiFootballDetailJson: detailJson as any,
+            apiFootballDetailFetchedAt: new Date(),
+            // also persist goal scorers for scoring if the match is finished and we don't have them yet
+            ...(match.status === "FINISHED" && !(match as any)?.goalScorersJson ? { goalScorersJson: goalScorers as any } : {}),
+          },
+        });
+      } catch {
+        // best-effort; keep empty arrays
+        lineups = [];
+        events = [];
+        goalScorers = [];
+      }
+    }
+  }
+
+  // --- 2) football-data.org fallback (legacy) ---
+  if (!fixtureId && fdMatchId) {
     try {
       const detail = await fetchMatchDetail({ matchId: fdMatchId });
       lineups = extractLineupsFromMatchDetail(detail);
       events = extractEventsFromMatchDetail(detail);
       goalScorers = extractScorersFromMatchDetail(detail);
 
-      // Prefer DB logos (often already normalized / stable) when present.
       const htId = Number((match as any)?.footballDataHomeTeamId);
       const atId = Number((match as any)?.footballDataAwayTeamId);
       for (const l of lineups) {
@@ -152,15 +260,14 @@ meRouter.get("/matches/:matchId/detail", requireLeagueMember, async (req: Authed
           if (tid === atId && (match as any)?.awayLogo) l.team.logo = (match as any).awayLogo;
         }
       }
-    } catch (e: any) {
-      // best-effort
+    } catch {
       lineups = [];
       events = [];
       goalScorers = [];
     }
   }
 
-  // Fallback: Build pseudo-lineups from squads (if match detail does not include real lineups).
+  // --- 3) Fallback pseudo-lineups from squads ---
   if (!lineups.length) {
     try {
       if (competitionCode) {
@@ -179,10 +286,12 @@ meRouter.get("/matches/:matchId/detail", requireLeagueMember, async (req: Authed
                 ? (match as any)?.awayLogo ?? null
                 : (t as any)?.crest ?? null;
           const squad = Array.isArray(t?.squad) ? t.squad : [];
+          const players = squad.map((p: any) => ({ id: Number(p?.id) || null, name: String(p?.name || "").trim(), number: null, position: null }));
           return {
             team: { id: tid, name: String(t?.shortName || t?.name || "").trim() || "Team", logo },
-            startXI: squad.map((p: any) => ({ id: Number(p?.id) || null, name: String(p?.name || "").trim(), number: null, position: null })),
-            substitutes: [],
+            // best-effort split to avoid "all starters" issue
+            startXI: players.slice(0, 11),
+            substitutes: players.slice(11),
           };
         };
 
@@ -220,7 +329,7 @@ meRouter.get("/matches/:matchId/detail", requireLeagueMember, async (req: Authed
   };
 
   // DEBUG: log normalized response sent to FE (non-production only)
-  if (process.env.NODE_ENV !== "1") {
+  if (process.env.NODE_ENV !== "production") {
     try {
       console.log("📦 MATCH DETAIL NORMALIZED META:", {
         matchId,
@@ -274,8 +383,9 @@ meRouter.put("/matches/:matchId/scorer", requireLeagueMember, async (req: Authed
     return res.status(400).json({ message: "Non modificabile: partita iniziata/terminata", reason: "MATCH_STARTED" });
   }
 
+  const fixtureId = (match as any)?.apiFootballFixtureId ? Number((match as any).apiFootballFixtureId) : null;
   const competitionCode = String((match as any)?.footballDataCompetitionCode || "").trim();
-  if (!competitionCode) {
+  if (!fixtureId && !competitionCode) {
     return res.status(400).json({ message: "Rosa non disponibile per questo match", reason: "NO_SQUAD_PROVIDER" });
   }
 
@@ -286,15 +396,44 @@ meRouter.put("/matches/:matchId/scorer", requireLeagueMember, async (req: Authed
     return res.json({ ok: true, scorer: null });
   }
 
-  const teams = await fetchCompetitionTeams({ competitionCode });
-  const htId = Number((match as any)?.footballDataHomeTeamId);
-  const atId = Number((match as any)?.footballDataAwayTeamId);
-  const homeTeam = teams.find((t: any) => Number(t?.id) === htId);
-  const awayTeam = teams.find((t: any) => Number(t?.id) === atId);
   const allPlayers: { id: number; name: string }[] = [];
-  for (const t of [homeTeam, awayTeam]) {
-    const squad = Array.isArray((t as any)?.squad) ? (t as any).squad : [];
-    for (const p of squad) allPlayers.push({ id: Number((p as any).id), name: String((p as any).name) });
+
+  // Preferred: API-Football lineups (cached on Match when available)
+  if (fixtureId) {
+    let lineups: any[] = [];
+    const cached = (match as any)?.apiFootballDetailJson;
+    if (cached && Array.isArray((cached as any)?.lineups)) {
+      lineups = (cached as any).lineups;
+    } else {
+      try {
+        const raw = await fetchFixtureLineups(fixtureId);
+        lineups = Array.isArray(raw) ? raw : [];
+      } catch {
+        lineups = [];
+      }
+    }
+    for (const t of Array.isArray(lineups) ? lineups : []) {
+      const startXI = Array.isArray(t?.startXI) ? t.startXI : [];
+      const subs = Array.isArray(t?.substitutes) ? t.substitutes : [];
+      for (const p of [...startXI, ...subs]) {
+        const id = Number(p?.id);
+        const name = String(p?.name || "").trim();
+        if (Number.isFinite(id) && name) allPlayers.push({ id, name });
+      }
+    }
+  }
+
+  // Fallback: football-data squads (legacy)
+  if (!allPlayers.length && competitionCode) {
+    const teams = await fetchCompetitionTeams({ competitionCode });
+    const htId = Number((match as any)?.footballDataHomeTeamId);
+    const atId = Number((match as any)?.footballDataAwayTeamId);
+    const homeTeam = teams.find((t: any) => Number(t?.id) === htId);
+    const awayTeam = teams.find((t: any) => Number(t?.id) === atId);
+    for (const t of [homeTeam, awayTeam]) {
+      const squad = Array.isArray((t as any)?.squad) ? (t as any).squad : [];
+      for (const p of squad) allPlayers.push({ id: Number((p as any).id), name: String((p as any).name) });
+    }
   }
   if (!allPlayers.length) {
     return res.status(400).json({ message: "Lista giocatori non disponibile per questo match", reason: "NO_SQUAD" });
@@ -305,7 +444,7 @@ meRouter.put("/matches/:matchId/scorer", requireLeagueMember, async (req: Authed
     return res.status(400).json({ message: "Giocatore non valido (non presente nella rosa)", reason: "INVALID_PLAYER" });
   }
 
-  const playerExternalId = `fdp:${pid}`;
+  const playerExternalId = fixtureId ? `afp:${pid}` : `fdp:${pid}`;
   const playerName = String(data.playerName || hit.name).trim().slice(0, 120);
 
   const pick = await prisma.scorerPick.upsert({
