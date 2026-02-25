@@ -244,6 +244,19 @@ meRouter.get("/matches/:matchId/detail", requireLeagueMember, async (req: Authed
     goalScorers = Array.isArray((match as any).goalScorersJson) ? (match as any).goalScorersJson : [];
   }
 
+
+  const lineupAvailable =
+    Array.isArray(lineups) &&
+    lineups.some(
+      (t) =>
+        (Array.isArray(t?.startXI) && t.startXI.length > 0) ||
+        (Array.isArray(t?.substitutes) && t.substitutes.length > 0)
+    );
+
+  // FE uses this to decide whether to show scorer picker UI.
+  // We only allow picking scorer when rule is enabled and we have a fixture to resolve players from.
+  const canPickScorer = scorerEnabled && !!fixtureId && lineupAvailable;
+
 const payload = {
     match,
     lineupAvailable,
