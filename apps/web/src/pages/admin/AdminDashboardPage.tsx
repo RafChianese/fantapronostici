@@ -565,6 +565,34 @@ function RulesTab() {
                       checked={!!rules?.allowSumGoalsWithOutcome}
                       onChange={(v) => setRules({ ...rules, allowSumGoalsWithOutcome: v })}
                     />
+
+                    {rules?.enableUnderOver25 ? (
+                      <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+                          Under/Over 2.5 in modalità mista
+                        </div>
+                        <div className="text-xs text-slate-600">
+                          Scegli quando i punti <b>U/O 2.5</b> si sommano al punteggio principale (Esatto / 1X2 / Somma gol).
+                        </div>
+                        <SwitchRow
+                          label="Somma U/O 2.5 con Esatto"
+                          checked={(rules as any)?.allowUnderOverWithExact !== false}
+                          onChange={(v) => setRules({ ...(rules as any), allowUnderOverWithExact: v })}
+                        />
+                        <SwitchRow
+                          label="Somma U/O 2.5 con 1X2"
+                          checked={(rules as any)?.allowUnderOverWithOutcome !== false}
+                          onChange={(v) => setRules({ ...(rules as any), allowUnderOverWithOutcome: v })}
+                        />
+                        <SwitchRow
+                          label="Somma U/O 2.5 con Somma gol"
+                          checked={(rules as any)?.allowUnderOverWithSumGoals !== false}
+                          onChange={(v) => setRules({ ...(rules as any), allowUnderOverWithSumGoals: v })}
+                        />
+                      </div>
+                    ) : (
+                      <div className="text-xs text-slate-500">(Attiva Under/Over 2.5 per configurare queste opzioni.)</div>
+                    )}
                   </div>
                 ) : null}
               </div>
@@ -596,6 +624,11 @@ function RulesTab() {
                       allowOutcomeWithExact: !!rules.allowOutcomeWithExact,
                       allowSumGoalsWithExact: !!rules.allowSumGoalsWithExact,
                       allowSumGoalsWithOutcome: !!rules.allowSumGoalsWithOutcome,
+
+                      // Under/Over cumulability (MIXED)
+                      allowUnderOverWithExact: (rules as any).allowUnderOverWithExact !== false,
+                      allowUnderOverWithOutcome: (rules as any).allowUnderOverWithOutcome !== false,
+                      allowUnderOverWithSumGoals: (rules as any).allowUnderOverWithSumGoals !== false,
                       ...(typeof rules.entryFeeCents === "number" ? { entryFeeCents: Number(rules.entryFeeCents) } : { entryFeeCents: null }),
                       prizesJson: Array.isArray(rules.prizesJson) ? rules.prizesJson : null,
                     });

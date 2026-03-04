@@ -331,6 +331,12 @@ model Rule {
   allowSumGoalsWithExact Boolean    @default(true)
   allowSumGoalsWithOutcome Boolean  @default(true)
 
+  // Under/Over 2.5 cumulability (mainly used for ScoringMode = MIXED)
+  // If disabled, Under/Over points are not added when the corresponding category is the "active" one.
+  allowUnderOverWithExact    Boolean @default(true)
+  allowUnderOverWithOutcome  Boolean @default(true)
+  allowUnderOverWithSumGoals Boolean @default(true)
+
   // Partita Jolly (moltiplicatore punti su una partita per matchday)
   enableJolly           Boolean   @default(false)
   jollyMultiplier       Int       @default(2)

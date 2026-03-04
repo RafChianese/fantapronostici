@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Home, Trophy, ListChecks, BookOpenText, UserCircle, Shield, Crown } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { useLoading } from "../lib/loading";
 import { FullScreenLoaderOverlay } from "./FullScreenLoaderOverlay";
@@ -85,11 +86,13 @@ if (name === "menu") {
 function NavItem({
   to,
   children,
+  icon,
   onClick,
   tourId,
 }: {
   to: string;
   children: React.ReactNode;
+  icon?: React.ReactNode;
   onClick?: () => void;
   tourId?: string;
 }) {
@@ -104,7 +107,10 @@ function NavItem({
         }`
       }
     >
-      {children}
+      <span className="flex items-center gap-2">
+        {icon ? <span className="inline-flex h-5 w-5 items-center justify-center" aria-hidden="true">{icon}</span> : null}
+        <span>{children}</span>
+      </span>
     </NavLink>
   );
 }
@@ -484,27 +490,42 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
             <div className="p-3">
               <div className="flex flex-col gap-2">
-                <div className="px-3 pt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Menu
-                </div>
+                <div className="px-3 pt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Principale</div>
+
+                {/* Main sections (same as bottom tabs) */}
+                <NavItem to="/" icon={<Home size={18} />} onClick={() => setDrawerOpen(false)}>
+                  Home
+                </NavItem>
+                {activeMembership ? (
+                  <>
+                    <NavItem to="/leaderboard" icon={<Trophy size={18} />} onClick={() => setDrawerOpen(false)}>
+                      Classifica
+                    </NavItem>
+                    <NavItem to="/predictions" icon={<ListChecks size={18} />} onClick={() => setDrawerOpen(false)}>
+                      I miei pronostici
+                    </NavItem>
+                  </>
+                ) : null}
+
+                <div className="mt-1 px-3 pt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Altro</div>
                 {isLeagueAdmin || isSuperAdmin ? (
-                  <NavItem to="/admin" onClick={() => setDrawerOpen(false)}>
+                  <NavItem to="/admin" icon={<Shield size={18} />} onClick={() => setDrawerOpen(false)}>
                     Area admin
                   </NavItem>
                 ) : null}
                 {isSuperAdmin ? (
-                  <NavItem to="/super" onClick={() => setDrawerOpen(false)}>
+                  <NavItem to="/super" icon={<Crown size={18} />} onClick={() => setDrawerOpen(false)}>
                     Area superAdmin
                   </NavItem>
                 ) : null}
 
-                <NavItem to="/account" onClick={() => setDrawerOpen(false)}>
+                <NavItem to="/account" icon={<UserCircle size={18} />} onClick={() => setDrawerOpen(false)}>
                   Account
                 </NavItem>
 
                 {activeMembership ? (
                   <>
-                    <NavItem to="/regolamento" onClick={() => setDrawerOpen(false)}>
+                    <NavItem to="/regolamento" icon={<BookOpenText size={18} />} onClick={() => setDrawerOpen(false)}>
                       Regolamento
                     </NavItem>
                     <NavItem to="/league-stats" onClick={() => setDrawerOpen(false)}>

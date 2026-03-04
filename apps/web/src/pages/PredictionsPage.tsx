@@ -700,19 +700,15 @@ export default function PredictionsPage() {
 
     if (!items.length) return;
 
-    const lockedItems = items.filter((it) => isMatchLocked(matchMap.get(it.matchId)));
-    if (lockedItems.length) {
-      setToast({
-        tone: "danger",
-        msg: "Non puoi salvare pronostici su partite bloccate (lock lega o partita già iniziata/terminata).",
-      });
-      return;
-    }
+    // IMPORTANT: do NOT include locked/finished matches in the payload.
+    // Otherwise a single old prediction (e.g. previous matchday) would block saving the new ones.
+    const editableItems = items.filter((it) => !isMatchLocked(matchMap.get(it.matchId)));
+    if (!editableItems.length) return;
 
     setSaving(true);
     setSaveHint("Salvataggio…");
     try {
-      await api.savePredictions(items);
+      await api.savePredictions(editableItems);
       setSaveHint("Salvato ✅");
       // Reload from API to ensure UI is consistent with server.
       const p = await api.myPredictions();

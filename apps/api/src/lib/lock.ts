@@ -191,20 +191,23 @@ export async function assertPredictionsEditableForMatches(leagueId: string, matc
   });
   const lockedSet = new Set<number>((info?.auto?.lockedMatchdays || []).map((x: any) => Number(x)));
 
-  const blocked = matches.find((m) => {
-    const md = Number(m.matchday || 1);
-    // Always block once a match has started.
-    if (m.status !== "NOT_STARTED") return true;
-    // If this matchday is currently locked, block.
-    if (lockedSet.has(md)) return true;
-    return false;
-  });
+  // 1) Always block once a match has started.
+  const started = matches.find((m) => m.status !== "NOT_STARTED");
+  if (started) {
+    const msg = "Questa partita è già iniziata o terminata";
+    const err: any = new Error(msg);
+    err.status = 403;
+    err.payload = { message: msg, isLocked: true, reason: "MATCH_STARTED", matchId: started.id, matchday: Number(started.matchday || 1) };
+    throw err;
+  }
 
-  if (blocked) {
+  // 2) Matchday-by-matchday: if this matchday is currently locked, block.
+  const locked = matches.find((m) => lockedSet.has(Number(m.matchday || 1)));
+  if (locked) {
     const msg = "Pronostici bloccati per la giornata in corso";
     const err: any = new Error(msg);
     err.status = 403;
-    err.payload = { message: msg, isLocked: true };
+    err.payload = { message: msg, isLocked: true, reason: "MATCHDAY_LOCKED", matchId: locked.id, matchday: Number(locked.matchday || 1) };
     throw err;
   }
 }

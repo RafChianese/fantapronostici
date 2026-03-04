@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { ArrowDownUp, Trophy, Target, CheckCircle2, Sigma, TrendingUp, Award, Info, ChevronDown, ChevronUp } from "lucide-react";
 import { api } from "../lib/api";
 import { useLoading } from "../lib/loading";
 import { Badge, Button, Card, CardContent, CardHeader, Skeleton } from "../components/ui";
@@ -46,6 +47,8 @@ export default function LeaderboardPage() {
 
   const [leagueName, setLeagueName] = useState<string>("");
   const [features, setFeatures] = useState<{ underOver25: boolean; matchdayAwards: boolean }>({ underOver25: false, matchdayAwards: false });
+  const [tieBreakers, setTieBreakers] = useState<string[]>([]);
+  const [legendOpen, setLegendOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const sortOptions: SortValue[] = useMemo(
@@ -102,6 +105,7 @@ export default function LeaderboardPage() {
         setRows(nextRows);
         setLeagueName(r?.league?.name ? String(r.league.name) : "");
         setFeatures({ underOver25: !!r?.features?.underOver25, matchdayAwards: !!r?.features?.matchdayAwards });
+        setTieBreakers(Array.isArray(r?.tieBreakers) ? r.tieBreakers.map((x: any) => String(x)) : []);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -118,10 +122,34 @@ export default function LeaderboardPage() {
         right={
           <div className="flex flex-col items-end gap-2">
             {myRank ? <Badge tone="green">La tua posizione: #{myRank}</Badge> : null}
-            <Button variant="secondary" onClick={() => setSortOpen(true)} aria-label="Ordina">
-              <span className="text-lg" aria-hidden="true">⇅</span>
-              <span className="ml-2 hidden sm:inline">Ordina</span>
-          </Button>
+
+            {/* Desktop: inline sort select. Mobile: bottom-sheet modal */}
+            <div className="hidden sm:block">
+              <label className="text-xs text-slate-600">Ordina</label>
+              <select
+                className="mt-1 w-[260px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                value={sortParam}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  const [k, d] = v.split("_") as any;
+                  setSortKey(k);
+                  setSortDir(d);
+                }}
+              >
+                {sortOptions.map((opt) => (
+                  <option key={`${opt.key}_${opt.dir}`} value={`${opt.key}_${opt.dir}`}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="sm:hidden">
+              <Button variant="secondary" onClick={() => setSortOpen(true)} aria-label="Ordina">
+                <ArrowDownUp size={18} aria-hidden="true" />
+                <span className="ml-2">Ordina</span>
+              </Button>
+            </div>
           </div>
         }
       />
@@ -165,6 +193,60 @@ export default function LeaderboardPage() {
         </div>
       ) : null}
       <CardContent>
+        {/* Legend / metric explanation */}
+        <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+          <button
+            type="button"
+            onClick={() => setLegendOpen((v) => !v)}
+            className="w-full flex items-center justify-between gap-3"
+          >
+            <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+              <Info size={16} aria-hidden="true" />
+              Legenda & criteri
+            </div>
+            {legendOpen ? <ChevronUp size={18} aria-hidden="true" /> : <ChevronDown size={18} aria-hidden="true" />}
+          </button>
+
+          {legendOpen ? (
+            <div className="mt-3 grid gap-2 text-xs text-slate-700 sm:grid-cols-2">
+              <div className="flex items-center gap-2"><Trophy size={16} aria-hidden="true" /> <b>Punti</b>: totale punti in classifica</div>
+              <div className="flex items-center gap-2"><Target size={16} aria-hidden="true" /> <b>Esatti</b>: risultati esatti</div>
+              <div className="flex items-center gap-2"><CheckCircle2 size={16} aria-hidden="true" /> <b>1X2</b>: esito corretto</div>
+              <div className="flex items-center gap-2"><Sigma size={16} aria-hidden="true" /> <b>Somma gol</b>: totale gol corretto</div>
+              {features.underOver25 ? (
+                <div className="flex items-center gap-2"><TrendingUp size={16} aria-hidden="true" /> <b>U/O 2.5</b>: Under (≤2) / Over (≥3)</div>
+              ) : null}
+              {features.matchdayAwards ? (
+                <div className="flex items-center gap-2"><Award size={16} aria-hidden="true" /> <b>Premi giornata</b>: migliori punteggi di giornata</div>
+              ) : null}
+
+              {tieBreakers.length ? (
+                <div className="sm:col-span-2 text-xs text-slate-600 pt-1">
+                  <b>Tie-break</b> (a parità di punti): {tieBreakers.join(" → ")}
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
+              <span className="inline-flex items-center gap-1"><Trophy size={14} aria-hidden="true" /> Punti</span>
+              <span className="inline-flex items-center gap-1"><Target size={14} aria-hidden="true" /> Esatti</span>
+              <span className="inline-flex items-center gap-1"><CheckCircle2 size={14} aria-hidden="true" /> 1X2</span>
+              <span className="inline-flex items-center gap-1"><Sigma size={14} aria-hidden="true" /> Somma gol</span>
+              {features.underOver25 ? (
+                <span className="inline-flex items-center gap-1"><TrendingUp size={14} aria-hidden="true" /> U/O 2.5</span>
+              ) : null}
+              {features.matchdayAwards ? (
+                <span className="inline-flex items-center gap-1"><Award size={14} aria-hidden="true" /> Premi</span>
+              ) : null}
+              <span className="ml-auto inline-flex items-center gap-1 text-slate-500">
+                <span className="hidden sm:inline">Apri per dettagli</span>
+                <span className="sm:hidden">Dettagli</span>
+                <ChevronDown size={14} aria-hidden="true" />
+              </span>
+            </div>
+          )}
+        </div>
+
         {loading ? (
           <div className="space-y-3">
             {Array.from({ length: 10 }).map((_, i) => (
@@ -179,6 +261,14 @@ export default function LeaderboardPage() {
           </div>
         ) : (
           <div className="divide-y divide-slate-100">
+
+            {/* Desktop header */}
+            <div className="hidden sm:grid sm:grid-cols-12 sm:gap-3 sm:pb-2 sm:text-[11px] sm:font-semibold sm:uppercase sm:tracking-wide sm:text-slate-500">
+              <div className="sm:col-span-6">Giocatore</div>
+              <div className="sm:col-span-2 sm:text-right">Punti</div>
+              <div className="sm:col-span-4 sm:text-right">Metriche</div>
+            </div>
+
             {rows.map((r, idx) => {
               const tr = flash[r.userId] || "";
               const flashCls = tr === "up" ? "tm-flash-up" : tr === "down" ? "tm-flash-down" : "";
@@ -191,7 +281,7 @@ export default function LeaderboardPage() {
               <div key={r.userId} className={`py-3 ${top3Row} ${user?.id && r.userId === user.id ? "rounded-2xl bg-[#2EC4B6]/10 px-3" : ""} ${flashCls}`}>
                 {/* Mobile: 2 righe senza scroll orizzontale. Desktop: layout a colonne */}
                 <div className="flex flex-col gap-2 sm:grid sm:grid-cols-12 sm:items-center sm:gap-3">
-                  <div className="flex items-center justify-between sm:col-span-8 sm:justify-start sm:gap-3">
+                  <div className="flex items-center justify-between sm:col-span-6 sm:justify-start sm:gap-3">
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-2">
                         <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-extrabold ${idx <= 2 ? "border-[#2EC4B6]/30 bg-white" : "border-slate-200 bg-slate-50"} ${medalGlow}`}>
@@ -219,15 +309,26 @@ export default function LeaderboardPage() {
                     <AnimatedNumber value={r.totalPoints} /> pt
                   </div>
 
-                  <div className="flex flex-wrap items-center justify-start gap-x-4 gap-y-1 text-xs text-slate-700 sm:col-span-2 sm:justify-end sm:flex-nowrap sm:gap-x-3">
-                    <span className="whitespace-nowrap" title="Risultati esatti">🎯 {r.exactHits}</span>
-                    <span className="whitespace-nowrap" title="Pronostici 1X2">✅ {r.outcomeHits}</span>
-                    <span className="whitespace-nowrap" title="Somma gol">Σ {r.sumGoalsHits}</span>
+                  <div className="flex flex-wrap items-center justify-start gap-x-4 gap-y-1 text-xs text-slate-700 sm:col-span-4 sm:justify-end sm:flex-nowrap sm:gap-x-4">
+                    {/* Mobile "stack": label+value; Desktop: icon+value */}
+                    <span className="inline-flex items-center gap-1 whitespace-nowrap" title="Risultati esatti">
+                      <Target size={14} aria-hidden="true" /> <span className="sm:hidden">Esatti:</span> {r.exactHits}
+                    </span>
+                    <span className="inline-flex items-center gap-1 whitespace-nowrap" title="Pronostici 1X2">
+                      <CheckCircle2 size={14} aria-hidden="true" /> <span className="sm:hidden">1X2:</span> {r.outcomeHits}
+                    </span>
+                    <span className="inline-flex items-center gap-1 whitespace-nowrap" title="Somma gol">
+                      <Sigma size={14} aria-hidden="true" /> <span className="sm:hidden">Somma:</span> {r.sumGoalsHits}
+                    </span>
                     {features.underOver25 ? (
-                      <span className="whitespace-nowrap" title="Under/Over 2.5 (somma gol > 2 = Over; ≤ 2 = Under)">⚖️ {(r.underOverHits ?? 0)}</span>
+                      <span className="inline-flex items-center gap-1 whitespace-nowrap" title="Under/Over 2.5 (≤2 Under, ≥3 Over)">
+                        <TrendingUp size={14} aria-hidden="true" /> <span className="sm:hidden">U/O:</span> {(r.underOverHits ?? 0)}
+                      </span>
                     ) : null}
                     {features.matchdayAwards ? (
-                      <span className="whitespace-nowrap" title="Miglior risultato di giornata (🥇)">🥇 {(r.matchdayWins ?? 0)}</span>
+                      <span className="inline-flex items-center gap-1 whitespace-nowrap" title="Miglior risultato di giornata">
+                        <Award size={14} aria-hidden="true" /> <span className="sm:hidden">Premi:</span> {(r.matchdayWins ?? 0)}
+                      </span>
                     ) : null}
                   </div>
                 </div>

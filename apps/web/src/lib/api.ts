@@ -63,6 +63,11 @@ export type LeagueRules = {
   allowSumGoalsWithExact: boolean;
   allowSumGoalsWithOutcome: boolean;
 
+  // Under/Over cumulability (MIXED)
+  allowUnderOverWithExact?: boolean;
+  allowUnderOverWithOutcome?: boolean;
+  allowUnderOverWithSumGoals?: boolean;
+
   // Optional monetization (all optional)
   entryFeeCents?: number | null;
   prizesJson?: Array<{ position: number; amountCents: number }> | null;

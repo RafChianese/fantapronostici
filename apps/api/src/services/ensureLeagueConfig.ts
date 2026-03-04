@@ -45,6 +45,11 @@ export async function ensureLeagueConfig(leagueId: string) {
       allowOutcomeWithExact: true,
       allowSumGoalsWithExact: true,
       allowSumGoalsWithOutcome: true,
+
+      // Under/Over cumulability (MIXED)
+      allowUnderOverWithExact: true,
+      allowUnderOverWithOutcome: true,
+      allowUnderOverWithSumGoals: true,
     },
   });
 }

@@ -17,12 +17,19 @@ function computeAdjustedPoints(params: {
   allowOutcomeWithExact: boolean;
   allowSumGoalsWithExact: boolean;
   allowSumGoalsWithOutcome: boolean;
+  allowUnderOverWithExact?: boolean;
+  allowUnderOverWithOutcome?: boolean;
+  allowUnderOverWithSumGoals?: boolean;
 }) {
   const { mode } = params;
   let ex = params.pointsExact;
   let out = params.pointsOutcome;
   let sum = params.pointsSumGoals;
   let uo = params.pointsUnderOver;
+
+  const uoWithExact = params.allowUnderOverWithExact ?? true;
+  const uoWithOutcome = params.allowUnderOverWithOutcome ?? true;
+  const uoWithSum = params.allowUnderOverWithSumGoals ?? true;
 
   if (mode === "CUMULATIVE") {
     return { pointsExact: ex, pointsOutcome: out, pointsSumGoals: sum, pointsUnderOver: uo, totalPoints: ex + out + sum + uo };
@@ -39,17 +46,20 @@ function computeAdjustedPoints(params: {
   }
 
   // MIXED: allow fine-grained cumulability between categories.
-  // Under/Over (if enabled) is always cumulative with the effective categories.
+  // Under/Over (if enabled) is NOT always cumulative: it respects per-category flags.
   if (ex > 0) {
     out = out > 0 && params.allowOutcomeWithExact ? out : 0;
     sum = sum > 0 && params.allowSumGoalsWithExact ? sum : 0;
+    uo = uo > 0 && uoWithExact ? uo : 0;
     return { pointsExact: ex, pointsOutcome: out, pointsSumGoals: sum, pointsUnderOver: uo, totalPoints: ex + out + sum + uo };
   }
   if (out > 0) {
     sum = sum > 0 && params.allowSumGoalsWithOutcome ? sum : 0;
+    uo = uo > 0 && uoWithOutcome ? uo : 0;
     return { pointsExact: 0, pointsOutcome: out, pointsSumGoals: sum, pointsUnderOver: uo, totalPoints: out + sum + uo };
   }
   if (sum > 0) {
+    uo = uo > 0 && uoWithSum ? uo : 0;
     return { pointsExact: 0, pointsOutcome: 0, pointsSumGoals: sum, pointsUnderOver: uo, totalPoints: sum + uo };
   }
   // Under/Over only
@@ -138,6 +148,9 @@ export async function recalcAllScoresForLeague(leagueId: string) {
       allowOutcomeWithExact: rules.allowOutcomeWithExact,
       allowSumGoalsWithExact: rules.allowSumGoalsWithExact,
       allowSumGoalsWithOutcome: rules.allowSumGoalsWithOutcome,
+      allowUnderOverWithExact: (rules as any).allowUnderOverWithExact,
+      allowUnderOverWithOutcome: (rules as any).allowUnderOverWithOutcome,
+      allowUnderOverWithSumGoals: (rules as any).allowUnderOverWithSumGoals,
     });
 
     const sel = scorerByUserMatch.get(`${p.userId}:${p.matchId}`) || null;
@@ -212,6 +225,9 @@ export async function recalcScoresForMatchForLeague(leagueId: string, matchId: s
       allowOutcomeWithExact: rules.allowOutcomeWithExact,
       allowSumGoalsWithExact: rules.allowSumGoalsWithExact,
       allowSumGoalsWithOutcome: rules.allowSumGoalsWithOutcome,
+      allowUnderOverWithExact: (rules as any).allowUnderOverWithExact,
+      allowUnderOverWithOutcome: (rules as any).allowUnderOverWithOutcome,
+      allowUnderOverWithSumGoals: (rules as any).allowUnderOverWithSumGoals,
     });
 
     const sel = scorerByUser.get(String(p.userId)) || null;

@@ -195,6 +195,11 @@ const RulesSchema = z.object({
   allowSumGoalsWithExact: z.boolean(),
   allowSumGoalsWithOutcome: z.boolean(),
 
+  // Under/Over cumulability (MIXED)
+  allowUnderOverWithExact: z.boolean().optional().default(true),
+  allowUnderOverWithOutcome: z.boolean().optional().default(true),
+  allowUnderOverWithSumGoals: z.boolean().optional().default(true),
+
   // Optional monetization
   entryFeeCents: z.number().int().min(0).max(1_000_000_000).optional().nullable(),
   prizesJson: z
