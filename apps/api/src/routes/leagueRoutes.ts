@@ -13,7 +13,7 @@ leagueRouter.get("/stats", requireAuth, requireLeagueMember, async (req: AuthedR
   if (!leagueId) return res.status(400).json({ message: "Missing leagueId" });
 
   // Fetch approved members (for display names) + predictions with matchday/status.
-  const [members, preds] = await Promise.all([
+  const [members, preds, rules] = await Promise.all([
     prisma.leagueMember.findMany({
       where: { leagueId, status: "APPROVED" },
       include: { user: { select: { id: true, displayName: true } } },
@@ -49,7 +49,8 @@ leagueRouter.get("/stats", requireAuth, requireLeagueMember, async (req: AuthedR
     if ((rules as any)?.enableUnderOver25 && (p.pointsUnderOver ?? 0) > 0) a.underOver += 1;
     userAgg.set(p.userId, a);
   }
-// Top performers (game-appropriate naming). Keep bestAttack/bestDefense for backward compatibility.
+
+  // Top performers (game-appropriate naming). Keep bestAttack/bestDefense for backward compatibility.
   let topTotalPoints: null | { userId: string; displayName: string; value: number } = null;
   let topExactHits: null | { userId: string; displayName: string; value: number } = null;
   let topOutcomeHits: null | { userId: string; displayName: string; value: number } = null;
@@ -69,13 +70,14 @@ leagueRouter.get("/stats", requireAuth, requireLeagueMember, async (req: AuthedR
 
   const bestAttack = topTotalPoints;
   const bestDefense = topExactHits;
-// Hit totals (league)
+
+  // Hit totals (league)
   const exactTotal = preds.reduce((s, p) => s + ((p.pointsExact ?? 0) > 0 ? 1 : 0), 0);
   const outcomeTotal = preds.reduce((s, p) => s + ((p.pointsOutcome ?? 0) > 0 ? 1 : 0), 0);
   const sumGoalsTotal = preds.reduce((s, p) => s + ((p.pointsSumGoals ?? 0) > 0 ? 1 : 0), 0);
   const underOverTotal = (rules as any)?.enableUnderOver25 ? preds.reduce((s, p) => s + ((p.pointsUnderOver ?? 0) > 0 ? 1 : 0), 0) : 0;
 
-// Matchday aggregates: per user per matchday points, then compute avg per matchday
+  // Matchday aggregates: per user per matchday points, then compute avg per matchday
   const matchdayUserTotals = new Map<string, number>(); // key: `${md}:${userId}`
   const matchdayStatus = new Map<number, "NOT_STARTED" | "IN_PROGRESS" | "FINISHED">();
 
