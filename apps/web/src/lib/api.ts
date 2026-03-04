@@ -137,16 +137,33 @@ export type RegolamentoConfigResponse = {
 
 // League statistics (current league)
 export type LeagueStatsResponse = {
+  // Backward compatible fields (deprecated in UI)
   bestAttack: { userId: string; displayName: string; value: number } | null;
   bestDefense: { userId: string; displayName: string; value: number } | null;
+
+  // Preferred fields
+  topTotalPoints?: { userId: string; displayName: string; value: number } | null;
+  topExactHits?: { userId: string; displayName: string; value: number } | null;
+  topOutcomeHits?: { userId: string; displayName: string; value: number } | null;
+  topSumGoalsHits?: { userId: string; displayName: string; value: number } | null;
+  topUnderOverHits?: { userId: string; displayName: string; value: number } | null;
+
+  features?: { underOver25: boolean };
+
   avgPointsPerMatchday: number;
+
+  // League totals (hit counts, not points)
   exactTotal: number;
+  outcomeTotal?: number;
+  sumGoalsTotal?: number;
+  underOverTotal?: number;
+
   distribution: Array<{ label: string; count: number }>;
   bestMatchday: { matchday: number; avgPoints: number } | null;
   worstMatchday: { matchday: number; avgPoints: number } | null;
 };
 
-export function getToken() {
+export function getToken() {() {
   return localStorage.getItem("tm_token") || "";
 }
 export function setToken(token: string) {

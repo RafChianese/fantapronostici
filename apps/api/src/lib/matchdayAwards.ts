@@ -46,13 +46,26 @@ export async function recomputeMatchdayAwardsForLeague(leagueId: string, matchda
     });
 
     const sums = new Map<string, number>();
-    for (const uid of userIds) sums.set(uid, 0);
-    for (const p of preds) sums.set(p.userId, (sums.get(p.userId) ?? 0) + (p.totalPoints ?? 0));
+    const counts = new Map<string, number>();
 
-    const max = Math.max(...Array.from(sums.values()), 0);
-    const winners = userIds.filter((uid) => (sums.get(uid) ?? 0) === max);
+    // Only consider users who placed at least one prediction for the matchday.
+    for (const p of preds) {
+      sums.set(p.userId, (sums.get(p.userId) ?? 0) + (p.totalPoints ?? 0));
+      counts.set(p.userId, (counts.get(p.userId) ?? 0) + 1);
+    }
 
-    await prisma.$transaction([
+    const participants = userIds.filter((uid) => (counts.get(uid) ?? 0) > 0);
+
+    // If nobody predicted anything in this matchday, store no awards.
+    if (participants.length === 0) {
+      await prisma.matchdayAward.deleteMany({ where: { leagueId, matchday: md } });
+      continue;
+    }
+
+    const max = Math.max(...participants.map((uid) => sums.get(uid) ?? 0), 0);
+    const winners = participants.filter((uid) => (sums.get(uid) ?? 0) === max);
+
+await prisma.$transaction([
       prisma.matchdayAward.deleteMany({ where: { leagueId, matchday: md } }),
       ...(winners.length
         ? [

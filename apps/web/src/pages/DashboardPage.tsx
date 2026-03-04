@@ -99,7 +99,7 @@ export default function DashboardPage() {
     if (!user?.id || !activeLeagueId) return;
 
     setLoading(true);
-    Promise.all([api.userSummary(user.id), api.leaderboard("points_desc")])
+    Promise.all([api.userSummary(user.id, leagueCode), api.leaderboard("points_desc", leagueCode)])
       .then(([s, lb]) => {
         if (cancelled) return;
         setSummary(s);
@@ -118,9 +118,10 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [user?.id, activeLeagueId]);
+  }, [user?.id, activeLeagueId, leagueCode]);
 
   const leagueName = activeMembership?.league?.name || summary?.league?.name || "Lega";
+  const leagueCode = activeMembership?.league?.code || summary?.league?.code || undefined;
   const displayName = user?.displayName || summary?.user?.displayName || "Partecipante";
 
   // League branding/logo is no longer shown on Home (mobile), we show the user's avatar instead.
@@ -142,6 +143,10 @@ export default function DashboardPage() {
     }
   }, [totals?.total]);
   const items: any[] = Array.isArray(summary?.detail) ? summary.detail : [];
+  const exactHits = useMemo(() => {
+    return (items || []).reduce((c, d) => c + ((Number(d?.points?.exact ?? 0) > 0) ? 1 : 0), 0);
+  }, [items]);
+
 
   const byMatchday = useMemo(() => {
     const m: Record<number, any[]> = {};
@@ -392,7 +397,7 @@ export default function DashboardPage() {
               <div className="rounded-2xl bg-slate-50 p-3">
                 <div className="text-[11px] font-semibold text-slate-500">Esatti</div>
                 <div className="text-lg font-extrabold text-slate-900">
-                  <AnimatedNumber value={Number(totals?.exact ?? 0)} />
+                  <AnimatedNumber value={Number(exactHits ?? 0)} />
                 </div>
               </div>
             </div>

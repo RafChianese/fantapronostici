@@ -77,8 +77,12 @@ export default function StatsPage() {
   if (error) return <Alert tone="danger">{error}</Alert>;
   if (!data) return <Alert>Nessun dato.</Alert>;
 
-  const bestAttack = data.bestAttack;
-  const bestDefense = data.bestDefense;
+  const topTotal = data.topTotalPoints ?? data.bestAttack;
+  const topExact = data.topExactHits ?? data.bestDefense;
+  const topOutcome = data.topOutcomeHits ?? null;
+  const topSumGoals = data.topSumGoalsHits ?? null;
+  const topUnderOver = data.topUnderOverHits ?? null;
+  const underOverOn = Boolean((data as any)?.features?.underOver25);
 
   return (
     <div className="space-y-6">
@@ -94,10 +98,25 @@ export default function StatsPage() {
         />
         <CardContent>
           <div className="grid grid-cols-2 gap-3">
-            <StatTile label="Miglior attacco" value={bestAttack ? bestAttack.displayName : "—"} />
-            <StatTile label="Punti miglior attacco" value={bestAttack ? bestAttack.value : 0} />
-            <StatTile label="Miglior difesa" value={bestDefense ? bestDefense.displayName : "—"} />
-            <StatTile label="Esatti miglior difesa" value={bestDefense ? bestDefense.value : 0} />
+            <StatTile label="Più punti (stagione)" value={topTotal ? topTotal.displayName : "—"} />
+            <StatTile label="Punti totali" value={topTotal ? topTotal.value : 0} />
+            <StatTile label="Più esatti" value={topExact ? topExact.displayName : "—"} />
+            <StatTile label="Esatti" value={topExact ? topExact.value : 0} />
+
+
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            <StatTile label="Più 1X2" value={topOutcome ? topOutcome.displayName : "—"} />
+            <StatTile label="1X2" value={topOutcome ? topOutcome.value : 0} />
+            <StatTile label="Più somma gol" value={topSumGoals ? topSumGoals.displayName : "—"} />
+            <StatTile label="Somma gol" value={topSumGoals ? topSumGoals.value : 0} />
+            {underOverOn ? (
+              <>
+                <StatTile label="Più U/O 2.5" value={topUnderOver ? topUnderOver.displayName : "—"} />
+                <StatTile label="U/O 2.5" value={topUnderOver ? topUnderOver.value : 0} />
+              </>
+            ) : null}
+          </div>
+
           </div>
 
           <div className="mt-3 grid grid-cols-2 gap-3">

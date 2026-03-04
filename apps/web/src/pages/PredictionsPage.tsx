@@ -255,6 +255,8 @@ export default function PredictionsPage() {
 
   const autosaveTimerRef = useRef<number | null>(null);
   const predsRef = useRef<Record<string, PredictionState>>({});
+  // Snapshot of the last server-synced predictions. Used to detect edits on locked matches.
+  const baselinePredsRef = useRef<Record<string, { homeGoals?: number; awayGoals?: number }>>({});
   const matchByIdRef = useRef<Map<string, Match>>(new Map());
   const isLockedRef = useRef<boolean>(false);
   const autosaveInitializedRef = useRef(false);
@@ -273,6 +275,12 @@ export default function PredictionsPage() {
       const map: Record<string, PredictionState> = {};
       for (const pr of (p.predictions as PredictionState[])) map[pr.matchId] = pr;
       setPreds(map);
+      // Update baseline snapshot (server truth) to avoid stale "locked prediction" warnings.
+      const base: Record<string, { homeGoals?: number; awayGoals?: number }> = {};
+      for (const pr of (p.predictions as PredictionState[])) {
+        base[pr.matchId] = { homeGoals: (pr as any).homeGoals, awayGoals: (pr as any).awayGoals };
+      }
+      baselinePredsRef.current = base;
       const picks = ((p as any).scorerPicks || []) as ScorerPickSummary[];
       setScorerPickByMatchId(new Map(picks.map((x) => [x.matchId, x])));
       setConfig(c);
@@ -592,9 +600,15 @@ export default function PredictionsPage() {
 
   const hasLockedPrediction = useMemo(() => {
     // Defensive: if someone re-enables inputs via devtools, block saving if any entered prediction belongs to a locked match.
+    // IMPORTANT UX: do NOT warn for historical (already-saved) locked predictions.
+    // Warn only if the user has *edited* a locked match compared to the last server snapshot.
+    const baseline = baselinePredsRef.current;
     for (const [matchId, p] of Object.entries(preds)) {
       if (!Number.isInteger(p.homeGoals) || !Number.isInteger(p.awayGoals)) continue;
-      if (isMatchLocked(matchById.get(matchId))) return true;
+      if (!isMatchLocked(matchById.get(matchId))) continue;
+      const b = baseline[matchId];
+      const changed = !b || b.homeGoals !== p.homeGoals || b.awayGoals !== p.awayGoals;
+      if (changed) return true;
     }
     return false;
   }, [preds, matchById, isLocked]);
@@ -715,6 +729,12 @@ export default function PredictionsPage() {
       const map: Record<string, PredictionState> = {};
       for (const pr of (p.predictions as PredictionState[])) map[(pr as any).matchId] = pr;
       setPreds(map);
+      // Refresh baseline after a successful save.
+      const base: Record<string, { homeGoals?: number; awayGoals?: number }> = {};
+      for (const pr of (p.predictions as PredictionState[])) {
+        base[(pr as any).matchId] = { homeGoals: (pr as any).homeGoals, awayGoals: (pr as any).awayGoals };
+      }
+      baselinePredsRef.current = base;
     } catch (e: any) {
       setSaveHint("");
       if (e.data?.reason) setToast({ tone: "danger", msg: `Errore: ${e.message} (${e.data.reason}).` });

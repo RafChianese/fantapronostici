@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { Home, Trophy, ListChecks, BookOpenText, UserCircle, Shield, Crown } from "lucide-react";
+import { Home, Trophy, ListChecks, BookOpenText, UserCircle, Shield, Crown, BarChart3 } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { useLoading } from "../lib/loading";
 import { FullScreenLoaderOverlay } from "./FullScreenLoaderOverlay";
@@ -397,7 +397,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                       <NavItem to="/regolamento" onClick={() => setDesktopMenuOpen(false)}>
                         Regolamento
                       </NavItem>
-                      <NavItem to="/league-stats" onClick={() => setDesktopMenuOpen(false)}>
+                      <NavItem to="/league-stats" icon={<BarChart3 size={18} />} onClick={() => setDesktopMenuOpen(false)}>
                         Statistiche di lega
                       </NavItem>
                     </>
@@ -528,7 +528,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     <NavItem to="/regolamento" icon={<BookOpenText size={18} />} onClick={() => setDrawerOpen(false)}>
                       Regolamento
                     </NavItem>
-                    <NavItem to="/league-stats" onClick={() => setDrawerOpen(false)}>
+                    <NavItem to="/league-stats" icon={<BarChart3 size={18} />} onClick={() => setDrawerOpen(false)}>
                       Statistiche di lega
                     </NavItem>
                   </>

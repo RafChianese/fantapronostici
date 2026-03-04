@@ -24,37 +24,58 @@ leagueRouter.get("/stats", requireAuth, requireLeagueMember, async (req: AuthedR
         userId: true,
         totalPoints: true,
         pointsExact: true,
+        pointsOutcome: true,
+        pointsSumGoals: true,
+        pointsUnderOver: true,
         match: { select: { matchday: true, status: true } },
       },
     }),
+    prisma.rule.findUnique({ where: { leagueId } }),
   ]);
 
   const nameByUser = new Map<string, string>(members.map((m) => [m.user.id, m.user.displayName]));
 
-  // Aggregate per-user totals + exact count
-  const userAgg = new Map<string, { total: number; exact: number }>();
+  // Aggregate per-user totals + hit counts (counts are per-match, not points)
+  const userAgg = new Map<
+    string,
+    { total: number; exact: number; outcome: number; sumGoals: number; underOver: number }
+  >();
   for (const p of preds) {
-    const a = userAgg.get(p.userId) || { total: 0, exact: 0 };
+    const a = userAgg.get(p.userId) || { total: 0, exact: 0, outcome: 0, sumGoals: 0, underOver: 0 };
     a.total += p.totalPoints ?? 0;
     if ((p.pointsExact ?? 0) > 0) a.exact += 1;
+    if ((p.pointsOutcome ?? 0) > 0) a.outcome += 1;
+    if ((p.pointsSumGoals ?? 0) > 0) a.sumGoals += 1;
+    if ((rules as any)?.enableUnderOver25 && (p.pointsUnderOver ?? 0) > 0) a.underOver += 1;
     userAgg.set(p.userId, a);
   }
-
-  // Best attack = highest total points (football metaphor)
-  let bestAttack: null | { userId: string; displayName: string; value: number } = null;
-  // Best defense = highest exact hits (precision)
-  let bestDefense: null | { userId: string; displayName: string; value: number } = null;
+// Top performers (game-appropriate naming). Keep bestAttack/bestDefense for backward compatibility.
+  let topTotalPoints: null | { userId: string; displayName: string; value: number } = null;
+  let topExactHits: null | { userId: string; displayName: string; value: number } = null;
+  let topOutcomeHits: null | { userId: string; displayName: string; value: number } = null;
+  let topSumGoalsHits: null | { userId: string; displayName: string; value: number } = null;
+  let topUnderOverHits: null | { userId: string; displayName: string; value: number } = null;
 
   for (const [userId, a] of userAgg.entries()) {
     const displayName = nameByUser.get(userId) || "Utente";
-    if (!bestAttack || a.total > bestAttack.value) bestAttack = { userId, displayName, value: a.total };
-    if (!bestDefense || a.exact > bestDefense.value) bestDefense = { userId, displayName, value: a.exact };
+    if (!topTotalPoints || a.total > topTotalPoints.value) topTotalPoints = { userId, displayName, value: a.total };
+    if (!topExactHits || a.exact > topExactHits.value) topExactHits = { userId, displayName, value: a.exact };
+    if (!topOutcomeHits || a.outcome > topOutcomeHits.value) topOutcomeHits = { userId, displayName, value: a.outcome };
+    if (!topSumGoalsHits || a.sumGoals > topSumGoalsHits.value) topSumGoalsHits = { userId, displayName, value: a.sumGoals };
+    if ((rules as any)?.enableUnderOver25) {
+      if (!topUnderOverHits || a.underOver > topUnderOverHits.value) topUnderOverHits = { userId, displayName, value: a.underOver };
+    }
   }
 
-  // Exact results total (league)
+  const bestAttack = topTotalPoints;
+  const bestDefense = topExactHits;
+// Hit totals (league)
   const exactTotal = preds.reduce((s, p) => s + ((p.pointsExact ?? 0) > 0 ? 1 : 0), 0);
+  const outcomeTotal = preds.reduce((s, p) => s + ((p.pointsOutcome ?? 0) > 0 ? 1 : 0), 0);
+  const sumGoalsTotal = preds.reduce((s, p) => s + ((p.pointsSumGoals ?? 0) > 0 ? 1 : 0), 0);
+  const underOverTotal = (rules as any)?.enableUnderOver25 ? preds.reduce((s, p) => s + ((p.pointsUnderOver ?? 0) > 0 ? 1 : 0), 0) : 0;
 
-  // Matchday aggregates: per user per matchday points, then compute avg per matchday
+// Matchday aggregates: per user per matchday points, then compute avg per matchday
   const matchdayUserTotals = new Map<string, number>(); // key: `${md}:${userId}`
   const matchdayStatus = new Map<number, "NOT_STARTED" | "IN_PROGRESS" | "FINISHED">();
 
@@ -135,10 +156,24 @@ leagueRouter.get("/stats", requireAuth, requireLeagueMember, async (req: AuthedR
   }
 
   res.json({
+    // Backward compatible fields
     bestAttack,
     bestDefense,
+
+    // Preferred fields
+    topTotalPoints,
+    topExactHits,
+    topOutcomeHits,
+    topSumGoalsHits,
+    topUnderOverHits,
+
+    features: { underOver25: !!(rules as any)?.enableUnderOver25 },
+
     avgPointsPerMatchday,
     exactTotal,
+    outcomeTotal,
+    sumGoalsTotal,
+    underOverTotal,
     distribution: buckets.map((b) => ({ label: b.label, count: b.count })),
     bestMatchday: bestMatchday ? { matchday: bestMatchday.matchday, avgPoints: bestMatchday.avgPoints } : null,
     worstMatchday: worstMatchday ? { matchday: worstMatchday.matchday, avgPoints: worstMatchday.avgPoints } : null,
