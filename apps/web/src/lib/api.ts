@@ -163,7 +163,7 @@ export type LeagueStatsResponse = {
   worstMatchday: { matchday: number; avgPoints: number } | null;
 };
 
-export function getToken() {() {
+export function getToken() {
   return localStorage.getItem("tm_token") || "";
 }
 export function setToken(token: string) {

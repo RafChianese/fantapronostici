@@ -1047,7 +1047,8 @@ export default function PredictionsPage() {
                           <Input
                             inputMode="numeric"
                             disabled={!canEdit}
-                            className="!w-12 !px-2 !py-1 text-center"
+                            aria-label={`Gol ${m.homeTeam}`}
+                            className="!w-12 !px-2 !py-1 text-center !font-extrabold !text-slate-900 !bg-white !border-2 !border-slate-300 hover:!border-slate-400 focus:!border-emerald-500 focus:!ring-2 focus:!ring-emerald-200 shadow-sm"
                             value={p?.homeGoals === undefined ? "" : String(p.homeGoals)}
                             placeholder="0"
                             onChange={(e) => {
@@ -1064,7 +1065,8 @@ export default function PredictionsPage() {
                           <Input
                             inputMode="numeric"
                             disabled={!canEdit}
-                            className="!w-12 !px-2 !py-1 text-center"
+                            aria-label={`Gol ${m.awayTeam}`}
+                            className="!w-12 !px-2 !py-1 text-center !font-extrabold !text-slate-900 !bg-white !border-2 !border-slate-300 hover:!border-slate-400 focus:!border-emerald-500 focus:!ring-2 focus:!ring-emerald-200 shadow-sm"
                             value={p?.awayGoals === undefined ? "" : String(p.awayGoals)}
                             placeholder="0"
                             onChange={(e) => {

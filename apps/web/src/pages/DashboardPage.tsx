@@ -94,9 +94,14 @@ export default function DashboardPage() {
   const [leader, setLeader] = useState<LeaderRow[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const leagueName = activeMembership?.league?.name || summary?.league?.name || "Lega";
+  const leagueCode = activeMembership?.league?.code || summary?.league?.code || undefined;
+  const displayName = user?.displayName || summary?.user?.displayName || "Partecipante";
+
   useEffect(() => {
     let cancelled = false;
     if (!user?.id || !activeLeagueId) return;
+    if (!leagueCode) return;
 
     setLoading(true);
     Promise.all([api.userSummary(user.id, leagueCode), api.leaderboard("points_desc", leagueCode)])
@@ -119,10 +124,6 @@ export default function DashboardPage() {
       cancelled = true;
     };
   }, [user?.id, activeLeagueId, leagueCode]);
-
-  const leagueName = activeMembership?.league?.name || summary?.league?.name || "Lega";
-  const leagueCode = activeMembership?.league?.code || summary?.league?.code || undefined;
-  const displayName = user?.displayName || summary?.user?.displayName || "Partecipante";
 
   // League branding/logo is no longer shown on Home (mobile), we show the user's avatar instead.
 
@@ -158,6 +159,32 @@ export default function DashboardPage() {
     }
     return m;
   }, [items]);
+
+  const matchdayMeta = useMemo(() => {
+    // Aggregated info for quick UX blocks (progress, first kickoff).
+    const meta: Record<number, { totalMatches: number; predicted: number; firstKickoff?: string }> = {};
+    for (const mdStr of Object.keys(byMatchday)) {
+      const md = Number(mdStr);
+      const arr = byMatchday[md] || [];
+      const seen = new Set<string>();
+      let predicted = 0;
+      let firstKickoff: string | undefined;
+      for (const it of arr) {
+        const matchId = String(it?.match?.id ?? it?.matchId ?? "");
+        if (matchId) seen.add(matchId);
+        const hs = it?.prediction?.homeGoals ?? it?.prediction?.homeScore ?? it?.prediction?.home ?? it?.homeGoals;
+        const as = it?.prediction?.awayGoals ?? it?.prediction?.awayScore ?? it?.prediction?.away ?? it?.awayGoals;
+        if (hs !== undefined && hs !== null && as !== undefined && as !== null) predicted += 1;
+        const ko = it?.match?.kickoffAt;
+        if (ko) {
+          if (!firstKickoff) firstKickoff = ko;
+          else if (new Date(ko).getTime() < new Date(firstKickoff).getTime()) firstKickoff = ko;
+        }
+      }
+      meta[md] = { totalMatches: seen.size || arr.length || 0, predicted, firstKickoff };
+    }
+    return meta;
+  }, [byMatchday]);
 
   const matchdays = useMemo(() => Object.keys(byMatchday).map((x) => Number(x)).filter(Boolean).sort((a,b) => a-b), [byMatchday]);
 
@@ -202,6 +229,29 @@ export default function DashboardPage() {
   const lockCountdown = useCountdown(lock?.lockUntil);
   const predictionMode = lockData?.leagueSettings?.predictionMode || "MATCHDAY_BY_MATCHDAY";
 
+  const isMatchdayLocked = useMemo(() => {
+    const lockAll = !!lock?.lockAll;
+    const lockedSet = new Set<number>((lock?.lockedMatchdays || []) as any);
+    return (md: number) => {
+      if (lockAll) return true;
+      if (predictionMode === "MATCHDAY_BY_MATCHDAY" && lockedSet.has(md)) return true;
+      return false;
+    };
+  }, [lock?.lockAll, lock?.lockedMatchdays, predictionMode]);
+
+  const nextEditableMatchday = useMemo(() => {
+    const mds = matchdays.slice().sort((a, b) => a - b);
+    for (const md of mds) {
+      const arr = byMatchday[md] || [];
+      if (!arr.length) continue;
+      const anyNotStarted = arr.some((it) => (it?.match?.status || it?.status) === "NOT_STARTED");
+      if (!anyNotStarted) continue;
+      if (isMatchdayLocked(md)) continue;
+      return md;
+    }
+    return null;
+  }, [matchdays, byMatchday, isMatchdayLocked]);
+
   const hasPronosticabile = useMemo(() => {
     // Must exist at least one matchday not started and not locked-by-scope (unless lockAll)
     if (!matchdays.length) return false;
@@ -219,9 +269,8 @@ export default function DashboardPage() {
     return false;
   }, [matchdays, byMatchday, lock?.lockAll, lock?.lockedMatchdays, predictionMode]);
 
-  const showInsert = currentStatus === "NOT_STARTED";
   const isLocked = !!lock?.isLocked;
-  const canInsert = showInsert && !isLocked && hasPronosticabile;
+  const canInsert = !isLocked && hasPronosticabile;
 
   const isMobile = useIsMobile(768);
   const pillCount = isMobile ? 5 : 10;
@@ -416,56 +465,79 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* 5) Current matchday */}
+      {/* 5) Next actions (the "center of the game") */}
       <Card className="mb-4 rounded-3xl">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
-            <div className="text-sm font-bold text-slate-900">Matchday attuale</div>
-            <div className="text-sm font-extrabold text-slate-900">#{currentMatchday}</div>
+            <div className="text-sm font-bold text-slate-900">Prossima giornata</div>
+            <div className="text-sm font-extrabold text-slate-900">
+              {nextEditableMatchday ? `#${nextEditableMatchday}` : "—"}
+            </div>
           </div>
         </CardHeader>
         <CardContent>
-          {currentStatus === "IN_PROGRESS" ? (
+          {loading ? (
             <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                <span className="text-sm font-semibold text-slate-700">Giornata in corso</span>
-              </div>
-              <Link to="/predictions" className="block">
-                <Button className="w-full rounded-2xl">Vai al Live</Button>
-              </Link>
+              <Skeleton className="h-5 w-1/2" />
+              <Skeleton className="h-10 w-full rounded-2xl" />
+              <Skeleton className="h-3 w-2/3" />
             </div>
-          ) : (
-            <div className="space-y-3">
-              {showInsert ? (
-                <>
-                  <div className="text-sm font-medium text-slate-600">Inserisci i pronostici per la prossima giornata</div>
-                  {canInsert ? (
-                    <Link to="/predictions" className="block">
-                      <Button className="w-full rounded-2xl">Inserisci pronostici</Button>
-                    </Link>
-                  ) : (
-                    <div className="space-y-2">
-                      <Button className="w-full rounded-2xl" disabled>
-                        Inserisci pronostici
-                      </Button>
-                      <div className="text-xs font-semibold text-slate-500">
-                        {isLocked ? (
-                          lockCountdown ? (
-                            <>Sblocco tra {lockCountdown}</>
-                          ) : (
-                            <>Giornata non pronosticabile</>
-                          )
-                        ) : (
-                          <>Giornata non pronosticabile</>
-                        )}
-                      </div>
+          ) : nextEditableMatchday ? (
+            (() => {
+              const meta = matchdayMeta[nextEditableMatchday] || { totalMatches: 0, predicted: 0, firstKickoff: undefined };
+              const total = Math.max(0, Number(meta.totalMatches || 0));
+              const done = Math.min(total, Math.max(0, Number(meta.predicted || 0)));
+              const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+              const firstKickoff = meta.firstKickoff ? new Date(meta.firstKickoff) : null;
+              return (
+                <div className="space-y-3">
+                  <div className="text-sm font-medium text-slate-700">
+                    {total > 0 ? (
+                      <>
+                        ⚽ <b>{done}</b> / <b>{total}</b> partite pronosticate
+                      </>
+                    ) : (
+                      <>Inserisci i pronostici della giornata</>
+                    )}
+                  </div>
+
+                  {/* Progress */}
+                  {total > 0 ? (
+                    <div className="rounded-full bg-slate-100 p-1">
+                      <div
+                        className="h-2.5 rounded-full bg-emerald-500 transition-[width]"
+                        style={{ width: `${pct}%` }}
+                        aria-label={`Avanzamento pronostici: ${pct}%`}
+                      />
                     </div>
-                  )}
-                </>
-              ) : (
-                <div className="text-sm font-medium text-slate-600">Nessuna giornata in corso.</div>
-              )}
+                  ) : null}
+
+                  <Link to={`/predictions?md=${nextEditableMatchday}`} className="block">
+                    <Button className="w-full rounded-2xl">Inserisci pronostici</Button>
+                  </Link>
+
+                  <div className="text-xs font-semibold text-slate-500">
+                    {isLocked ? (
+                      lockCountdown ? (
+                        <>Lega in lock · Sblocco tra {lockCountdown}</>
+                      ) : (
+                        <>Lega in lock</>
+                      )
+                    ) : firstKickoff ? (
+                      <>Prima partita: {firstKickoff.toLocaleString()}</>
+                    ) : (
+                      <>Puoi modificare fino all’inizio della prima partita</>
+                    )}
+                  </div>
+                </div>
+              );
+            })()
+          ) : (
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-slate-700">Nessuna giornata pronosticabile al momento.</div>
+              <div className="text-xs font-semibold text-slate-500">
+                {isLocked && lockCountdown ? <>Lega in lock · Sblocco tra {lockCountdown}</> : <>Riprova più tardi</>}
+              </div>
             </div>
           )}
         </CardContent>

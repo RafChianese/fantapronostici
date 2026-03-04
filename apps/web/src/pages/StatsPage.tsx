@@ -3,12 +3,28 @@ import { api, LeagueStatsResponse } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { useLoading } from "../lib/loading";
 import { Alert, Badge, Button, Card, CardContent, CardHeader, Skeleton } from "../components/ui";
+import { Trophy, Target, CheckCircle2, Sigma, TrendingUp, BarChart3 } from "lucide-react";
 
 function StatTile({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="rounded-2xl border border-slate-100 bg-white/70 p-4">
       <div className="text-xs text-slate-500">{label}</div>
       <div className="mt-1 text-2xl font-semibold text-slate-900">{value}</div>
+    </div>
+  );
+}
+
+function LeaderTile({ icon, title, name, value }: { icon: React.ReactNode; title: string; name: string; value: number }) {
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-white/70 p-4">
+      <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+        {icon}
+        {title}
+      </div>
+      <div className="mt-2 flex items-baseline justify-between gap-3">
+        <div className="min-w-0 truncate text-base font-extrabold text-slate-900">{name}</div>
+        <div className="shrink-0 rounded-xl bg-slate-50 px-2 py-1 text-sm font-extrabold text-slate-900">{value}</div>
+      </div>
     </div>
   );
 }
@@ -97,29 +113,37 @@ export default function StatsPage() {
           }
         />
         <CardContent>
-          <div className="grid grid-cols-2 gap-3">
-            <StatTile label="Più punti (stagione)" value={topTotal ? topTotal.displayName : "—"} />
-            <StatTile label="Punti totali" value={topTotal ? topTotal.value : 0} />
-            <StatTile label="Più esatti" value={topExact ? topExact.displayName : "—"} />
-            <StatTile label="Esatti" value={topExact ? topExact.value : 0} />
-
-
-          <div className="mt-6 grid grid-cols-2 gap-3">
-            <StatTile label="Più 1X2" value={topOutcome ? topOutcome.displayName : "—"} />
-            <StatTile label="1X2" value={topOutcome ? topOutcome.value : 0} />
-            <StatTile label="Più somma gol" value={topSumGoals ? topSumGoals.displayName : "—"} />
-            <StatTile label="Somma gol" value={topSumGoals ? topSumGoals.value : 0} />
+          <div className="grid gap-3 sm:grid-cols-2">
+            {topTotal ? (
+              <LeaderTile icon={<Trophy size={16} aria-hidden="true" />} title="Più punti" name={topTotal.displayName} value={topTotal.value} />
+            ) : (
+              <LeaderTile icon={<Trophy size={16} aria-hidden="true" />} title="Più punti" name="—" value={0} />
+            )}
+            {topExact ? (
+              <LeaderTile icon={<Target size={16} aria-hidden="true" />} title="Più esatti" name={topExact.displayName} value={topExact.value} />
+            ) : (
+              <LeaderTile icon={<Target size={16} aria-hidden="true" />} title="Più esatti" name="—" value={0} />
+            )}
+            {topOutcome ? (
+              <LeaderTile icon={<CheckCircle2 size={16} aria-hidden="true" />} title="Più 1X2" name={topOutcome.displayName} value={topOutcome.value} />
+            ) : (
+              <LeaderTile icon={<CheckCircle2 size={16} aria-hidden="true" />} title="Più 1X2" name="—" value={0} />
+            )}
+            {topSumGoals ? (
+              <LeaderTile icon={<Sigma size={16} aria-hidden="true" />} title="Più somma gol" name={topSumGoals.displayName} value={topSumGoals.value} />
+            ) : (
+              <LeaderTile icon={<Sigma size={16} aria-hidden="true" />} title="Più somma gol" name="—" value={0} />
+            )}
             {underOverOn ? (
-              <>
-                <StatTile label="Più U/O 2.5" value={topUnderOver ? topUnderOver.displayName : "—"} />
-                <StatTile label="U/O 2.5" value={topUnderOver ? topUnderOver.value : 0} />
-              </>
+              topUnderOver ? (
+                <LeaderTile icon={<TrendingUp size={16} aria-hidden="true" />} title="Più U/O 2.5" name={topUnderOver.displayName} value={topUnderOver.value} />
+              ) : (
+                <LeaderTile icon={<TrendingUp size={16} aria-hidden="true" />} title="Più U/O 2.5" name="—" value={0} />
+              )
             ) : null}
           </div>
 
-          </div>
-
-          <div className="mt-3 grid grid-cols-2 gap-3">
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <StatTile label="Media punti per giornata" value={data.avgPointsPerMatchday.toFixed(2)} />
             <StatTile label="Esatti totali (lega)" value={data.exactTotal} />
           </div>
@@ -140,7 +164,11 @@ export default function StatsPage() {
       </Card>
 
       <Card className="border border-slate-100">
-        <CardHeader title="Distribuzione punti" subtitle="Totale punti per utente per giornata (campione su giornate considerate)" />
+        <CardHeader
+          title="Distribuzione"
+          subtitle="Quanti utenti rientrano in ciascuna fascia punti (per giornata)"
+          right={<BarChart3 size={18} className="text-slate-500" aria-hidden="true" />}
+        />
         <CardContent>
           {data.distribution?.length ? (
             <div className="space-y-2">

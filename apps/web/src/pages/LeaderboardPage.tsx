@@ -45,6 +45,8 @@ export default function LeaderboardPage() {
     return idx >= 0 ? idx + 1 : null;
   }, [rows, user?.id]);
 
+  const leaderPoints = useMemo(() => (rows.length ? Number(rows[0].totalPoints || 0) : 0), [rows]);
+
   const [leagueName, setLeagueName] = useState<string>("");
   const [features, setFeatures] = useState<{ underOver25: boolean; matchdayAwards: boolean }>({ underOver25: false, matchdayAwards: false });
   const [tieBreakers, setTieBreakers] = useState<string[]>([]);
@@ -277,8 +279,10 @@ export default function LeaderboardPage() {
               const medalTone = idx === 0 ? "amber" : idx === 1 ? "blue" : idx === 2 ? "rose" : "gray";
               const medalGlow = idx <= 2 ? "tm-medal-glow" : "";
               const top3Row = idx <= 2 ? "tm-top3-row" : "";
+              const isMe = !!user?.id && r.userId === user.id;
+              const gap = idx === 0 ? 0 : Math.max(0, leaderPoints - Number(r.totalPoints || 0));
               return (
-              <div key={r.userId} className={`py-3 ${top3Row} ${user?.id && r.userId === user.id ? "rounded-2xl bg-[#2EC4B6]/10 px-3" : ""} ${flashCls}`}>
+              <div key={r.userId} className={`py-3 ${top3Row} ${isMe ? "rounded-2xl bg-[#2EC4B6]/10 px-3" : ""} ${flashCls}`}>
                 {/* Mobile: 2 righe senza scroll orizzontale. Desktop: layout a colonne */}
                 <div className="flex flex-col gap-2 sm:grid sm:grid-cols-12 sm:items-center sm:gap-3">
                   <div className="flex items-center justify-between sm:col-span-6 sm:justify-start sm:gap-3">
@@ -297,16 +301,19 @@ export default function LeaderboardPage() {
                       <div className="flex items-center gap-2">
                         <UserAvatar avatarId={(r as any).avatarId || null} size={26} className={`shadow-sm ${idx <= 2 ? "tm-top3-avatar" : ""}`} />
                         <Link className="font-medium hover:underline" to={`/users/${r.userId}`}>{r.displayName}</Link>
+                        {isMe ? <Badge tone="green">Tu</Badge> : null}
                         {idx <= 2 ? <Badge tone={medalTone}>Top {idx + 1}</Badge> : null}
                       </div>
                     </div>
                     <div className="text-right text-sm font-extrabold sm:hidden">
                       <AnimatedNumber value={r.totalPoints} /> pt
+                      {idx !== 0 ? <span className="ml-2 text-xs font-semibold text-slate-500">-{gap}</span> : null}
                     </div>
                   </div>
 
                   <div className="hidden sm:col-span-2 sm:block sm:text-right sm:text-sm sm:font-extrabold">
                     <AnimatedNumber value={r.totalPoints} /> pt
+                    {idx !== 0 ? <span className="ml-2 text-[11px] font-semibold text-slate-500">-{gap}</span> : null}
                   </div>
 
                   <div className="flex flex-wrap items-center justify-start gap-x-4 gap-y-1 text-xs text-slate-700 sm:col-span-4 sm:justify-end sm:flex-nowrap sm:gap-x-4">
