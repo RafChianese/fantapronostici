@@ -6,10 +6,180 @@ import { ensureMonetizationConfig, getMonetizationConfig } from "../lib/monetiza
 import { fetchFixtures, searchLeagues } from "../services/apiFootball.js";
 import { env } from "../lib/env.js";
 import { recalcAllScoresForLeague } from "../lib/scoring.js";
+import {
+  fetchCompetitionScorers,
+  fetchCompetitionTeams,
+  fetchCompetitionPlayerOptions,
+} from "../services/footballDataService.js";
 
 export const superRouter = Router();
 
 superRouter.use(requireAuth, requireSuperAdmin);
+
+// --- Global competition outcome (winner + top scorer) ---
+// This outcome is GLOBAL across all leagues: the SuperAdmin sets it once and it is propagated.
+const PutCompetitionOutcomeSchema = z.object({
+  winnerTeamId: z.number().int().positive().nullable().optional(),
+  winnerTeamName: z.string().trim().min(1).max(200).nullable().optional(),
+  topScorerPlayerId: z.number().int().positive().nullable().optional(),
+  topScorerPlayerName: z.string().trim().min(1).max(200).nullable().optional(),
+  topScorer2PlayerId: z.number().int().positive().nullable().optional(),
+  topScorer2PlayerName: z.string().trim().min(1).max(200).nullable().optional(),
+});
+
+async function getCompetitionProviderConfig() {
+  const ss = await prisma.superSetting.findFirst({ orderBy: { createdAt: "asc" } }).catch(() => null as any);
+  const provider = String(ss?.provider || "FOOTBALL_DATA").toUpperCase();
+  const competitionCode = String(ss?.footballDataCompetitionCode || "").trim();
+  const season = ss?.footballDataSeason ?? null;
+  return { provider, competitionCode, season };
+}
+
+superRouter.get("/competition-outcome", async (_req, res) => {
+  const { provider, competitionCode, season } = await getCompetitionProviderConfig();
+  // Read current "global" outcome from the most recently updated league outcome (if any)
+  const latest = await prisma.competitionOutcome.findFirst({ orderBy: { updatedAt: "desc" } }).catch(() => null as any);
+
+  let teams: any[] = [];
+  let scorers: any[] = [];
+  if (provider === "FOOTBALL_DATA" && competitionCode) {
+    try {
+      teams = await fetchCompetitionTeams({ competitionCode });
+    } catch {
+      teams = [];
+    }
+    try {
+      const resp = await fetchCompetitionScorers({ competitionCode, ...(season ? { season } : {}), limit: 50 });
+      scorers = Array.isArray((resp as any)?.scorers) ? (resp as any).scorers : [];
+    } catch {
+      scorers = [];
+    }
+    // Fallback: derive players from squads if scorers endpoint is empty (plan limitation)
+    if (!scorers.length) {
+      try {
+        const players = await fetchCompetitionPlayerOptions({ competitionCode });
+        scorers = players.map((p) => ({ id: p.id, name: p.name, teamName: p.teamName ?? null, goals: 0 }));
+      } catch {
+        scorers = [];
+      }
+    }
+  }
+
+  res.json({
+    outcome: latest
+      ? {
+          winner: latest.winnerTeamExternalId
+            ? { teamExternalId: latest.winnerTeamExternalId, teamName: latest.winnerTeamName }
+            : null,
+          topScorer: latest.topScorerPlayerExternalId
+            ? { playerExternalId: latest.topScorerPlayerExternalId, playerName: latest.topScorerPlayerName }
+            : null,
+          topScorer2: latest.topScorer2PlayerExternalId
+            ? { playerExternalId: latest.topScorer2PlayerExternalId, playerName: latest.topScorer2PlayerName }
+            : null,
+          resolvedAt: latest.resolvedAt ? new Date(latest.resolvedAt).toISOString() : null,
+        }
+      : { winner: null, topScorer: null, topScorer2: null, resolvedAt: null },
+    options: {
+      teams: teams
+        .map((t: any) => ({ id: Number(t.id), name: String(t.shortName || t.name || "").trim(), crest: (t as any).crest ?? null }))
+        .filter((t: any) => Number.isFinite(t.id) && t.name),
+      scorers: scorers
+        .map((s: any) => ({
+          id: Number(s?.player?.id ?? s?.id),
+          name: String(s?.player?.name ?? s?.name ?? "").trim(),
+          teamName: String(s?.team?.name ?? s?.teamName ?? "").trim() || null,
+          goals: Number(s?.goals ?? s?.numberOfGoals ?? 0) || 0,
+        }))
+        .filter((p: any) => Number.isFinite(p.id) && p.name),
+    },
+  });
+});
+
+superRouter.put("/competition-outcome", async (req, res) => {
+  const body = PutCompetitionOutcomeSchema.parse(req.body);
+  const { provider, competitionCode, season } = await getCompetitionProviderConfig();
+  const now = new Date();
+
+  const leagues = await prisma.league.findMany({ select: { id: true } });
+  // propagate outcome to ALL leagues
+  for (const l of leagues) {
+    await prisma.competitionOutcome.upsert({
+      where: { leagueId: l.id },
+      create: {
+        leagueId: l.id,
+        provider: provider === "FOOTBALL_DATA" ? "FOOTBALL_DATA" : provider,
+        competitionCode: competitionCode || null,
+        ...(season ? { season: Number(season) } : {}),
+        winnerTeamExternalId: body.winnerTeamId ?? null,
+        winnerTeamName: body.winnerTeamName ?? null,
+        topScorerPlayerExternalId: body.topScorerPlayerId ?? null,
+        topScorerPlayerName: body.topScorerPlayerName ?? null,
+        topScorer2PlayerExternalId: body.topScorer2PlayerId ?? null,
+        topScorer2PlayerName: body.topScorer2PlayerName ?? null,
+        resolvedAt: now,
+      },
+      update: {
+        provider: provider === "FOOTBALL_DATA" ? "FOOTBALL_DATA" : provider,
+        competitionCode: competitionCode || null,
+        ...(season ? { season: Number(season) } : { season: null }),
+        winnerTeamExternalId: body.winnerTeamId ?? null,
+        winnerTeamName: body.winnerTeamName ?? null,
+        topScorerPlayerExternalId: body.topScorerPlayerId ?? null,
+        topScorerPlayerName: body.topScorerPlayerName ?? null,
+        topScorer2PlayerExternalId: body.topScorer2PlayerId ?? null,
+        topScorer2PlayerName: body.topScorer2PlayerName ?? null,
+        resolvedAt: now,
+      },
+    });
+  }
+
+  // Apply awarded points to picks for each league, based on its rules.
+  const rules = await prisma.rule.findMany({
+    where: {
+      OR: [{ enableCompetitionWinner: true }, { enableCompetitionTopScorer: true }],
+    },
+    select: {
+      leagueId: true,
+      enableCompetitionWinner: true,
+      pointsCompetitionWinner: true,
+      enableCompetitionTopScorer: true,
+      pointsCompetitionTopScorer: true,
+    },
+  });
+
+  const winnerId = body.winnerTeamId ?? null;
+  const scorer1 = body.topScorerPlayerId ?? null;
+  const scorer2 = body.topScorer2PlayerId ?? null;
+
+  for (const r of rules) {
+    if (r.enableCompetitionWinner && winnerId) {
+      await prisma.competitionPick.updateMany({ where: { leagueId: r.leagueId, type: "WINNER" }, data: { pointsAwarded: 0 } });
+      await prisma.competitionPick.updateMany({
+        where: { leagueId: r.leagueId, type: "WINNER", teamExternalId: winnerId },
+        data: { pointsAwarded: r.pointsCompetitionWinner ?? 15 },
+      });
+    }
+
+    if (r.enableCompetitionTopScorer && (scorer1 || scorer2)) {
+      await prisma.competitionPick.updateMany({ where: { leagueId: r.leagueId, type: "TOP_SCORER" }, data: { pointsAwarded: 0 } });
+      const ids = [scorer1, scorer2].filter((x) => typeof x === "number" && Number.isFinite(x)) as number[];
+      if (ids.length) {
+        await prisma.competitionPick.updateMany({
+          where: { leagueId: r.leagueId, type: "TOP_SCORER", playerExternalId: { in: ids } },
+          data: { pointsAwarded: r.pointsCompetitionTopScorer ?? 12 },
+        });
+      }
+    }
+  }
+
+  // Recalc leaderboards (competition pick points affect totals)
+  for (const l of leagues) {
+    await recalcAllScoresForLeague(l.id);
+  }
+
+  res.json({ ok: true });
+});
 
 // --- Monetization (Rewarded Ads) ---
 superRouter.get("/monetization", async (_req, res) => {

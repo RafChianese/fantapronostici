@@ -248,9 +248,6 @@ export default function PredictionsPage() {
   // Simple in/out transition when switching match in match-by-match mode.
   const [matchEnter, setMatchEnter] = useState(true);
   const matchEnterTimerRef = useRef<any>(null);
-  // Mobile UX: swipe left/right to change match.
-  const swipeStartXRef = useRef<number | null>(null);
-  const swipeStartYRef = useRef<number | null>(null);
   const [toast, setToast] = useState<{ tone: "success" | "danger"; msg: string } | null>(null);
 
   const [detailOpen, setDetailOpen] = useState(false);
@@ -1006,7 +1003,7 @@ export default function PredictionsPage() {
             </CardContent>
           </Card>
 
-          {uiMode === "MATCH" && byMatchday.length ? (
+          {byMatchday.length ? (
             <Card>
               <CardHeader title="Giornata" subtitle="Seleziona la giornata su cui inserire i pronostici." />
               <CardContent>
@@ -1077,33 +1074,6 @@ export default function PredictionsPage() {
                   {currentMatch ? (
                     <div
                       className={`mt-4 rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5 transition-all duration-200 ${matchEnter ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1"}`}
-                      onTouchStart={(e) => {
-                        const t = e.touches?.[0];
-                        if (!t) return;
-                        swipeStartXRef.current = t.clientX;
-                        swipeStartYRef.current = t.clientY;
-                      }}
-                      onTouchEnd={(e) => {
-                        const startX = swipeStartXRef.current;
-                        const startY = swipeStartYRef.current;
-                        swipeStartXRef.current = null;
-                        swipeStartYRef.current = null;
-                        if (startX === null || startY === null) return;
-                        const t = e.changedTouches?.[0];
-                        if (!t) return;
-                        const dx = t.clientX - startX;
-                        const dy = t.clientY - startY;
-                        // Ignore vertical scroll gestures.
-                        if (Math.abs(dy) > Math.abs(dx)) return;
-                        const threshold = 48;
-                        if (dx <= -threshold) {
-                          // swipe left => next
-                          setCurrentIndex((i) => Math.min(currentMatches.length - 1, i + 1));
-                        } else if (dx >= threshold) {
-                          // swipe right => previous
-                          setCurrentIndex((i) => Math.max(0, i - 1));
-                        }
-                      }}
                     >
                       <div className="flex items-center justify-between gap-3">
                         <div className="text-xs text-slate-300">
@@ -1243,30 +1213,30 @@ export default function PredictionsPage() {
                         </div>
                       </div>
 
-                      <div className="mt-4 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
-                        <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-                          <div className="text-slate-300">Esito</div>
-                          <div className="mt-0.5 font-extrabold">{currentDerived ? currentDerived.outcome : "—"}</div>
-                        </div>
-                        <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-                          <div className="text-slate-300">Somma gol</div>
-                          <div className="mt-0.5 font-extrabold">{currentDerived ? currentDerived.sumGoals : "—"}</div>
-                        </div>
-                        {underOverEnabled ? (
+                      {currentDerived ? (
+                        <div className="mt-4 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
                           <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-                            <div className="text-slate-300">U/O 2.5</div>
-                            <div className="mt-0.5 font-extrabold">{currentDerived ? currentDerived.underOver : "—"}</div>
+                            <div className="text-slate-300">Esito</div>
+                            <div className="mt-0.5 font-extrabold">{currentDerived.outcome}</div>
                           </div>
-                        ) : null}
-                        <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-                          <div className="text-slate-300">Reale</div>
-                          <div className="mt-0.5 font-extrabold">{currentReal}</div>
+                          <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                            <div className="text-slate-300">Somma gol</div>
+                            <div className="mt-0.5 font-extrabold">{currentDerived.sumGoals}</div>
+                          </div>
+                          {underOverEnabled ? (
+                            <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                              <div className="text-slate-300">U/O 2.5</div>
+                              <div className="mt-0.5 font-extrabold">{currentDerived.underOver}</div>
+                            </div>
+                          ) : null}
+                          <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                            <div className="text-slate-300">Reale</div>
+                            <div className="mt-0.5 font-extrabold">{currentReal}</div>
+                          </div>
                         </div>
-                      </div>
-
-                      {!currentDerived ? (
-                        <div className="mt-2 text-xs text-slate-300">Inserisci entrambi i punteggi per vedere esito e metriche.</div>
-                      ) : null}
+                      ) : (
+                        <div className="mt-4 text-xs text-slate-300">Inserisci entrambi i punteggi per vedere esito e metriche.</div>
+                      )}
 
                       <div className="mt-5 flex items-center justify-between gap-3">
                         <button

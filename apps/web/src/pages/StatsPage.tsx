@@ -193,7 +193,7 @@ export default function StatsPage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="border border-slate-100">
         <CardHeader
           title="Distribuzione"
           subtitle="Quanti utenti rientrano in ciascuna fascia punti (per giornata)"
@@ -204,13 +204,13 @@ export default function StatsPage() {
             <div className="space-y-2">
               {data.distribution.map((b) => (
                 <div key={b.label} className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2">
-                  <div className="text-sm font-semibold text-slate-100">{b.label}</div>
+                  <div className="text-sm font-semibold text-slate-900">{b.label}</div>
                   <Badge>{b.count}</Badge>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-sm text-slate-300">Nessun dato.</div>
+            <div className="text-sm text-slate-600">Nessun dato.</div>
           )}
         </CardContent>
       </Card>

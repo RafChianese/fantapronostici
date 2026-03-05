@@ -15,7 +15,7 @@ export default function ForgotPasswordPage() {
             </div>
           </Alert>
           <div className="text-center text-sm text-slate-600">
-            Torna al <Link className="text-rose-300 underline" to="/login">login</Link>.
+            Torna al <Link className="text-slate-900 underline" to="/login">login</Link>.
           </div>
         </CardContent>
       </Card>

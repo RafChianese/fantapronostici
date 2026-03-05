@@ -297,7 +297,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             {user ? (
               <button
                 type="button"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-white shadow-sm md:hidden"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/25 bg-white/15 text-white shadow-sm md:hidden"
                 onClick={() => setDrawerOpen((v) => !v)}
                 aria-label="Apri menu"
               >
@@ -336,7 +336,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <NavLink
             to="/"
             className={({ isActive }) =>
-              `rounded-2xl px-3 py-2 text-sm font-semibold transition-colors ${isActive ? "bg-white/10 text-slate-100" : "text-slate-200 hover:bg-white/5"}`
+              `rounded-2xl px-3 py-2 text-sm font-semibold transition-colors ${isActive ? "bg-slate-800 text-slate-100" : "text-slate-200 hover:bg-slate-900"}`
             }
           >
             Home
@@ -347,7 +347,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               to="/admin"
               data-tour="admin-dashboard-link"
               className={({ isActive }) =>
-                `rounded-2xl px-3 py-2 text-sm font-semibold transition-colors ${isActive ? "bg-white/10 text-slate-100" : "text-slate-200 hover:bg-white/5"}`
+                `rounded-2xl px-3 py-2 text-sm font-semibold transition-colors ${isActive ? "bg-slate-800 text-slate-100" : "text-slate-200 hover:bg-slate-900"}`
               }
             >
               Area admin
@@ -358,7 +358,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <NavLink
               to="/super"
               className={({ isActive }) =>
-                `rounded-2xl px-3 py-2 text-sm font-semibold transition-colors ${isActive ? "bg-white/10 text-slate-100" : "text-slate-200 hover:bg-white/5"}`
+                `rounded-2xl px-3 py-2 text-sm font-semibold transition-colors ${isActive ? "bg-slate-800 text-slate-100" : "text-slate-200 hover:bg-slate-900"}`
               }
             >
               Area superAdmin
@@ -369,7 +369,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <button
               type="button"
               onClick={() => setDesktopMenuOpen((v) => !v)}
-              className="inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-sm font-semibold text-slate-200 hover:bg-white/5"
+              className="inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-900"
               aria-haspopup="menu"
               aria-expanded={desktopMenuOpen ? "true" : "false"}
             >
@@ -380,7 +380,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             {desktopMenuOpen ? (
               <div
                 role="menu"
-                className="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-2xl tm-glass-sheet"
+                className="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 shadow-lg"
               >
                 <div className="p-2">
                   <NavItem to="/leaderboard" onClick={() => setDesktopMenuOpen(false)}>
@@ -402,7 +402,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                       </NavItem>
                     </>
                   ) : null}
-                  <div className="my-2 h-px bg-white/10" />
+                  <div className="my-2 h-px bg-slate-100" />
                   <NavItem to="/account" onClick={() => setDesktopMenuOpen(false)}>
                     Account
                   </NavItem>
@@ -418,7 +418,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 {approved.length > 1 ? (
                   <div className="hidden md:flex items-center gap-2">
                     <select
-                      className="rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-slate-100"
+                      className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100"
                       value={activeMembership?.league.id || ""}
                       onChange={(e) => doSwitchLeague(e.target.value)}
                     >
@@ -462,8 +462,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {user && drawerOpen ? (
         <div className="fixed inset-0 z-30 md:hidden">
           <div className="absolute inset-0 bg-black/30" onClick={() => setDrawerOpen(false)} aria-hidden="true" />
-          <div className="absolute left-0 top-0 h-full w-[82%] max-w-sm tm-glass-sheet shadow-xl border-r border-white/10">
-            <div className="border-b border-white/10 p-4">
+          <div className="absolute left-0 top-0 h-full w-[82%] max-w-sm bg-slate-950 shadow-xl border-r border-slate-800">
+            <div className="border-b border-slate-800 p-4">
               <div className="text-sm font-semibold text-slate-100">{user.displayName}</div>
               <div className="text-xs text-slate-400">{user.email}</div>
 
@@ -471,7 +471,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <div className="mt-3">
                   <div className="text-xs text-slate-400">Cambia lega</div>
                   <select
-                    className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-slate-100"
+                    className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100"
                     value={activeMembership?.league.id || ""}
                     onChange={(e) => {
                       doSwitchLeague(e.target.value);
@@ -537,7 +537,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <div className="mt-3 border-t border-slate-100 pt-3">
                   <button
                     type="button"
-                    className="w-full rounded-xl px-3 py-2 text-left text-sm font-medium text-slate-200 hover:bg-white/5"
+                    className="w-full rounded-xl px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-100"
                     onClick={() => {
                       logout();
                       setDrawerOpen(false);
@@ -569,7 +569,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Mobile bottom nav (main sections only) */}
       {mobileMainTabsVisible ? (
-        <nav className="fixed bottom-0 left-0 right-0 z-20 border-t border-white/10 tm-glass-sheet md:hidden">
+        <nav className="fixed bottom-0 left-0 right-0 z-20 border-t border-slate-800 bg-slate-950 md:hidden">
           <div
             data-tour="bottom-tabs"
             className="mx-auto flex max-w-6xl items-stretch gap-2 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3"

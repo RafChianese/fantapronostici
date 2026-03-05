@@ -432,6 +432,9 @@ model CompetitionOutcome {
   winnerTeamName       String?
   topScorerPlayerExternalId Int?
   topScorerPlayerName       String?
+  // Optional second top-scorer (tie breaker decided by SuperAdmin)
+  topScorer2PlayerExternalId Int?
+  topScorer2PlayerName       String?
   resolvedAt DateTime?
   updatedAt  DateTime @updatedAt
 

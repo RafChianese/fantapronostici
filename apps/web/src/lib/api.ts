@@ -396,6 +396,10 @@ export const api = {
     return request(`/api/super/external/leagues?${params.toString()}`);
   },
   superImportFixtures: () => request(`/api/super/external/import-fixtures`, { method: "POST" }),
+
+  // super admin - global competition outcome
+  superCompetitionOutcome: () => request(`/api/super/competition-outcome`),
+  superSaveCompetitionOutcome: (payload: any) => request(`/api/super/competition-outcome`, { method: "PUT", body: JSON.stringify(payload) }),
   // league stats
   leagueStats: () => request(`/api/league/stats`) as Promise<LeagueStatsResponse>,
 };
