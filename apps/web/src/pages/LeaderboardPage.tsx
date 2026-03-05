@@ -19,6 +19,7 @@ type Row = {
   sumGoalsHits: number;
   underOverHits?: number;
   matchdayWins?: number;
+  competitionPoints?: number;
 };
 
 type SortValue = {
@@ -247,6 +248,7 @@ export default function LeaderboardPage() {
               <div className="flex items-center gap-2"><Target size={16} aria-hidden="true" /> <b>Esatti</b>: risultati esatti</div>
               <div className="flex items-center gap-2"><CheckCircle2 size={16} aria-hidden="true" /> <b>1X2</b>: esito corretto</div>
               <div className="flex items-center gap-2"><Sigma size={16} aria-hidden="true" /> <b>Somma gol</b>: totale gol corretto</div>
+              <div className="flex items-center gap-2"><span className="text-base" aria-hidden="true">🏆</span> <b>Bonus torneo</b>: punti da vincitore e/o capocannoniere</div>
               {features.underOver25 ? (
                 <div className="flex items-center gap-2"><TrendingUp size={16} aria-hidden="true" /> <b>U/O 2.5</b>: Under (≤2) / Over (≥3)</div>
               ) : null}
@@ -336,14 +338,38 @@ export default function LeaderboardPage() {
                       </div>
                     </div>
                     <div className="text-right text-sm font-extrabold sm:hidden">
-                      <AnimatedNumber value={r.totalPoints} /> pt
-                      {idx !== 0 ? <span className="ml-2 text-xs font-semibold text-slate-500">-{gap}</span> : null}
+                      <div className="flex flex-col items-end gap-1">
+                        <div>
+                          <AnimatedNumber value={r.totalPoints} /> pt
+                          {idx !== 0 ? <span className="ml-2 text-xs font-semibold text-slate-500">-{gap}</span> : null}
+                        </div>
+                        {(r.competitionPoints ?? 0) > 0 ? (
+                          <span
+                            className="inline-flex items-center gap-1 rounded-full border border-amber-400/20 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-200"
+                            title="Bonus pronostici torneo (vincitore e/o capocannoniere)"
+                          >
+                            +{r.competitionPoints} <span aria-hidden="true">🏆</span>
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
 
                   <div className="hidden sm:col-span-2 sm:block sm:text-right sm:text-sm sm:font-extrabold">
-                    <AnimatedNumber value={r.totalPoints} /> pt
-                    {idx !== 0 ? <span className="ml-2 text-[11px] font-semibold text-slate-500">-{gap}</span> : null}
+                    <div className="flex flex-col items-end gap-1">
+                      <div>
+                        <AnimatedNumber value={r.totalPoints} /> pt
+                        {idx !== 0 ? <span className="ml-2 text-[11px] font-semibold text-slate-500">-{gap}</span> : null}
+                      </div>
+                      {(r.competitionPoints ?? 0) > 0 ? (
+                        <span
+                          className="inline-flex items-center gap-1 rounded-full border border-amber-400/20 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-200"
+                          title="Bonus pronostici torneo (vincitore e/o capocannoniere)"
+                        >
+                          +{r.competitionPoints} <span aria-hidden="true">🏆</span>
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
 
                   <div className="flex flex-wrap items-center justify-start gap-x-4 gap-y-1 text-xs text-slate-700 sm:col-span-4 sm:justify-end sm:flex-nowrap sm:gap-x-4">
