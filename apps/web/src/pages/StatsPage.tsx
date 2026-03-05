@@ -102,6 +102,36 @@ export default function StatsPage() {
 
   return (
     <div className="space-y-6">
+      <div className="overflow-hidden rounded-3xl border border-slate-200 shadow-sm">
+        <div
+          className="text-white"
+          style={{
+            backgroundImage:
+              "radial-gradient(1200px 520px at 50% -10%, rgba(255,255,255,0.10), transparent 60%), radial-gradient(900px 420px at 15% 35%, rgba(46,196,182,0.16), transparent 60%), radial-gradient(900px 420px at 85% 35%, rgba(239,68,68,0.16), transparent 60%), linear-gradient(180deg, #020617 0%, #0b1220 45%, #020617 100%)",
+          }}
+        >
+          <div className="p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-300">
+                  <BarChart3 className="h-4 w-4" aria-hidden="true" />
+                  Statistiche
+                </div>
+                <div className="mt-1 text-2xl font-extrabold tracking-tight">Statistiche lega</div>
+                <div className="mt-1 text-sm text-slate-300">{headline}</div>
+              </div>
+              <button
+                type="button"
+                className="rounded-xl border border-rose-400/50 bg-black/40 px-4 py-2 text-sm font-extrabold text-white shadow-sm transition-all hover:bg-black/55"
+                onClick={refetch}
+              >
+                Aggiorna
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <Card>
         <CardHeader
           title="Statistiche lega"

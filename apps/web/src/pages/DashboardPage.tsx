@@ -16,7 +16,7 @@ function getInitials(name: string) {
 }
 
 
-type LeaderRow = { userId: string; totalPoints: number };
+type LeaderRow = { userId: string; totalPoints: number; displayName?: string | null };
 
 function useCountdown(targetIso?: string) {
   const [now, setNow] = useState(Date.now());
@@ -465,80 +465,136 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* 5) Next actions (the "center of the game") */}
-      <Card className="mb-4 rounded-3xl">
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <div className="text-sm font-bold text-slate-900">Prossima giornata</div>
-            <div className="text-sm font-extrabold text-slate-900">
-              {nextEditableMatchday ? `#${nextEditableMatchday}` : "—"}
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-5 w-1/2" />
-              <Skeleton className="h-10 w-full rounded-2xl" />
-              <Skeleton className="h-3 w-2/3" />
-            </div>
-          ) : nextEditableMatchday ? (
-            (() => {
-              const meta = matchdayMeta[nextEditableMatchday] || { totalMatches: 0, predicted: 0, firstKickoff: undefined };
-              const total = Math.max(0, Number(meta.totalMatches || 0));
-              const done = Math.min(total, Math.max(0, Number(meta.predicted || 0)));
-              const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-              const firstKickoff = meta.firstKickoff ? new Date(meta.firstKickoff) : null;
-              return (
-                <div className="space-y-3">
-                  <div className="text-sm font-medium text-slate-700">
-                    {total > 0 ? (
-                      <>
-                        ⚽ <b>{done}</b> / <b>{total}</b> partite pronosticate
-                      </>
-                    ) : (
-                      <>Inserisci i pronostici della giornata</>
-                    )}
-                  </div>
-
-                  {/* Progress */}
-                  {total > 0 ? (
-                    <div className="rounded-full bg-slate-100 p-1">
-                      <div
-                        className="h-2.5 rounded-full bg-emerald-500 transition-[width]"
-                        style={{ width: `${pct}%` }}
-                        aria-label={`Avanzamento pronostici: ${pct}%`}
-                      />
-                    </div>
-                  ) : null}
-
-                  <Link to={`/predictions?md=${nextEditableMatchday}`} className="block">
-                    <Button className="w-full rounded-2xl">Inserisci pronostici</Button>
-                  </Link>
-
-                  <div className="text-xs font-semibold text-slate-500">
-                    {isLocked ? (
-                      lockCountdown ? (
-                        <>Lega in lock · Sblocco tra {lockCountdown}</>
-                      ) : (
-                        <>Lega in lock</>
-                      )
-                    ) : firstKickoff ? (
-                      <>Prima partita: {firstKickoff.toLocaleString()}</>
-                    ) : (
-                      <>Puoi modificare fino all’inizio della prima partita</>
-                    )}
-                  </div>
+      {/* 5) Next actions (the "center of the game") - v2 hero */}
+      <div className="mb-4 overflow-hidden rounded-3xl border border-slate-200 shadow-sm">
+        <div
+          className="text-white"
+          style={{
+            backgroundImage:
+              "radial-gradient(1200px 520px at 50% -10%, rgba(255,255,255,0.10), transparent 60%), radial-gradient(900px 420px at 15% 35%, rgba(46,196,182,0.16), transparent 60%), radial-gradient(900px 420px at 85% 35%, rgba(239,68,68,0.16), transparent 60%), linear-gradient(180deg, #020617 0%, #0b1220 45%, #020617 100%)",
+          }}
+        >
+          <div className="p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-xs font-bold uppercase tracking-wide text-slate-300">Prossima giornata</div>
+                <div className="mt-1 text-2xl font-extrabold tracking-tight">
+                  {nextEditableMatchday ? `Giornata ${nextEditableMatchday}` : "—"}
                 </div>
-              );
-            })()
-          ) : (
-            <div className="space-y-2">
-              <div className="text-sm font-medium text-slate-700">Nessuna giornata pronosticabile al momento.</div>
-              <div className="text-xs font-semibold text-slate-500">
-                {isLocked && lockCountdown ? <>Lega in lock · Sblocco tra {lockCountdown}</> : <>Riprova più tardi</>}
+              </div>
+              <div className="text-right">
+                <div className="text-xs text-slate-300">Avanzamento</div>
+                <div className="mt-1 inline-flex items-center rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-extrabold">
+                  {nextEditableMatchday ? "Match" : "—"}
+                </div>
               </div>
             </div>
+
+            {loading ? (
+              <div className="mt-4 space-y-3">
+                <div className="h-4 w-1/2 rounded bg-white/10" />
+                <div className="h-10 w-full rounded-2xl bg-white/10" />
+                <div className="h-3 w-2/3 rounded bg-white/10" />
+              </div>
+            ) : nextEditableMatchday ? (
+              (() => {
+                const meta = matchdayMeta[nextEditableMatchday] || { totalMatches: 0, predicted: 0, firstKickoff: undefined };
+                const total = Math.max(0, Number(meta.totalMatches || 0));
+                const done = Math.min(total, Math.max(0, Number(meta.predicted || 0)));
+                const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+                const firstKickoff = meta.firstKickoff ? new Date(meta.firstKickoff) : null;
+                return (
+                  <div className="mt-4 space-y-3">
+                    <div className="text-sm font-semibold text-slate-100">
+                      {total > 0 ? (
+                        <>
+                          ⚽ <b>{done}</b> / <b>{total}</b> partite pronosticate
+                        </>
+                      ) : (
+                        <>Inserisci i pronostici della giornata</>
+                      )}
+                    </div>
+
+                    {total > 0 ? (
+                      <div className="rounded-full bg-white/10 p-1">
+                        <div className="h-2.5 rounded-full bg-emerald-400 transition-[width]" style={{ width: `${pct}%` }} />
+                      </div>
+                    ) : null}
+
+                    <Link to={`/predictions?md=${nextEditableMatchday}`} className="block">
+                      <button
+                        className="w-full rounded-2xl border border-rose-400/50 bg-black/40 px-4 py-3 text-sm font-extrabold text-white shadow-sm transition-all hover:bg-black/55"
+                        type="button"
+                      >
+                        Inserisci pronostici
+                      </button>
+                    </Link>
+
+                    <div className="text-xs font-semibold text-slate-300">
+                      {isLocked ? (
+                        lockCountdown ? (
+                          <>🔒 Lega in lock · Sblocco tra <b className="text-white">{lockCountdown}</b></>
+                        ) : (
+                          <>🔒 Lega in lock</>
+                        )
+                      ) : firstKickoff ? (
+                        <>⏰ Prima partita: <b className="text-white">{firstKickoff.toLocaleString()}</b></>
+                      ) : (
+                        <>Puoi modificare fino all’inizio della prima partita</>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()
+            ) : (
+              <div className="mt-4 space-y-2">
+                <div className="text-sm font-semibold text-slate-200">Nessuna giornata pronosticabile al momento.</div>
+                <div className="text-xs font-semibold text-slate-300">
+                  {isLocked && lockCountdown ? <>🔒 Lega in lock · Sblocco tra <b className="text-white">{lockCountdown}</b></> : <>Riprova più tardi</>}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Mini classifica */}
+      <Card className="mb-4 rounded-3xl">
+        <CardHeader title="Top 5 lega" subtitle="" right={<Link to="/leaderboard"><Button variant="secondary">Vai</Button></Link>} />
+        <CardContent>
+          {loading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-10 rounded-2xl" />
+              <Skeleton className="h-10 rounded-2xl" />
+              <Skeleton className="h-10 rounded-2xl" />
+            </div>
+          ) : leader.length ? (
+            <div className="space-y-2">
+              {leader.slice(0, 5).map((r, i) => {
+                const isMe = r.userId === user?.id;
+                const gap = i === 0 ? 0 : Math.max(0, Number(leader[0]?.totalPoints ?? 0) - Number(r.totalPoints ?? 0));
+                return (
+                  <div key={r.userId} className={`flex items-center justify-between rounded-2xl border px-3 py-2 ${isMe ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-white"}`}>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`grid h-8 w-8 place-items-center rounded-xl text-sm font-extrabold ${i === 0 ? "bg-amber-100 text-amber-800" : i === 1 ? "bg-slate-100 text-slate-700" : i === 2 ? "bg-orange-100 text-orange-800" : "bg-slate-50 text-slate-700"}`}>
+                        {i + 1}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-bold text-slate-900">{isMe ? "Tu" : (r.displayName || `User ${String(r.userId).slice(0, 6)}`)}</div>
+                        <div className="text-[11px] font-semibold text-slate-500">{gap > 0 ? `-${gap} dal leader` : "Leader"}</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-extrabold text-slate-900">{r.totalPoints}</div>
+                      <div className="text-[11px] font-semibold text-slate-500">pt</div>
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="text-xs text-slate-500">(Nomi completi nella pagina Classifica.)</div>
+            </div>
+          ) : (
+            <div className="text-sm text-slate-600">Classifica non disponibile.</div>
           )}
         </CardContent>
       </Card>

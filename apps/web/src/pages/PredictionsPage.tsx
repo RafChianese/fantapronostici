@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Lock, X, Info } from "lucide-react";
+import { Lock, X, Info, ChevronLeft, ChevronRight, Save } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { api, CompetitionPredictionsResponse } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { useLoading } from "../lib/loading";
+import { useToast as useGlobalToast } from "../lib/toast";
 import { Alert, Badge, Button, Card, CardContent, CardHeader, Input, Skeleton } from "../components/ui";
 import { SearchableSelect } from "../components/SearchableSelect";
 import { AnimatedNumber } from "../components/AnimatedNumber";
@@ -241,6 +242,12 @@ export default function PredictionsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveHint, setSaveHint] = useState<string>("");
+  const globalToast = useGlobalToast();
+  const lastSavedToastAtRef = useRef<number>(0);
+
+  // Simple in/out transition when switching match in match-by-match mode.
+  const [matchEnter, setMatchEnter] = useState(true);
+  const matchEnterTimerRef = useRef<any>(null);
   const [toast, setToast] = useState<{ tone: "success" | "danger"; msg: string } | null>(null);
 
   const [detailOpen, setDetailOpen] = useState(false);
@@ -741,6 +748,16 @@ export default function PredictionsPage() {
     });
   }, [currentMatches.length, selectedMatchday]);
 
+  useEffect(() => {
+    // Trigger a small transition when the current match changes.
+    if (matchEnterTimerRef.current) window.clearTimeout(matchEnterTimerRef.current);
+    setMatchEnter(false);
+    matchEnterTimerRef.current = window.setTimeout(() => setMatchEnter(true), 10);
+    return () => {
+      if (matchEnterTimerRef.current) window.clearTimeout(matchEnterTimerRef.current);
+    };
+  }, [currentMatch?.id]);
+
   const currentMatch = currentMatches[currentIndex] ?? null;
   const currentPred = currentMatch ? preds[currentMatch.id] : undefined;
   const canEditCurrent = currentMatch ? !isMatchLocked(currentMatch) : false;
@@ -847,6 +864,13 @@ export default function PredictionsPage() {
     try {
       await api.savePredictions(editableItems);
       setSaveHint("Salvato ✅");
+
+      // Toast (throttled): users want certainty that the prediction was saved.
+      const now = Date.now();
+      if (now - lastSavedToastAtRef.current > 4500) {
+        lastSavedToastAtRef.current = now;
+        globalToast.push({ tone: "success", msg: "Pronostici salvati", ttlMs: 2200 });
+      }
       // Reload from API to ensure UI is consistent with server.
       const p = await api.myPredictions();
       const map: Record<string, PredictionState> = {};
@@ -1006,7 +1030,13 @@ export default function PredictionsPage() {
 
           {uiMode === "MATCH" ? (
             <Card className="overflow-hidden border-slate-200">
-              <div className="bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white">
+              <div
+                className="text-white"
+                style={{
+                  backgroundImage:
+                    "radial-gradient(1200px 520px at 50% -10%, rgba(255,255,255,0.10), transparent 60%), radial-gradient(900px 420px at 15% 35%, rgba(46,196,182,0.18), transparent 60%), radial-gradient(900px 420px at 85% 35%, rgba(239,68,68,0.18), transparent 60%), linear-gradient(180deg, #020617 0%, #0b1220 45%, #020617 100%)",
+                }}
+              >
                 <div className="px-4 py-4 sm:px-6 sm:py-6">
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -1023,8 +1053,25 @@ export default function PredictionsPage() {
                     </div>
                   </div>
 
+                  {/* Progress dots (tap to jump) */}
+                  {currentMatches.length ? (
+                    <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-1">
+                      {currentMatches.map((m, idx) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => setCurrentIndex(idx)}
+                          title={`${idx + 1}. ${m.homeTeam} - ${m.awayTeam}`}
+                          className={`h-2.5 w-2.5 shrink-0 rounded-full transition-all ${idx === currentIndex ? "bg-emerald-300 ring-2 ring-emerald-200/40" : "bg-white/15 hover:bg-white/25"}`}
+                        />
+                      ))}
+                    </div>
+                  ) : null}
+
                   {currentMatch ? (
-                    <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+                    <div
+                      className={`mt-4 rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5 transition-all duration-200 ${matchEnter ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1"}`}
+                    >
                       <div className="flex items-center justify-between gap-3">
                         <div className="text-xs text-slate-300">
                           {currentMatch.status === "NOT_STARTED" ? "Non iniziata" : currentMatch.status === "IN_PROGRESS" ? "In corso" : "Terminata"}
@@ -1043,7 +1090,73 @@ export default function PredictionsPage() {
                         </div>
                       </div>
 
-                      <div className="mt-5 grid grid-cols-3 items-center gap-3">
+                      {/*
+                        Mobile UX: keep team names/logos clearly visible.
+                        On small screens, show teams on top and the score inputs below.
+                        On >=sm, keep the 3-column layout.
+                      */}
+
+                      {/* Mobile (<sm) */}
+                      <div className="mt-5 space-y-4 sm:hidden">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              {currentMatch.homeLogo ? (
+                                <img src={currentMatch.homeLogo} alt="" className="h-10 w-10 rounded-full bg-white/10 object-contain" />
+                              ) : (
+                                <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-sm font-bold">
+                                  {String(currentMatch.homeTeam).slice(0, 1)}
+                                </span>
+                              )}
+                              <div className="min-w-0">
+                                <div className="truncate text-base font-extrabold">{currentMatch.homeTeam}</div>
+                                <div className="text-[11px] text-slate-300">Casa</div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="min-w-0 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <div className="min-w-0">
+                                <div className="truncate text-base font-extrabold">{currentMatch.awayTeam}</div>
+                                <div className="text-[11px] text-slate-300">Trasferta</div>
+                              </div>
+                              {currentMatch.awayLogo ? (
+                                <img src={currentMatch.awayLogo} alt="" className="h-10 w-10 rounded-full bg-white/10 object-contain" />
+                              ) : (
+                                <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-sm font-bold">
+                                  {String(currentMatch.awayTeam).slice(0, 1)}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-center gap-2">
+                          <Input
+                            inputMode="numeric"
+                            disabled={!canEditCurrent}
+                            aria-label={`Gol ${currentMatch.homeTeam}`}
+                            className="!w-16 !h-14 !px-2 text-center !text-3xl !font-extrabold !bg-white !text-slate-900 !border-2 !border-white/40 hover:!border-white/70 focus:!border-emerald-300 focus:!ring-2 focus:!ring-emerald-200 shadow-lg"
+                            value={currentPred?.homeGoals === undefined ? "" : String(currentPred.homeGoals)}
+                            placeholder="0"
+                            onChange={(e) => setCurrentScore("home", e.target.value)}
+                          />
+                          <span className="text-2xl font-black text-slate-200">-</span>
+                          <Input
+                            inputMode="numeric"
+                            disabled={!canEditCurrent}
+                            aria-label={`Gol ${currentMatch.awayTeam}`}
+                            className="!w-16 !h-14 !px-2 text-center !text-3xl !font-extrabold !bg-white !text-slate-900 !border-2 !border-white/40 hover:!border-white/70 focus:!border-emerald-300 focus:!ring-2 focus:!ring-emerald-200 shadow-lg"
+                            value={currentPred?.awayGoals === undefined ? "" : String(currentPred.awayGoals)}
+                            placeholder="0"
+                            onChange={(e) => setCurrentScore("away", e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Desktop/tablet (>=sm) */}
+                      <div className="mt-5 hidden sm:grid grid-cols-3 items-center gap-3">
                         <div className="min-w-0 text-left">
                           <div className="flex items-center gap-2">
                             {currentMatch.homeLogo ? (
@@ -1123,17 +1236,39 @@ export default function PredictionsPage() {
                       )}
 
                       <div className="mt-5 flex items-center justify-between gap-3">
-                        <Button variant="secondary" disabled={currentIndex <= 0} onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))}>
+                        <button
+                          type="button"
+                          disabled={currentIndex <= 0}
+                          onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))}
+                          className="inline-flex items-center justify-center gap-2 rounded-xl border border-rose-400/40 bg-black/40 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:bg-black/55"
+                        >
+                          <ChevronLeft className="h-4 w-4" aria-hidden="true" />
                           Previous
-                        </Button>
-                        <div className="text-xs text-slate-300">{saveHint ? saveHint : saving ? "Salvataggio…" : ""}</div>
-                        <Button
-                          variant="secondary"
+                        </button>
+
+                        <div className="flex items-center gap-2 text-xs text-slate-200">
+                          {saving ? (
+                            <span className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                              <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-white/20 border-t-white/80" />
+                              Salvataggio…
+                            </span>
+                          ) : saveHint ? (
+                            <span className="inline-flex items-center gap-2 rounded-xl border border-emerald-300/20 bg-emerald-400/10 px-3 py-2">
+                              <Save className="h-4 w-4" aria-hidden="true" />
+                              {saveHint}
+                            </span>
+                          ) : null}
+                        </div>
+
+                        <button
+                          type="button"
                           disabled={currentIndex >= currentMatches.length - 1}
                           onClick={() => setCurrentIndex((i) => Math.min(currentMatches.length - 1, i + 1))}
+                          className="inline-flex items-center justify-center gap-2 rounded-xl border border-rose-400/40 bg-black/40 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:bg-black/55"
                         >
                           Next
-                        </Button>
+                          <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                        </button>
                       </div>
 
                       {canEditCurrent ? (

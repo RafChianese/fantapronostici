@@ -117,7 +117,39 @@ export default function LeaderboardPage() {
   }, [sortKey, sortDir, activeLeagueId]);
 
   return (
-    <Card>
+    <div className="space-y-4">
+      <div className="overflow-hidden rounded-3xl border border-slate-200 shadow-sm">
+        <div
+          className="text-white"
+          style={{
+            backgroundImage:
+              "radial-gradient(1200px 520px at 50% -10%, rgba(255,255,255,0.10), transparent 60%), radial-gradient(900px 420px at 15% 35%, rgba(46,196,182,0.16), transparent 60%), radial-gradient(900px 420px at 85% 35%, rgba(239,68,68,0.16), transparent 60%), linear-gradient(180deg, #020617 0%, #0b1220 45%, #020617 100%)",
+          }}
+        >
+          <div className="p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-300">
+                  <Trophy className="h-4 w-4" aria-hidden="true" />
+                  Classifica
+                </div>
+                <div className="mt-1 text-2xl font-extrabold tracking-tight">{leagueName || "Classifica generale"}</div>
+                {rows.length ? <div className="mt-1 text-sm text-slate-300">Leader: {rows[0].displayName} · <b className="text-white">{rows[0].totalPoints}</b> pt</div> : null}
+              </div>
+              <div className="text-right">
+                {myRank ? (
+                  <div className="inline-flex flex-col items-end rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
+                    <div className="text-[11px] font-semibold text-slate-300">La tua posizione</div>
+                    <div className="text-lg font-extrabold">#{myRank}</div>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <Card>
       <CardHeader
         title="Classifica generale"
         subtitle={leagueName ? `Lega: ${leagueName}` : "Seleziona una lega per vedere la classifica."}
@@ -346,6 +378,7 @@ export default function LeaderboardPage() {
           </div>
         )}
       </CardContent>
-    </Card>
+      </Card>
+    </div>
   );
 }
