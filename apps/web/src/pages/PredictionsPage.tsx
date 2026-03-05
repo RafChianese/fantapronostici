@@ -106,20 +106,33 @@ function CompetitionPredictionsPanel() {
 
   const enabled = useMemo(() => {
     const d: any = data;
+
     const winner = Boolean(
       d?.enabled?.winner ??
+        d?.enabled?.competitionWinner ??
+        d?.enabled?.competition_winner ??
+        d?.enabledCompetitionWinner ??
+        d?.enabled_competition_winner ??
         d?.enabledWinner ??
         d?.winnerEnabled ??
+        d?.competitionWinnerEnabled ??
         d?.rules?.enableCompetitionWinner ??
         d?.leagueRules?.enableCompetitionWinner
     );
+
     const topScorer = Boolean(
       d?.enabled?.topScorer ??
+        d?.enabled?.competitionTopScorer ??
+        d?.enabled?.competition_top_scorer ??
+        d?.enabledCompetitionTopScorer ??
+        d?.enabled_competition_top_scorer ??
         d?.enabledTopScorer ??
         d?.topScorerEnabled ??
+        d?.competitionTopScorerEnabled ??
         d?.rules?.enableCompetitionTopScorer ??
         d?.leagueRules?.enableCompetitionTopScorer
     );
+
     return { winner, topScorer };
   }, [data]);
 

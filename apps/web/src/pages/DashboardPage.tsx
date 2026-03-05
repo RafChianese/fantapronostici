@@ -251,6 +251,30 @@ export default function DashboardPage() {
   const nextPct = nextTotal > 0 ? Math.round((nextDone / nextTotal) * 100) : 0;
   const nextCountdown = useCountdown(nextMeta?.firstKickoff);
 
+
+const tournamentMeta = useMemo(() => {
+  const rules: any = (summary as any)?.leagueRules ?? (summary as any)?.rules ?? (summary as any)?.league?.rules ?? null;
+  const enableWinner = Boolean(
+    rules?.enableCompetitionWinner ?? rules?.enable_competition_winner ?? (summary as any)?.enableCompetitionWinner ?? (summary as any)?.competitionWinnerEnabled
+  );
+  const enableTopScorer = Boolean(
+    rules?.enableCompetitionTopScorer ??
+      rules?.enable_competition_top_scorer ??
+      (summary as any)?.enableCompetitionTopScorer ??
+      (summary as any)?.competitionTopScorerEnabled
+  );
+
+  const total = (enableWinner ? 1 : 0) + (enableTopScorer ? 1 : 0);
+
+  const picks: any = (summary as any)?.competitionPicks ?? (summary as any)?.competitionPick ?? (summary as any)?.tournamentPicks ?? null;
+  const hasWinner = Boolean(picks?.winner?.teamExternalId ?? picks?.winnerTeamExternalId ?? picks?.winnerTeamId);
+  const hasTop = Boolean(picks?.topScorer?.playerExternalId ?? picks?.topScorerPlayerExternalId ?? picks?.topScorerPlayerId);
+  const done = (enableWinner && hasWinner ? 1 : 0) + (enableTopScorer && hasTop ? 1 : 0);
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+
+  return { enableWinner, enableTopScorer, total, done, pct };
+}, [summary]);
+
   const recentFinishedMatches = useMemo(() => {
     const arr = Array.isArray(matches) ? matches : [];
     return arr
@@ -294,11 +318,11 @@ export default function DashboardPage() {
     return (
       <Link
         to={`/predictions?md=${p.md}`}
-        className="group relative grid h-[52px] w-[52px] sm:h-[68px] sm:w-[68px] place-items-center rounded-full border border-white/10 bg-white/5 shadow-[0_10px_30px_rgba(0,0,0,0.35)] hover:bg-white/10"
+        className="group relative grid h-[48px] w-[48px] sm:h-[68px] sm:w-[68px] place-items-center rounded-full border border-white/10 bg-white/5 shadow-[0_10px_30px_rgba(0,0,0,0.35)] hover:bg-white/10"
         style={{ boxShadow: `0 10px 40px rgba(0,0,0,0.35), inset 0 0 0 2px ${ringColor}` }}
         aria-label={`Giornata ${p.md}`}
       >
-        <div className="absolute inset-[5px] sm:inset-[6px] rounded-full" style={{ background: `radial-gradient(circle at 30% 25%, rgba(255,255,255,0.14), ${fill} 55%, rgba(0,0,0,0.25))` }} />
+        <div className="absolute inset-[4px] sm:inset-[6px] rounded-full" style={{ background: `radial-gradient(circle at 30% 25%, rgba(255,255,255,0.14), ${fill} 55%, rgba(0,0,0,0.25))` }} />
         <div className="relative z-[1] text-center">
           <div className="text-[10px] sm:text-[11px] font-bold text-slate-300">G{p.md}</div>
           <div className={`mt-0.5 text-[15px] sm:text-base font-extrabold ${p.status === "IN_PROGRESS" ? "text-rose-200" : "text-slate-100"}`}>{label}</div>
@@ -368,18 +392,40 @@ export default function DashboardPage() {
                       Mancano <b className="text-slate-100">{Math.max(0, nextTotal - nextDone)}</b> match
                     </div>
                   </div>
-                  {/* Compact progress ring with unambiguous label (3/10) */}
-                  <div
-                    className="relative grid h-[74px] w-[74px] shrink-0 place-items-center rounded-full border border-white/10 bg-white/5 shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
-                    style={{ background: `conic-gradient(rgba(225,29,72,0.95) ${nextPct}%, rgba(255,255,255,0.08) 0)` }}
-                  >
-                    <div className="grid h-[58px] w-[58px] place-items-center rounded-full border border-white/10 bg-slate-950/50">
-                      <div className="text-center">
-                        <div className="text-base font-extrabold text-slate-100">{nextDone}/{nextTotal || "—"}</div>
-                        <div className="text-[10px] font-semibold text-slate-400">pronostici</div>
-                      </div>
-                    </div>
-                  </div>
+{/* Compact progress rings: matchday + tournament (if enabled) */}
+<div className="flex items-center gap-2">
+  <div
+    className="relative grid h-[74px] w-[74px] shrink-0 place-items-center rounded-full border border-white/10 bg-white/5 shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
+    style={{ background: `conic-gradient(rgba(225,29,72,0.95) ${nextPct}%, rgba(255,255,255,0.08) 0)` }}
+    title="Pronostici giornata"
+  >
+    <div className="grid h-[58px] w-[58px] place-items-center rounded-full border border-white/10 bg-slate-950/50">
+      <div className="text-center">
+        <div className="text-base font-extrabold text-slate-100">
+          {nextDone}/{nextTotal || "—"}
+        </div>
+        <div className="text-[10px] font-semibold text-slate-400">match</div>
+      </div>
+    </div>
+  </div>
+
+  {tournamentMeta.total > 0 ? (
+    <div
+      className="relative grid h-[74px] w-[74px] shrink-0 place-items-center rounded-full border border-white/10 bg-white/5 shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
+      style={{ background: `conic-gradient(rgba(251,191,36,0.9) ${tournamentMeta.pct}%, rgba(255,255,255,0.08) 0)` }}
+      title="Pronostici torneo"
+    >
+      <div className="grid h-[58px] w-[58px] place-items-center rounded-full border border-white/10 bg-slate-950/50">
+        <div className="text-center">
+          <div className="text-base font-extrabold text-slate-100">
+            {tournamentMeta.done}/{tournamentMeta.total}
+          </div>
+          <div className="text-[10px] font-semibold text-slate-400">torneo</div>
+        </div>
+      </div>
+    </div>
+  ) : null}
+</div>
                 </div>
 
                 <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -450,7 +496,7 @@ export default function DashboardPage() {
         <CardHeader title="Ultime giornate" subtitle="Punti e stato" />
         <CardContent>
           {lastPills.length ? (
-            <div className="grid grid-cols-5 gap-2 sm:flex sm:flex-wrap sm:items-center">
+            <div className="flex w-full items-center justify-between gap-1.5 sm:flex sm:flex-wrap sm:justify-start sm:gap-2">
               {lastPills.map((p) => (
                 <Orb key={p.md} p={p as any} />
               ))}
