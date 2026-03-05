@@ -27,21 +27,16 @@ function useCountdown(targetIso?: string) {
     const ms = t - now;
     if (ms <= 0) return null;
     const s = Math.floor(ms / 1000);
-    const hh = Math.floor(s / 3600);
+    const dd = Math.floor(s / 86400);
+    const hh = Math.floor((s % 86400) / 3600);
     const mm = Math.floor((s % 3600) / 60);
     const ss = s % 60;
     const pad = (n: number) => String(n).padStart(2, "0");
+    // If more than 24 hours away, show compact days+hours (eg: "1g 5h").
+    if (dd >= 1) return `${dd}g ${hh}h`;
     if (hh > 0) return `${hh}:${pad(mm)}:${pad(ss)}`;
     return `${mm}:${pad(ss)}`;
   }, [targetIso, now]);
-}
-
-function pillTone(kind: "green" | "yellow" | "orange" | "red" | "grey") {
-  if (kind === "grey") return "bg-slate-400";
-  if (kind === "green") return "bg-emerald-500";
-  if (kind === "yellow") return "bg-amber-300";
-  if (kind === "orange") return "bg-orange-400";
-  return "bg-rose-500";
 }
 
 export default function DashboardPage() {
@@ -60,23 +55,40 @@ export default function DashboardPage() {
 
   const [summary, setSummary] = useState<any>(null);
   const [leader, setLeader] = useState<LeaderRow[]>([]);
+  const [matches, setMatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const normalizeLeaderRow = (r: any): LeaderRow => {
+    // Backward/forward compatible mapping (camelCase or snake_case)
+    const userId = String(r?.userId ?? r?.user_id ?? r?.id ?? "");
+    const totalPoints = Number(r?.totalPoints ?? r?.total_points ?? r?.points ?? 0);
+    const displayName = (r?.displayName ?? r?.display_name ?? r?.name ?? r?.email ?? null) as any;
+    return { userId, totalPoints, displayName };
+  };
 
   useEffect(() => {
     let cancelled = false;
     if (!user?.id || !activeLeagueId || !leagueCode) return;
 
     setLoading(true);
-    Promise.all([api.userSummary(user.id, leagueCode), api.leaderboard("points_desc", leagueCode)])
-      .then(([s, lb]) => {
+    Promise.all([
+      api.userSummary(user.id, leagueCode),
+      // Leaderboard uses league header; keep leagueCode only for userSummary.
+      api.leaderboard("points_desc"),
+      api.matches(),
+    ])
+      .then(([s, lb, m]) => {
         if (cancelled) return;
         setSummary(s);
-        setLeader(Array.isArray(lb?.rows) ? lb.rows : []);
+        const raw = (lb?.leaderboard ?? lb?.rows ?? []) as any[];
+        setLeader(Array.isArray(raw) ? raw.map(normalizeLeaderRow).filter((x) => x.userId) : []);
+        setMatches(Array.isArray(m?.matches) ? m.matches : []);
       })
       .catch(() => {
         if (cancelled) return;
         setSummary(null);
         setLeader([]);
+        setMatches([]);
       })
       .finally(() => {
         if (cancelled) return;
@@ -239,7 +251,45 @@ export default function DashboardPage() {
   const nextPct = nextTotal > 0 ? Math.round((nextDone / nextTotal) * 100) : 0;
   const nextCountdown = useCountdown(nextMeta?.firstKickoff);
 
+  const recentFinishedMatches = useMemo(() => {
+    const arr = Array.isArray(matches) ? matches : [];
+    return arr
+      .filter((m) => m?.status === "FINISHED")
+      .slice()
+      .sort((a, b) => new Date(b.kickoffAt).getTime() - new Date(a.kickoffAt).getTime())
+      .slice(0, 2);
+  }, [matches]);
+
   const top5 = leader.slice(0, 5);
+
+  const Orb = ({ p }: { p: { md: number; pts: number; tone: string; status: string } }) => {
+    const ringColor =
+      p.tone === "green"
+        ? "rgba(16,185,129,0.9)"
+        : p.tone === "yellow"
+          ? "rgba(251,191,36,0.9)"
+          : p.tone === "orange"
+            ? "rgba(251,146,60,0.9)"
+            : p.tone === "red"
+              ? "rgba(244,63,94,0.9)"
+              : "rgba(148,163,184,0.7)";
+    const fill = p.status === "FINISHED" ? "rgba(0,0,0,0.12)" : p.status === "IN_PROGRESS" ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.03)";
+    const label = p.status === "FINISHED" ? String(p.pts) : p.status === "IN_PROGRESS" ? "LIVE" : "—";
+    return (
+      <Link
+        to={`/predictions?md=${p.md}`}
+        className="group relative grid h-[68px] w-[68px] place-items-center rounded-full border border-white/10 bg-white/5 shadow-[0_10px_30px_rgba(0,0,0,0.35)] hover:bg-white/10"
+        style={{ boxShadow: `0 10px 40px rgba(0,0,0,0.35), inset 0 0 0 2px ${ringColor}` }}
+        aria-label={`Giornata ${p.md}`}
+      >
+        <div className="absolute inset-[6px] rounded-full" style={{ background: `radial-gradient(circle at 30% 25%, rgba(255,255,255,0.14), ${fill} 55%, rgba(0,0,0,0.25))` }} />
+        <div className="relative z-[1] text-center">
+          <div className="text-[11px] font-bold text-slate-300">G{p.md}</div>
+          <div className={`mt-0.5 text-base font-extrabold ${p.status === "IN_PROGRESS" ? "text-rose-200" : "text-slate-100"}`}>{label}</div>
+        </div>
+      </Link>
+    );
+  };
 
   return (
     <div className="mx-auto w-full max-w-2xl space-y-4">
@@ -275,7 +325,7 @@ export default function DashboardPage() {
                 <div className="mt-2 text-sm text-slate-200">
                   {nextEditableMatchday ? (
                     <>
-                      Pronostici: <b className="text-slate-100">{nextDone}</b>/{nextTotal || "—"}
+                      Pronostici inseriti: <b className="text-slate-100">{nextDone}</b>/{nextTotal || "—"}
                     </>
                   ) : (
                     <>Nessuna giornata pronosticabile.</>
@@ -293,8 +343,27 @@ export default function DashboardPage() {
 
             {nextEditableMatchday ? (
               <>
-                <div className="mt-4 rounded-full bg-white/10 p-1">
-                  <div className="h-2.5 rounded-full bg-rose-500/80 transition-[width]" style={{ width: `${nextPct}%` }} />
+                <div className="mt-4 flex items-center justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="rounded-full bg-white/10 p-1">
+                      <div className="h-2.5 rounded-full bg-rose-500/80 transition-[width]" style={{ width: `${nextPct}%` }} />
+                    </div>
+                    <div className="mt-2 text-xs text-slate-300">
+                      Mancano <b className="text-slate-100">{Math.max(0, nextTotal - nextDone)}</b> match
+                    </div>
+                  </div>
+                  {/* Compact progress ring with unambiguous label (3/10) */}
+                  <div
+                    className="relative grid h-[74px] w-[74px] shrink-0 place-items-center rounded-full border border-white/10 bg-white/5 shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
+                    style={{ background: `conic-gradient(rgba(225,29,72,0.95) ${nextPct}%, rgba(255,255,255,0.08) 0)` }}
+                  >
+                    <div className="grid h-[58px] w-[58px] place-items-center rounded-full border border-white/10 bg-slate-950/50">
+                      <div className="text-center">
+                        <div className="text-base font-extrabold text-slate-100">{nextDone}/{nextTotal || "—"}</div>
+                        <div className="text-[10px] font-semibold text-slate-400">pronostici</div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -365,22 +434,72 @@ export default function DashboardPage() {
         <CardHeader title="Ultime giornate" subtitle="Punti e stato" />
         <CardContent>
           {lastPills.length ? (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-3">
               {lastPills.map((p) => (
-                <Link
-                  key={p.md}
-                  to={`/predictions?md=${p.md}`}
-                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-100 hover:bg-white/10"
-                >
-                  <span className={`h-2 w-2 rounded-full ${pillTone(p.tone)}`} aria-hidden="true" />
-                  G{p.md}
-                  <span className="text-slate-300">·</span>
-                  <span className="text-slate-200">{p.status === "FINISHED" ? `${p.pts} pt` : p.status === "IN_PROGRESS" ? "Live" : "—"}</span>
-                </Link>
+                <Orb key={p.md} p={p as any} />
               ))}
             </div>
           ) : (
             <div className="text-sm text-slate-300">Nessuna giornata disponibile.</div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Ultimi risultati */}
+      <Card>
+        <CardHeader
+          title="Ultimi risultati"
+          subtitle="Le ultime partite concluse"
+          right={
+            <Link to="/predictions" className="text-xs font-bold text-rose-300 hover:underline">
+              Vedi partite
+            </Link>
+          }
+        />
+        <CardContent>
+          {loading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 2 }).map((_, i) => (
+                <Skeleton key={i} className="h-16" />
+              ))}
+            </div>
+          ) : recentFinishedMatches.length ? (
+            <div className="space-y-2">
+              {recentFinishedMatches.map((m) => (
+                <div key={m.id} className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex min-w-0 items-center gap-2">
+                        {m.homeLogo ? (
+                          <img src={m.homeLogo} alt="" className="h-7 w-7 rounded-full bg-white/10 object-contain" />
+                        ) : (
+                          <div className="grid h-7 w-7 place-items-center rounded-full bg-white/10 text-xs font-bold text-slate-200">{String(m.homeTeam || "H").slice(0, 1)}</div>
+                        )}
+                        <div className="min-w-0 truncate text-sm font-semibold text-slate-100">{m.homeTeam}</div>
+                      </div>
+                      <div className="shrink-0 text-base font-extrabold text-slate-100">{m.homeScore ?? "—"}</div>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between gap-2">
+                      <div className="flex min-w-0 items-center gap-2">
+                        {m.awayLogo ? (
+                          <img src={m.awayLogo} alt="" className="h-7 w-7 rounded-full bg-white/10 object-contain" />
+                        ) : (
+                          <div className="grid h-7 w-7 place-items-center rounded-full bg-white/10 text-xs font-bold text-slate-200">{String(m.awayTeam || "A").slice(0, 1)}</div>
+                        )}
+                        <div className="min-w-0 truncate text-sm font-semibold text-slate-100">{m.awayTeam}</div>
+                      </div>
+                      <div className="shrink-0 text-base font-extrabold text-slate-100">{m.awayScore ?? "—"}</div>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
+                      <span className="truncate">{m.group ? String(m.group) : ""}</span>
+                      <span className="shrink-0">FT · {new Date(m.kickoffAt).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-sm text-slate-300">Nessun risultato disponibile.</div>
           )}
         </CardContent>
       </Card>
