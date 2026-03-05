@@ -44,6 +44,13 @@ export function SearchableSelect({
       const el = rootRef.current;
       if (!el) return;
       if (e.target instanceof Node && el.contains(e.target)) return;
+      // NOTE: options panel is rendered in a portal (document.body).
+      // Prevent false outside-click when clicking inside the portal.
+      // We stopPropagation on the panel, but keep this as a safety net.
+      const target = e.target as HTMLElement | null;
+      if (target && (target.closest?.('[data-searchable-select-panel="true"]') || target.closest?.('[data-searchable-select-root="true"]'))) {
+        return;
+      }
       setOpen(false);
     }
     document.addEventListener("mousedown", onDocClick);
@@ -85,7 +92,7 @@ export function SearchableSelect({
   }, [open]);
 
   return (
-    <div ref={rootRef} className="relative">
+    <div ref={rootRef} className="relative" data-searchable-select-root="true">
       <button
         ref={btnRef}
         type="button"
@@ -104,10 +111,18 @@ export function SearchableSelect({
               <div className="absolute inset-0" onMouseDown={() => setOpen(false)} onTouchStart={() => setOpen(false)} />
 
               <div
+                data-searchable-select-panel="true"
                 className="absolute overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl"
                 style={{ top: panel.top, left: panel.left, width: panel.width }}
                 role="listbox"
                 aria-label="Selettore"
+                onMouseDown={(e) => {
+                  // Prevent document mousedown handler from closing before option click.
+                  e.stopPropagation();
+                }}
+                onTouchStart={(e) => {
+                  e.stopPropagation();
+                }}
               >
                 <div className="border-b border-slate-800 p-2">
                   <input
@@ -122,7 +137,7 @@ export function SearchableSelect({
                 <div className="overflow-auto p-1" style={{ maxHeight: panel.maxHeight }}>
                   <button
                     type="button"
-                    className={`w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-slate-900 ${value === "" ? "bg-slate-900" : ""}`}
+                    className={`w-full rounded-xl px-3 py-2 text-left text-sm text-slate-100 hover:bg-slate-900 ${value === "" ? "bg-slate-900" : ""}`}
                     onClick={() => {
                       onChange("");
                       setOpen(false);
@@ -134,7 +149,7 @@ export function SearchableSelect({
                     <button
                       key={o.value}
                       type="button"
-                      className={`w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-slate-900 ${o.value === value ? "bg-emerald-950/35" : ""}`}
+                      className={`w-full rounded-xl px-3 py-2 text-left text-sm text-slate-100 hover:bg-slate-900 ${o.value === value ? "bg-emerald-950/35" : ""}`}
                       onClick={() => {
                         onChange(o.value);
                         setOpen(false);
