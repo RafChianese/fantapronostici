@@ -48,7 +48,7 @@ export function Card({ children, className = "" }: { children: React.ReactNode; 
   // making them appear anchored in the middle of the page.
   return (
     <div
-      className={`rounded-2xl border border-slate-800/70 bg-gradient-to-b from-slate-950 to-slate-900/70 shadow-sm transition-shadow duration-200 hover:shadow-lg ${className}`}
+      className={`tm-glass rounded-2xl shadow-sm transition-shadow duration-200 hover:shadow-lg ${className}`}
     >
       {children}
     </div>
@@ -57,7 +57,7 @@ export function Card({ children, className = "" }: { children: React.ReactNode; 
 
 export function CardHeader({ title, subtitle, right }: { title: string; subtitle?: string; right?: React.ReactNode }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-slate-800/70 p-4 sm:p-5 bg-gradient-to-r from-slate-950 to-slate-900/70">
+    <div className="tm-glass-header flex items-start justify-between gap-4 p-4 sm:p-5">
       <div>
         <div className="text-lg font-semibold text-slate-100">{title}</div>
         {subtitle ? <div className="mt-1 text-sm text-slate-400">{subtitle}</div> : null}

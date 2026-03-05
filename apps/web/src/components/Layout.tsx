@@ -289,9 +289,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="tm-app-bg min-h-screen text-slate-100">
       {/* Top bar */}
-      <header className="sticky top-0 z-20 border-b border-slate-800/70 bg-slate-950/85 text-slate-100 backdrop-blur">
+      <header className="sticky top-0 z-20 tm-glass-nav text-slate-100">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
           <div className="flex min-w-0 items-center gap-3">
             {user ? (
@@ -311,7 +311,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <div className="truncate text-base font-extrabold leading-tight text-slate-100">{leagueTitle}</div>
               {inviteCode ? (
                 <div className="mt-1 flex flex-wrap items-center gap-2">
-                  <span data-tour="invite-code" className="rounded-full border border-slate-800 bg-slate-900/60 px-2 py-0.5 text-xs font-medium text-slate-200">
+                  <span data-tour="invite-code" className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs font-medium text-slate-200">
                     Codice invito: <span className="font-semibold">{inviteCode}</span>
                   </span>
                   <button

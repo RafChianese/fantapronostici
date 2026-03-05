@@ -951,7 +951,7 @@ export default function PredictionsPage() {
           title="I miei pronostici"
           subtitle="Inserisci un pronostico (risultato esatto). Puoi modificare finché la finestra è aperta."
           right={
-            saveHint ? <span className="text-xs font-medium text-slate-600">{saveHint}</span> : null
+            saveHint ? <span className="text-xs font-medium text-slate-300">{saveHint}</span> : null
           }
         />
         <CardContent>
@@ -960,7 +960,7 @@ export default function PredictionsPage() {
               Pronostici bloccati.
             </Alert>
           ) : (
-            <div className="text-sm text-slate-600">
+            <div className="text-sm text-slate-300">
               Puoi inserire e modificare i pronostici finché la finestra è aperta.
             </div>
           )}
@@ -998,7 +998,7 @@ export default function PredictionsPage() {
                 </div>
               }
             />
-            <CardContent className="text-sm text-slate-600">
+            <CardContent className="text-sm text-slate-300">
               {uiMode === "MATCH" ? "Scorri una partita alla volta (consigliato su mobile)." : "Vedi tutte le partite della giornata in elenco."}
             </CardContent>
           </Card>
