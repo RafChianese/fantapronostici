@@ -104,7 +104,7 @@ export default function CompetitionPredictionsPage() {
 
               {data.enabled.winner ? (
                 <div className="space-y-2">
-                  <div className="text-sm font-semibold text-slate-900">Vincitore competizione (+{data.points.winner} punti)</div>
+                  <div className="text-sm font-semibold text-slate-100">Vincitore competizione (+{data.points.winner} punti)</div>
                   <select
                     className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100"
                     disabled={!canEdit || saving}
@@ -126,7 +126,7 @@ export default function CompetitionPredictionsPage() {
 
               {data.enabled.topScorer ? (
                 <div className="space-y-2">
-                  <div className="text-sm font-semibold text-slate-900">Capocannoniere (+{data.points.topScorer} punti)</div>
+                  <div className="text-sm font-semibold text-slate-100">Capocannoniere (+{data.points.topScorer} punti)</div>
                   <select
                     className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100"
                     disabled={!canEdit || saving}

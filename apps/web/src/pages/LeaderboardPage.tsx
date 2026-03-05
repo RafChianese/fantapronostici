@@ -159,7 +159,7 @@ export default function LeaderboardPage() {
 
             {/* Desktop: inline sort select. Mobile: bottom-sheet modal */}
             <div className="hidden sm:block">
-              <label className="text-xs text-slate-600">Ordina</label>
+              <label className="text-xs text-slate-400">Ordina</label>
               <select
                 className="mt-1 w-[260px] rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100"
                 value={sortParam}
@@ -195,7 +195,7 @@ export default function LeaderboardPage() {
             aria-label="Chiudi ordinamento"
             onClick={() => setSortOpen(false)}
           />
-          <div className="absolute bottom-0 left-0 right-0 max-h-[80vh] overflow-auto rounded-t-2xl bg-slate-950 p-4 pb-[calc(env(safe-area-inset-bottom)+16px)] shadow-2xl ring-1 ring-slate-800">
+          <div className="absolute bottom-0 left-0 right-0 max-h-[80vh] overflow-auto rounded-t-2xl tm-glass-sheet p-4 pb-[calc(env(safe-area-inset-bottom)+16px)] shadow-2xl">
             <div className="mb-2 flex items-center justify-between">
               <div className="text-base font-semibold text-slate-100">Ordina per</div>
               <Button variant="ghost" onClick={() => setSortOpen(false)} aria-label="Chiudi">✕</Button>
@@ -214,7 +214,7 @@ export default function LeaderboardPage() {
                       setSortOpen(false);
                     }}
                   >
-                    <span className="text-sm text-slate-900">{opt.label}</span>
+                    <span className="text-sm text-slate-100">{opt.label}</span>
                     <span
                       className={`h-5 w-5 rounded-full border ${active ? "border-rose-500 bg-rose-500" : "border-slate-700"}`}
                       aria-hidden="true"
@@ -228,13 +228,13 @@ export default function LeaderboardPage() {
       ) : null}
       <CardContent>
         {/* Legend / metric explanation */}
-        <div className="mb-4 rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
+        <div className="mb-4 rounded-2xl border border-white/10 bg-white/5 p-3">
           <button
             type="button"
             onClick={() => setLegendOpen((v) => !v)}
             className="w-full flex items-center justify-between gap-3"
           >
-            <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+            <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
               <Info size={16} aria-hidden="true" />
               Legenda & criteri
             </div>
@@ -242,7 +242,7 @@ export default function LeaderboardPage() {
           </button>
 
           {legendOpen ? (
-            <div className="mt-3 grid gap-2 text-xs text-slate-700 sm:grid-cols-2">
+            <div className="mt-3 grid gap-2 text-xs text-slate-300 sm:grid-cols-2">
               <div className="flex items-center gap-2"><Trophy size={16} aria-hidden="true" /> <b>Punti</b>: totale punti in classifica</div>
               <div className="flex items-center gap-2"><Target size={16} aria-hidden="true" /> <b>Esatti</b>: risultati esatti</div>
               <div className="flex items-center gap-2"><CheckCircle2 size={16} aria-hidden="true" /> <b>1X2</b>: esito corretto</div>
@@ -255,7 +255,7 @@ export default function LeaderboardPage() {
               ) : null}
 
               {tieBreakers.length ? (
-                <div className="sm:col-span-2 text-xs text-slate-600 pt-1">
+                <div className="sm:col-span-2 text-xs text-slate-300 pt-1">
                   <b>Tie-break</b> (a parità di punti): {tieBreakers.join(" → ")}
                 </div>
               ) : null}
