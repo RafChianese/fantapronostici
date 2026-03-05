@@ -308,7 +308,6 @@ export default function LeaderboardPage() {
               const flashCls = tr === "up" ? "tm-flash-up" : tr === "down" ? "tm-flash-down" : "";
               const delta = deltas[r.userId] || 0;
               const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : "";
-              const medalTone = idx === 0 ? "amber" : idx === 1 ? "blue" : idx === 2 ? "rose" : "gray";
               const medalGlow = idx <= 2 ? "tm-medal-glow" : "";
               const top3Row = idx <= 2 ? "tm-top3-row" : "";
               const isMe = !!user?.id && r.userId === user.id;
@@ -333,8 +332,7 @@ export default function LeaderboardPage() {
                       <div className="flex items-center gap-2">
                         <UserAvatar avatarId={(r as any).avatarId || null} size={26} className={`shadow-sm ${idx <= 2 ? "tm-top3-avatar" : ""}`} />
                         <Link className="font-medium hover:underline" to={`/users/${r.userId}`}>{r.displayName}</Link>
-                        {isMe ? <Badge tone="green">Tu</Badge> : null}
-                        {idx <= 2 ? <Badge tone={medalTone}>Top {idx + 1}</Badge> : null}
+                        {/* Keep the row highlight for the logged user, but avoid extra labels ("Tu" / "Top"). */}
                       </div>
                     </div>
                     <div className="text-right text-sm font-extrabold sm:hidden">

@@ -1006,7 +1006,7 @@ export default function PredictionsPage() {
             </CardContent>
           </Card>
 
-          {byMatchday.length ? (
+          {uiMode === "MATCH" && byMatchday.length ? (
             <Card>
               <CardHeader title="Giornata" subtitle="Seleziona la giornata su cui inserire i pronostici." />
               <CardContent>
@@ -1243,30 +1243,30 @@ export default function PredictionsPage() {
                         </div>
                       </div>
 
-                      {currentDerived ? (
-                        <div className="mt-4 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
-                          <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-                            <div className="text-slate-300">Esito</div>
-                            <div className="mt-0.5 font-extrabold">{currentDerived.outcome}</div>
-                          </div>
-                          <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-                            <div className="text-slate-300">Somma gol</div>
-                            <div className="mt-0.5 font-extrabold">{currentDerived.sumGoals}</div>
-                          </div>
-                          {underOverEnabled ? (
-                            <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-                              <div className="text-slate-300">U/O 2.5</div>
-                              <div className="mt-0.5 font-extrabold">{currentDerived.underOver}</div>
-                            </div>
-                          ) : null}
-                          <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-                            <div className="text-slate-300">Reale</div>
-                            <div className="mt-0.5 font-extrabold">{currentReal}</div>
-                          </div>
+                      <div className="mt-4 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+                        <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                          <div className="text-slate-300">Esito</div>
+                          <div className="mt-0.5 font-extrabold">{currentDerived ? currentDerived.outcome : "—"}</div>
                         </div>
-                      ) : (
-                        <div className="mt-4 text-xs text-slate-300">Inserisci entrambi i punteggi per vedere esito e metriche.</div>
-                      )}
+                        <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                          <div className="text-slate-300">Somma gol</div>
+                          <div className="mt-0.5 font-extrabold">{currentDerived ? currentDerived.sumGoals : "—"}</div>
+                        </div>
+                        {underOverEnabled ? (
+                          <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                            <div className="text-slate-300">U/O 2.5</div>
+                            <div className="mt-0.5 font-extrabold">{currentDerived ? currentDerived.underOver : "—"}</div>
+                          </div>
+                        ) : null}
+                        <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                          <div className="text-slate-300">Reale</div>
+                          <div className="mt-0.5 font-extrabold">{currentReal}</div>
+                        </div>
+                      </div>
+
+                      {!currentDerived ? (
+                        <div className="mt-2 text-xs text-slate-300">Inserisci entrambi i punteggi per vedere esito e metriche.</div>
+                      ) : null}
 
                       <div className="mt-5 flex items-center justify-between gap-3">
                         <button

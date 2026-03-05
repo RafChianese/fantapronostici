@@ -260,6 +260,22 @@ export default function DashboardPage() {
       .slice(0, 2);
   }, [matches]);
 
+  const lastFinishedMatchday = useMemo(() => {
+    const arr = Array.isArray(matches) ? matches : [];
+    const by = new Map<number, any[]>();
+    for (const m of arr) {
+      const md = Number(m?.matchday || 0);
+      if (!md) continue;
+      if (!by.has(md)) by.set(md, []);
+      by.get(md)!.push(m);
+    }
+    const finished = Array.from(by.entries())
+      .filter(([, ms]) => ms.length > 0 && ms.every((x) => x?.status === "FINISHED"))
+      .map(([md]) => md)
+      .sort((a, b) => b - a);
+    return finished[0] ?? null;
+  }, [matches]);
+
   const top5 = leader.slice(0, 5);
 
   const Orb = ({ p }: { p: { md: number; pts: number; tone: string; status: string } }) => {
@@ -278,7 +294,7 @@ export default function DashboardPage() {
     return (
       <Link
         to={`/predictions?md=${p.md}`}
-        className="group relative grid h-[68px] w-[68px] place-items-center rounded-full border border-white/10 bg-white/5 shadow-[0_10px_30px_rgba(0,0,0,0.35)] hover:bg-white/10"
+        className="group relative grid h-[60px] w-[60px] sm:h-[68px] sm:w-[68px] place-items-center rounded-full border border-white/10 bg-white/5 shadow-[0_10px_30px_rgba(0,0,0,0.35)] hover:bg-white/10"
         style={{ boxShadow: `0 10px 40px rgba(0,0,0,0.35), inset 0 0 0 2px ${ringColor}` }}
         aria-label={`Giornata ${p.md}`}
       >
@@ -434,7 +450,7 @@ export default function DashboardPage() {
         <CardHeader title="Ultime giornate" subtitle="Punti e stato" />
         <CardContent>
           {lastPills.length ? (
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2">
               {lastPills.map((p) => (
                 <Orb key={p.md} p={p as any} />
               ))}
@@ -451,7 +467,10 @@ export default function DashboardPage() {
           title="Ultimi risultati"
           subtitle="Le ultime partite concluse"
           right={
-            <Link to="/predictions" className="text-xs font-bold text-rose-300 hover:underline">
+            <Link
+              to={lastFinishedMatchday ? `/predictions?md=${lastFinishedMatchday}` : "/predictions"}
+              className="text-xs font-bold text-rose-300 hover:underline"
+            >
               Vedi partite
             </Link>
           }
