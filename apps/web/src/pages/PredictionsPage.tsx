@@ -252,6 +252,54 @@ export default function PredictionsPage() {
   const [detailTab, setDetailTab] = useState<"summary" | "lineups">("summary");
 
   const [tab, setTab] = useState<"MATCHES" | "TOURNAMENT">("MATCHES");
+  const [uiMode, setUiMode] = useState<"MATCH" | "LIST">(() => {
+    try {
+      const v = localStorage.getItem("tm_preds_view");
+      return v === "LIST" ? "LIST" : "MATCH";
+    } catch {
+      return "MATCH";
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("tm_preds_view", uiMode);
+    } catch {
+      // ignore
+    }
+  }, [uiMode]);
+
+  const [selectedMatchday, setSelectedMatchday] = useState<number>(1);
+  const [currentIndex, setCurrentIndex] = useState<number>(0);
+
+  const quickPicks = useMemo(
+    () =>
+      [
+        [0, 0],
+        [1, 1],
+        [2, 2],
+        [3, 3],
+        [4, 4],
+        [1, 0],
+        [2, 0],
+        [2, 1],
+        [3, 0],
+        [3, 1],
+        [3, 2],
+        [4, 3],
+        [4, 2],
+        [0, 1],
+        [0, 2],
+        [1, 2],
+        [0, 3],
+        [1, 3],
+        [2, 3],
+        [3, 4],
+        [2, 4],
+      ] as const,
+    []
+  );
+
 
   const autosaveTimerRef = useRef<number | null>(null);
   const predsRef = useRef<Record<string, PredictionState>>({});
@@ -671,6 +719,81 @@ export default function PredictionsPage() {
     return (target?.[0] ?? byMatchday[0]?.[0] ?? 1) as number;
   }, [byMatchday]);
 
+  // Selected matchday used by the "match-by-match" UI.
+  useEffect(() => {
+    const raw = searchParams.get("md");
+    const md = raw ? Number(raw) : null;
+    const mdValid = typeof md === "number" && Number.isFinite(md) && md > 0;
+    const next = mdValid ? md : firstNotFinishedMatchday;
+    setSelectedMatchday((prev) => (prev === next ? prev : next));
+  }, [searchParams, firstNotFinishedMatchday]);
+
+  const currentMatches = useMemo(() => {
+    const entry = byMatchday.find(([md]) => md === selectedMatchday);
+    return (entry?.[1] ?? []) as Match[];
+  }, [byMatchday, selectedMatchday]);
+
+  useEffect(() => {
+    // Keep index in range when changing matchday or when matches reload.
+    setCurrentIndex((i) => {
+      const max = Math.max(0, currentMatches.length - 1);
+      return Math.min(i, max);
+    });
+  }, [currentMatches.length, selectedMatchday]);
+
+  const currentMatch = currentMatches[currentIndex] ?? null;
+  const currentPred = currentMatch ? preds[currentMatch.id] : undefined;
+  const canEditCurrent = currentMatch ? !isMatchLocked(currentMatch) : false;
+
+  const underOverEnabled = !!config?.features?.underOver25;
+
+  const clamp20 = (raw: string) => {
+    const v = raw.replace(/\D/g, "");
+    if (v === "") return undefined;
+    const n = Math.min(20, Number(v));
+    return Number.isFinite(n) ? n : undefined;
+  };
+
+  const setCurrentScore = (side: "home" | "away", raw: string) => {
+    if (!currentMatch) return;
+    const v = clamp20(raw);
+    setPreds((prev) => {
+      const existing = prev[currentMatch.id] ?? { matchId: currentMatch.id };
+      const next =
+        side === "home" ? { ...existing, homeGoals: v } : { ...existing, awayGoals: v };
+      return { ...prev, [currentMatch.id]: next };
+    });
+    scheduleAutosave();
+  };
+
+  const setCurrentScorePair = (home: number, away: number) => {
+    if (!currentMatch) return;
+    setPreds((prev) => {
+      const existing = prev[currentMatch.id] ?? { matchId: currentMatch.id };
+      const next = { ...existing, homeGoals: home, awayGoals: away };
+      return { ...prev, [currentMatch.id]: next };
+    });
+    scheduleAutosave();
+  };
+
+  const currentDerived = useMemo(() => {
+    if (!currentMatch) return null;
+    const p = currentPred;
+    if (!Number.isInteger(p?.homeGoals) || !Number.isInteger(p?.awayGoals)) return null;
+    const h = p!.homeGoals as number;
+    const a = p!.awayGoals as number;
+    const outcome = h > a ? "1" : h < a ? "2" : "X";
+    const sumGoals = h + a;
+    const underOver = sumGoals > 2.5 ? "Over" : "Under";
+    return { outcome, sumGoals, underOver };
+  }, [currentMatch, currentPred]);
+
+  const currentReal = useMemo(() => {
+    if (!currentMatch) return "—";
+    return currentMatch.homeScore !== null && currentMatch.awayScore !== null ? `${currentMatch.homeScore}-${currentMatch.awayScore}` : "—";
+  }, [currentMatch]);
+
+
   useEffect(() => {
     // UX: open ONLY the first matchday that is not finished. Everything else starts collapsed.
     // (User can still expand/collapse manually after.)
@@ -825,8 +948,220 @@ export default function PredictionsPage() {
 
       {tab === "MATCHES" ? (
         <>
+          <Card>
+            <CardHeader
+              title="Modalità inserimento"
+              subtitle="Scegli come pronosticare"
+              right={
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className={`rounded-xl px-3 py-2 text-sm font-semibold border transition-all ${uiMode === "MATCH" ? "bg-[#2EC4B6] text-white border-[#2EC4B6] shadow-sm" : "bg-white text-slate-700 border-slate-200"}`}
+                    onClick={() => setUiMode("MATCH")}
+                  >
+                    Match per match
+                  </button>
+                  <button
+                    type="button"
+                    className={`rounded-xl px-3 py-2 text-sm font-semibold border transition-all ${uiMode === "LIST" ? "bg-[#2EC4B6] text-white border-[#2EC4B6] shadow-sm" : "bg-white text-slate-700 border-slate-200"}`}
+                    onClick={() => setUiMode("LIST")}
+                  >
+                    Lista
+                  </button>
+                </div>
+              }
+            />
+            <CardContent className="text-sm text-slate-600">
+              {uiMode === "MATCH" ? "Scorri una partita alla volta (consigliato su mobile)." : "Vedi tutte le partite della giornata in elenco."}
+            </CardContent>
+          </Card>
 
-      {byMatchday.length ? (
+          {byMatchday.length ? (
+            <Card>
+              <CardHeader title="Giornata" subtitle="Seleziona la giornata su cui inserire i pronostici." />
+              <CardContent>
+                <select
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                  value={String(selectedMatchday)}
+                  onChange={(e) => {
+                    const md = Number(e.target.value);
+                    setSelectedMatchday(md);
+                    setCurrentIndex(0);
+                    setSearchParams((prev) => {
+                      const next = new URLSearchParams(prev);
+                      next.set("md", String(md));
+                      return next;
+                    });
+                  }}
+                >
+                  {byMatchday.map(([md, ms]) => (
+                    <option key={md} value={String(md)}>
+                      Giornata {md} · {ms.length} partite{md === firstNotFinishedMatchday ? "  ★" : ""}
+                    </option>
+                  ))}
+                </select>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {uiMode === "MATCH" ? (
+            <Card className="overflow-hidden border-slate-200">
+              <div className="bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white">
+                <div className="px-4 py-4 sm:px-6 sm:py-6">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-xs uppercase tracking-wide text-slate-300">Giornata {selectedMatchday}</div>
+                      <div className="mt-1 text-lg font-extrabold">Indovina il risultato</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-slate-300">
+                        {currentMatch ? new Date(currentMatch.kickoffAt).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : ""}
+                      </div>
+                      <div className="mt-1 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold">
+                        {currentMatches.length ? currentIndex + 1 : 0}/{currentMatches.length}
+                      </div>
+                    </div>
+                  </div>
+
+                  {currentMatch ? (
+                    <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="text-xs text-slate-300">
+                          {currentMatch.status === "NOT_STARTED" ? "Non iniziata" : currentMatch.status === "IN_PROGRESS" ? "In corso" : "Terminata"}
+                        </div>
+                        <div className="inline-flex items-center gap-2">
+                          {!canEditCurrent ? (
+                            <span className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-100">
+                              <Lock className="h-4 w-4" aria-hidden="true" />
+                              Bloccata
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-2 rounded-xl border border-emerald-300/30 bg-emerald-400/10 px-3 py-2 text-xs font-semibold text-emerald-100">
+                              ⏳ Modificabile
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="mt-5 grid grid-cols-3 items-center gap-3">
+                        <div className="min-w-0 text-left">
+                          <div className="flex items-center gap-2">
+                            {currentMatch.homeLogo ? (
+                              <img src={currentMatch.homeLogo} alt="" className="h-10 w-10 rounded-full bg-white/10 object-contain" />
+                            ) : (
+                              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-sm font-bold">
+                                {String(currentMatch.homeTeam).slice(0, 1)}
+                              </span>
+                            )}
+                            <div className="min-w-0">
+                              <div className="truncate text-base font-extrabold">{currentMatch.homeTeam}</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-center gap-2">
+                          <Input
+                            inputMode="numeric"
+                            disabled={!canEditCurrent}
+                            aria-label={`Gol ${currentMatch.homeTeam}`}
+                            className="!w-16 !h-14 !px-2 text-center !text-3xl !font-extrabold !bg-white !text-slate-900 !border-2 !border-white/40 hover:!border-white/70 focus:!border-emerald-300 focus:!ring-2 focus:!ring-emerald-200 shadow-lg"
+                            value={currentPred?.homeGoals === undefined ? "" : String(currentPred.homeGoals)}
+                            placeholder="0"
+                            onChange={(e) => setCurrentScore("home", e.target.value)}
+                          />
+                          <span className="text-2xl font-black text-slate-200">-</span>
+                          <Input
+                            inputMode="numeric"
+                            disabled={!canEditCurrent}
+                            aria-label={`Gol ${currentMatch.awayTeam}`}
+                            className="!w-16 !h-14 !px-2 text-center !text-3xl !font-extrabold !bg-white !text-slate-900 !border-2 !border-white/40 hover:!border-white/70 focus:!border-emerald-300 focus:!ring-2 focus:!ring-emerald-200 shadow-lg"
+                            value={currentPred?.awayGoals === undefined ? "" : String(currentPred.awayGoals)}
+                            placeholder="0"
+                            onChange={(e) => setCurrentScore("away", e.target.value)}
+                          />
+                        </div>
+
+                        <div className="min-w-0 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <div className="min-w-0">
+                              <div className="truncate text-base font-extrabold">{currentMatch.awayTeam}</div>
+                            </div>
+                            {currentMatch.awayLogo ? (
+                              <img src={currentMatch.awayLogo} alt="" className="h-10 w-10 rounded-full bg-white/10 object-contain" />
+                            ) : (
+                              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-sm font-bold">
+                                {String(currentMatch.awayTeam).slice(0, 1)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {currentDerived ? (
+                        <div className="mt-4 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+                          <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                            <div className="text-slate-300">Esito</div>
+                            <div className="mt-0.5 font-extrabold">{currentDerived.outcome}</div>
+                          </div>
+                          <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                            <div className="text-slate-300">Somma gol</div>
+                            <div className="mt-0.5 font-extrabold">{currentDerived.sumGoals}</div>
+                          </div>
+                          {underOverEnabled ? (
+                            <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                              <div className="text-slate-300">U/O 2.5</div>
+                              <div className="mt-0.5 font-extrabold">{currentDerived.underOver}</div>
+                            </div>
+                          ) : null}
+                          <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                            <div className="text-slate-300">Reale</div>
+                            <div className="mt-0.5 font-extrabold">{currentReal}</div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mt-4 text-xs text-slate-300">Inserisci entrambi i punteggi per vedere esito e metriche.</div>
+                      )}
+
+                      <div className="mt-5 flex items-center justify-between gap-3">
+                        <Button variant="secondary" disabled={currentIndex <= 0} onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))}>
+                          Previous
+                        </Button>
+                        <div className="text-xs text-slate-300">{saveHint ? saveHint : saving ? "Salvataggio…" : ""}</div>
+                        <Button
+                          variant="secondary"
+                          disabled={currentIndex >= currentMatches.length - 1}
+                          onClick={() => setCurrentIndex((i) => Math.min(currentMatches.length - 1, i + 1))}
+                        >
+                          Next
+                        </Button>
+                      </div>
+
+                      {canEditCurrent ? (
+                        <div className="mt-4 grid grid-cols-7 gap-1">
+                          {quickPicks.map(([a, b]) => (
+                            <button
+                              key={`${a}-${b}`}
+                              type="button"
+                              className={`rounded-lg border px-2 py-1 text-xs ${currentPred?.homeGoals === a && currentPred?.awayGoals === b ? "border-emerald-300 bg-emerald-400/10 text-white" : "border-white/10 bg-white/5 text-slate-100 hover:bg-white/10"}`}
+                              onClick={() => setCurrentScorePair(a, b)}
+                            >
+                              {a}-{b}
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-200">Nessuna partita trovata per questa giornata.</div>
+                  )}
+                </div>
+              </div>
+            </Card>
+          ) : null}
+
+          {uiMode === "LIST" ? (
+            <>
+                    {byMatchday.length ? (
         <Card>
           <CardHeader title="Vai a giornata" subtitle="Seleziona una giornata e scorri automaticamente." />
           <CardContent>
@@ -1134,10 +1469,11 @@ export default function PredictionsPage() {
         );
       })}
 
+        
+            </>
+          ) : null}
         </>
-      ) : null}
-
-      {hasLockedPrediction && !isLocked ? (
+      ) : null}{hasLockedPrediction && !isLocked ? (
         <Alert tone="danger">
           Hai inserito almeno un pronostico su una partita bloccata (già iniziata/terminata). Rimuovi quei valori per poter salvare.
         </Alert>
