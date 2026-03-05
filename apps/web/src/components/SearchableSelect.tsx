@@ -51,29 +51,29 @@ export function SearchableSelect({
         type="button"
         disabled={disabled}
         onClick={() => setOpen((v) => !v)}
-        className={`w-full rounded-xl border bg-white px-3 py-2 text-left text-sm transition ${
-          disabled ? "border-slate-200 text-slate-400" : "border-slate-200 text-slate-800 hover:bg-slate-50"
+        className={`w-full rounded-xl border bg-slate-950 px-3 py-2 text-left text-sm transition ${
+          disabled ? "border-slate-800 text-slate-600" : "border-slate-800 text-slate-100 hover:bg-slate-900"
         }`}
       >
         {selected?.label || placeholder || "Seleziona…"}
       </button>
 
       {open ? (
-        <div className="absolute z-20 mt-2 w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
-          <div className="border-b border-slate-100 p-2">
+        <div className="absolute z-20 mt-2 w-full overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 shadow-xl">
+          <div className="border-b border-slate-800 p-2">
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               autoFocus
               placeholder="Cerca…"
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-200"
+              className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-[#2EC4B6]/40"
             />
           </div>
 
           <div className="max-h-64 overflow-auto p-1">
             <button
               type="button"
-              className={`w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-slate-50 ${value === "" ? "bg-slate-50" : ""}`}
+              className={`w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-slate-900 ${value === "" ? "bg-slate-900" : ""}`}
               onClick={() => {
                 onChange("");
                 setOpen(false);
@@ -85,7 +85,7 @@ export function SearchableSelect({
               <button
                 key={o.value}
                 type="button"
-                className={`w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-slate-50 ${o.value === value ? "bg-emerald-50" : ""}`}
+                className={`w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-slate-900 ${o.value === value ? "bg-emerald-950/35" : ""}`}
                 onClick={() => {
                   onChange(o.value);
                   setOpen(false);

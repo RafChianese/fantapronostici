@@ -102,8 +102,8 @@ function NavItem({
       onClick={onClick}
       data-tour={tourId}
       className={({ isActive }) =>
-        `block w-full rounded-xl px-3 py-2 text-left text-sm font-medium ${
-          isActive ? "bg-[#2EC4B6] text-white" : "text-slate-700 hover:bg-slate-100"
+        `block w-full rounded-xl px-3 py-2 text-left text-sm font-medium transition-colors ${
+          isActive ? "bg-[#2EC4B6] text-white" : "text-slate-200 hover:bg-slate-800/70"
         }`
       }
     >
@@ -289,9 +289,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-950 text-slate-100">
       {/* Top bar */}
-      <header className="sticky top-0 z-20 border-b border-slate-100 bg-[#2EC4B6] text-white md:bg-white/90 md:text-slate-900 backdrop-blur">
+      <header className="sticky top-0 z-20 border-b border-slate-800/70 bg-slate-950/85 text-slate-100 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
           <div className="flex min-w-0 items-center gap-3">
             {user ? (
@@ -308,15 +308,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
             )}
 
             <Link to={user ? "/" : "/login"} className="min-w-0">
-              <div className="truncate text-base font-extrabold leading-tight text-white md:text-slate-900">{leagueTitle}</div>
+              <div className="truncate text-base font-extrabold leading-tight text-slate-100">{leagueTitle}</div>
               {inviteCode ? (
                 <div className="mt-1 flex flex-wrap items-center gap-2">
-                  <span data-tour="invite-code" className="rounded-full border border-white/25 bg-white/15 px-2 py-0.5 text-xs font-medium text-white md:border-slate-200 md:bg-white md:text-slate-700">
+                  <span data-tour="invite-code" className="rounded-full border border-slate-800 bg-slate-900/60 px-2 py-0.5 text-xs font-medium text-slate-200">
                     Codice invito: <span className="font-semibold">{inviteCode}</span>
                   </span>
                   <button
                     type="button"
-                    className="text-xs font-bold text-white/95 hover:underline md:text-[#2EC4B6]"
+                    className="text-xs font-bold text-slate-100/95 hover:underline"
                     onClick={(e) => {
                       e.preventDefault();
                       copyInviteCode();
@@ -326,7 +326,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   </button>
                 </div>
               ) : (
-                <div className="mt-1 text-xs text-white/90 md:text-slate-500">Fase a gironi</div>
+                <div className="mt-1 text-xs text-slate-400">Fase a gironi</div>
               )}
             </Link>
           </div>
@@ -336,7 +336,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <NavLink
             to="/"
             className={({ isActive }) =>
-              `rounded-2xl px-3 py-2 text-sm font-semibold ${isActive ? "bg-[#E9FBF9] text-[#0F766E]" : "text-slate-700 hover:bg-slate-50"}`
+              `rounded-2xl px-3 py-2 text-sm font-semibold transition-colors ${isActive ? "bg-slate-800 text-slate-100" : "text-slate-200 hover:bg-slate-900"}`
             }
           >
             Home
@@ -347,7 +347,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               to="/admin"
               data-tour="admin-dashboard-link"
               className={({ isActive }) =>
-                `rounded-2xl px-3 py-2 text-sm font-semibold ${isActive ? "bg-[#E9FBF9] text-[#0F766E]" : "text-slate-700 hover:bg-slate-50"}`
+                `rounded-2xl px-3 py-2 text-sm font-semibold transition-colors ${isActive ? "bg-slate-800 text-slate-100" : "text-slate-200 hover:bg-slate-900"}`
               }
             >
               Area admin
@@ -358,7 +358,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <NavLink
               to="/super"
               className={({ isActive }) =>
-                `rounded-2xl px-3 py-2 text-sm font-semibold ${isActive ? "bg-[#FFF7ED] text-[#9A3412]" : "text-slate-700 hover:bg-slate-50"}`
+                `rounded-2xl px-3 py-2 text-sm font-semibold transition-colors ${isActive ? "bg-slate-800 text-slate-100" : "text-slate-200 hover:bg-slate-900"}`
               }
             >
               Area superAdmin
@@ -369,18 +369,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <button
               type="button"
               onClick={() => setDesktopMenuOpen((v) => !v)}
-              className="inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              className="inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-900"
               aria-haspopup="menu"
               aria-expanded={desktopMenuOpen ? "true" : "false"}
             >
               Menu
-              <span className="text-slate-400">▾</span>
+              <span className="text-slate-500">▾</span>
             </button>
 
             {desktopMenuOpen ? (
               <div
                 role="menu"
-                className="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg"
+                className="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 shadow-lg"
               >
                 <div className="p-2">
                   <NavItem to="/leaderboard" onClick={() => setDesktopMenuOpen(false)}>
@@ -418,7 +418,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 {approved.length > 1 ? (
                   <div className="hidden md:flex items-center gap-2">
                     <select
-                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                      className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100"
                       value={activeMembership?.league.id || ""}
                       onChange={(e) => doSwitchLeague(e.target.value)}
                     >
@@ -430,7 +430,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     </select>
                   </div>
                 ) : null}
-                <div className="hidden items-center gap-2 text-sm text-slate-700 md:flex">
+                <div className="hidden items-center gap-2 text-sm text-slate-200 md:flex">
                   <UserAvatar avatarId={(user as any).avatarId || null} mode="full" size={44} className="shadow-sm" />
                   <span>Ciao, {user.displayName}</span>
                 </div>
@@ -462,16 +462,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {user && drawerOpen ? (
         <div className="fixed inset-0 z-30 md:hidden">
           <div className="absolute inset-0 bg-black/30" onClick={() => setDrawerOpen(false)} aria-hidden="true" />
-          <div className="absolute left-0 top-0 h-full w-[82%] max-w-sm bg-white shadow-xl">
-            <div className="border-b border-slate-100 p-4">
-              <div className="text-sm font-semibold text-slate-900">{user.displayName}</div>
-              <div className="text-xs text-slate-600">{user.email}</div>
+          <div className="absolute left-0 top-0 h-full w-[82%] max-w-sm bg-slate-950 shadow-xl border-r border-slate-800">
+            <div className="border-b border-slate-800 p-4">
+              <div className="text-sm font-semibold text-slate-100">{user.displayName}</div>
+              <div className="text-xs text-slate-400">{user.email}</div>
 
               {approved.length > 1 ? (
                 <div className="mt-3">
-                  <div className="text-xs text-slate-600">Cambia lega</div>
+                  <div className="text-xs text-slate-400">Cambia lega</div>
                   <select
-                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                    className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100"
                     value={activeMembership?.league.id || ""}
                     onChange={(e) => {
                       doSwitchLeague(e.target.value);
@@ -556,10 +556,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {/* Page body */}
       <main className={`relative mx-auto max-w-6xl px-4 py-6 ${mobileMainTabsVisible ? "pb-24 md:pb-6" : ""}`}>
         {switchingLeague ? (
-          <div className="absolute inset-0 z-20 flex items-start justify-center bg-white/60 pt-6 backdrop-blur-sm">
-            <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+          <div className="absolute inset-0 z-20 flex items-start justify-center bg-slate-950/60 pt-6 backdrop-blur-sm">
+            <div className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 shadow-sm">
               <Spinner />
-              <div className="text-sm font-medium text-slate-700">Aggiorno la lega…</div>
+              <div className="text-sm font-medium text-slate-100">Aggiorno la lega…</div>
             </div>
           </div>
         ) : null}
@@ -569,7 +569,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Mobile bottom nav (main sections only) */}
       {mobileMainTabsVisible ? (
-        <nav className="fixed bottom-0 left-0 right-0 z-20 border-t border-slate-100 bg-white md:hidden">
+        <nav className="fixed bottom-0 left-0 right-0 z-20 border-t border-slate-800 bg-slate-950 md:hidden">
           <div
             data-tour="bottom-tabs"
             className="mx-auto flex max-w-6xl items-stretch gap-2 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3"

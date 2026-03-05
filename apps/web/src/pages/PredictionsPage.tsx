@@ -748,6 +748,13 @@ export default function PredictionsPage() {
     });
   }, [currentMatches.length, selectedMatchday]);
 
+  // Compute current match BEFORE any hook dependency tries to read it.
+  // Dependency arrays are evaluated during render, so referencing a const
+  // declared later can throw a TDZ runtime error in production builds.
+  const currentMatch = currentMatches[currentIndex] ?? null;
+  const currentPred = currentMatch ? preds[currentMatch.id] : undefined;
+  const canEditCurrent = currentMatch ? !isMatchLocked(currentMatch) : false;
+
   useEffect(() => {
     // Trigger a small transition when the current match changes.
     if (matchEnterTimerRef.current) window.clearTimeout(matchEnterTimerRef.current);
@@ -757,10 +764,6 @@ export default function PredictionsPage() {
       if (matchEnterTimerRef.current) window.clearTimeout(matchEnterTimerRef.current);
     };
   }, [currentMatch?.id]);
-
-  const currentMatch = currentMatches[currentIndex] ?? null;
-  const currentPred = currentMatch ? preds[currentMatch.id] : undefined;
-  const canEditCurrent = currentMatch ? !isMatchLocked(currentMatch) : false;
 
   const underOverEnabled = !!config?.features?.underOver25;
 

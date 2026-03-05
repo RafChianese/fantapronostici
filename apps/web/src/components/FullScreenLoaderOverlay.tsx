@@ -13,9 +13,9 @@ export function FullScreenLoaderOverlay({
       aria-modal="true"
       aria-label={label}
     >
-      <div className="flex items-center gap-3 rounded-2xl bg-white px-5 py-4 shadow-xl">
+      <div className="flex items-center gap-3 rounded-2xl bg-slate-950 px-5 py-4 shadow-xl border border-slate-800">
         <Spinner />
-        <span className="text-sm font-medium text-slate-700">{label}</span>
+        <span className="text-sm font-medium text-slate-100">{label}</span>
       </div>
     </div>
   );
