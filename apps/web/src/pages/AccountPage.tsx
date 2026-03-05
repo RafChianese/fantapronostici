@@ -40,7 +40,7 @@ export default function AccountPage() {
           <CardContent className="flex items-center gap-3">
             <LeagueAvatar league={activeLeague as any} size={44} />
             <div className="min-w-0">
-              <div className="font-semibold text-slate-900 truncate">{activeLeague.name}</div>
+              <div className="font-semibold text-slate-100 truncate">{activeLeague.name}</div>
               <div className="text-xs text-slate-600">Codice: {activeLeague.code}</div>
             </div>
           </CardContent>
@@ -94,7 +94,7 @@ export default function AccountPage() {
           <div className="flex items-center gap-4 rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
             <UserAvatar avatarId={avatarId} size={96} mode="full" className="shadow" />
             <div className="min-w-0">
-              <div className="text-sm font-semibold text-slate-900">Anteprima</div>
+              <div className="text-sm font-semibold text-slate-100">Anteprima</div>
               <div className="text-xs text-slate-600">Seleziona un avatar qui sotto e salva.</div>
             </div>
           </div>

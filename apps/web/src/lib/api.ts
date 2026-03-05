@@ -389,6 +389,17 @@ export const api = {
   // super admin - external football provider
   superExternalConfig: () => request(`/api/super/external-config`),
   superSaveExternalConfig: (patch: any) => request(`/api/super/external-config`, { method: "PUT", body: JSON.stringify(patch) }),
+
+  // super admin - global competition outcome (winner + top scorer)
+  superCompetitionOutcome: () => request(`/api/super/competition-outcome`),
+  superSaveCompetitionOutcome: (payload: {
+    winnerTeamId?: number | null;
+    winnerTeamName?: string | null;
+    topScorerPlayerId?: number | null;
+    topScorerPlayerName?: string | null;
+    secondTopScorerPlayerId?: number | null;
+    secondTopScorerPlayerName?: string | null;
+  }) => request(`/api/super/competition-outcome`, { method: "PUT", body: JSON.stringify(payload) }),
   superSearchExternalLeagues: (search: string, season?: number) => {
     const params = new URLSearchParams();
     params.set("search", search);
@@ -396,10 +407,6 @@ export const api = {
     return request(`/api/super/external/leagues?${params.toString()}`);
   },
   superImportFixtures: () => request(`/api/super/external/import-fixtures`, { method: "POST" }),
-
-  // super admin - global competition outcome
-  superCompetitionOutcome: () => request(`/api/super/competition-outcome`),
-  superSaveCompetitionOutcome: (payload: any) => request(`/api/super/competition-outcome`, { method: "PUT", body: JSON.stringify(payload) }),
   // league stats
   leagueStats: () => request(`/api/league/stats`) as Promise<LeagueStatsResponse>,
 };

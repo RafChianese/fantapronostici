@@ -45,8 +45,6 @@ export async function resolveAndApplyCompetitionOutcome(args: { competitionCode:
   // Resolve winner + top scorer (best effort).
   let winner: { teamExternalId: number | null; teamName: string | null } = { teamExternalId: null, teamName: null };
   let topScorer: { playerExternalId: number | null; playerName: string | null } = { playerExternalId: null, playerName: null };
-  // Optional second top scorer: not resolvable automatically; set by SuperAdmin if needed.
-  let topScorer2: { playerExternalId: number | null; playerName: string | null } = { playerExternalId: null, playerName: null };
 
   try {
     const standings = await fetchCompetitionStandings({ competitionCode, ...(season ? { season } : {}) });
@@ -78,8 +76,6 @@ export async function resolveAndApplyCompetitionOutcome(args: { competitionCode:
         winnerTeamName: winner.teamName ?? null,
         topScorerPlayerExternalId: topScorer.playerExternalId ?? null,
         topScorerPlayerName: topScorer.playerName ?? null,
-        topScorer2PlayerExternalId: topScorer2.playerExternalId ?? null,
-        topScorer2PlayerName: topScorer2.playerName ?? null,
         resolvedAt: now,
       },
       update: {
@@ -90,8 +86,6 @@ export async function resolveAndApplyCompetitionOutcome(args: { competitionCode:
         winnerTeamName: winner.teamName ?? null,
         topScorerPlayerExternalId: topScorer.playerExternalId ?? null,
         topScorerPlayerName: topScorer.playerName ?? null,
-        topScorer2PlayerExternalId: topScorer2.playerExternalId ?? null,
-        topScorer2PlayerName: topScorer2.playerName ?? null,
         resolvedAt: now,
       },
     });
@@ -115,7 +109,7 @@ export async function resolveAndApplyCompetitionOutcome(args: { competitionCode:
     }
 
     // Top scorer
-    if (r.enableCompetitionTopScorer && (topScorer.playerExternalId || topScorer2.playerExternalId)) {
+    if (r.enableCompetitionTopScorer && topScorer.playerExternalId) {
       await prisma.competitionPick.updateMany({
         where: {
           leagueId: r.leagueId,
@@ -125,13 +119,10 @@ export async function resolveAndApplyCompetitionOutcome(args: { competitionCode:
           pointsAwarded: 0,
         },
       });
-      const ids = [topScorer.playerExternalId, topScorer2.playerExternalId].filter((x): x is number => typeof x === "number" && Number.isFinite(x));
-      if (ids.length) {
-        await prisma.competitionPick.updateMany({
-          where: { leagueId: r.leagueId, type: "TOP_SCORER", playerExternalId: { in: ids } },
-          data: { pointsAwarded: r.pointsCompetitionTopScorer ?? 12 },
-        });
-      }
+      await prisma.competitionPick.updateMany({
+        where: { leagueId: r.leagueId, type: "TOP_SCORER", playerExternalId: topScorer.playerExternalId },
+        data: { pointsAwarded: r.pointsCompetitionTopScorer ?? 12 },
+      });
     }
   }
 

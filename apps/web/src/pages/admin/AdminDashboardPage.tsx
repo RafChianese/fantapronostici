@@ -376,7 +376,11 @@ function RulesTab() {
     setErr("");
     try {
       const [r1, r2, r3, r4] = await Promise.all([api.adminRules(), api.adminSettings(), api.matches(), api.adminJolly()]);
-      setRules(r1.rules);
+      // TEMP: disable scorer picks (paid lineup API not available).
+      setRules({
+        ...(r1.rules || {}),
+        enableScorer: false,
+      });
       setSettings(r2.settings);
       setMatches(r3.matches || []);
       setJolly(r4);
@@ -481,17 +485,22 @@ function RulesTab() {
 
                 <SwitchRow
                   label="Abilita Marcatore (⚽)"
-                  hint="Permette di selezionare un giocatore marcatore (solo se la lineup del match è disponibile)."
-                  checked={!!(rules as any)?.enableScorer}
-                  onChange={(v) => setRules({ ...(rules as any), enableScorer: v })}
+                  hint="Disabilitato: richiede API lineup a pagamento."
+                  checked={false}
+                  disabled
+                  onChange={() => {
+                    // intentionally disabled
+                  }}
                 />
                 <div className="pl-1">
                   <Input
                     label="Punti Marcatore"
                     type="number"
-                    disabled={!((rules as any)?.enableScorer)}
+                    disabled
                     value={String((rules as any)?.pointsScorer ?? 3)}
-                    onChange={(e) => setRules({ ...(rules as any), pointsScorer: Number(e.target.value) })}
+                    onChange={() => {
+                      // intentionally disabled
+                    }}
                   />
                 </div>
 
@@ -1146,11 +1155,13 @@ function SwitchRow({
   hint,
   checked,
   onChange,
+  disabled,
 }: {
   label: string;
   hint?: string;
   checked: boolean;
   onChange: (v: boolean) => void;
+  disabled?: boolean;
 }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1165,9 +1176,17 @@ function SwitchRow({
         type="button"
         role="switch"
         aria-checked={checked}
-        onClick={() => onChange(!checked)}
+        aria-disabled={disabled ? "true" : "false"}
+        onClick={() => {
+          if (disabled) return;
+          onChange(!checked);
+        }}
         className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition ${
-          checked ? "bg-slate-900 border-slate-900" : "bg-slate-200 border-slate-800"
+          disabled
+            ? "cursor-not-allowed opacity-60 bg-slate-950/40 border-slate-800"
+            : checked
+              ? "bg-slate-900 border-slate-900"
+              : "bg-slate-200 border-slate-800"
         }`}
       >
         <span

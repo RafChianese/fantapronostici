@@ -17,6 +17,10 @@ export default function SuperAdminPage() {
   const [external, setExternal] = useState<any | null>(null);
   const [footballData, setFootballData] = useState<any | null>(null);
   const [compOutcome, setCompOutcome] = useState<any | null>(null);
+  const [compSaving, setCompSaving] = useState(false);
+  const [winnerId, setWinnerId] = useState<string>("");
+  const [scorer1Id, setScorer1Id] = useState<string>("");
+  const [scorer2Id, setScorer2Id] = useState<string>("");
 
   async function load() {
     show();
@@ -33,6 +37,9 @@ export default function SuperAdminPage() {
       setFootballData(fd.selected);
       const co = await api.superCompetitionOutcome();
       setCompOutcome(co);
+      setWinnerId(co?.outcome?.winner?.teamExternalId ? String(co.outcome.winner.teamExternalId) : "");
+      setScorer1Id(co?.outcome?.topScorer?.playerExternalId ? String(co.outcome.topScorer.playerExternalId) : "");
+      setScorer2Id(co?.outcome?.secondTopScorer?.playerExternalId ? String(co.outcome.secondTopScorer.playerExternalId) : "");
       const s = await api.superMonetizationStats();
       setStats(s);
     } catch (e: any) {
@@ -101,27 +108,101 @@ export default function SuperAdminPage() {
       <Card className="md:col-span-2">
         <CardHeader
           title="Esito pronostici torneo (globale)"
-          subtitle="Una sola squadra vincitrice e uno/due capocannonieri validi per TUTTE le leghe"
+          subtitle="Imposta vincitore e capocannonieri globali (validi per tutte le leghe). In caso di pari merito puoi scegliere anche un 2° capocannoniere."
         />
-        <CardContent>
-          {!compOutcome ? (
-            <div className="text-sm text-slate-600">Caricamento…</div>
-          ) : (
-            <CompetitionOutcomePanel
-              data={compOutcome}
-              onSave={async (payload) => {
-                try {
-                  setErr("");
-                  await api.superSaveCompetitionOutcome(payload);
-                  const fresh = await api.superCompetitionOutcome();
-                  setCompOutcome(fresh);
-                } catch (e: any) {
-                  setErr(e?.message || "Errore");
-                }
-              }}
-            />
-          )}
-          {err ? <div className="mt-3"><Alert tone="danger">{err}</Alert></div> : null}
+        <CardContent className="space-y-4">
+          {!compOutcome ? <div className="text-sm text-slate-600">Caricamento…</div> : null}
+          {err ? <Alert tone="danger">{err}</Alert> : null}
+
+          {compOutcome ? (
+            <>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-2">
+                  <div className="text-sm font-semibold text-slate-100">Squadra vincente (globale)</div>
+                  <SearchableSelect
+                    value={winnerId}
+                    onChange={setWinnerId}
+                    placeholder="Seleziona squadra…"
+                    options={(compOutcome.options?.teams || [])
+                      .map((t: any) => ({ value: String(t.id), label: t.name }))
+                      .sort((a: any, b: any) => a.label.localeCompare(b.label, "it"))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="text-sm font-semibold text-slate-100">Capocannoniere #1 (globale)</div>
+                  <SearchableSelect
+                    value={scorer1Id}
+                    onChange={setScorer1Id}
+                    placeholder="Seleziona giocatore…"
+                    options={(compOutcome.options?.scorers || [])
+                      .map((p: any) => ({ value: String(p.id), label: `${p.name}${p.teamName ? ` (${p.teamName})` : ""}` }))
+                      .sort((a: any, b: any) => a.label.localeCompare(b.label, "it"))}
+                  />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-100">Capocannoniere #2 (opzionale)</div>
+                      <div className="text-xs text-slate-500">Usalo solo se vuoi considerare un 2° top scorer (pari merito).</div>
+                    </div>
+                    {scorer2Id ? (
+                      <Button variant="secondary" onClick={() => setScorer2Id("")}>Rimuovi</Button>
+                    ) : null}
+                  </div>
+                  <SearchableSelect
+                    value={scorer2Id}
+                    onChange={setScorer2Id}
+                    placeholder="Seleziona giocatore…"
+                    options={(compOutcome.options?.scorers || [])
+                      .map((p: any) => ({ value: String(p.id), label: `${p.name}${p.teamName ? ` (${p.teamName})` : ""}` }))
+                      .sort((a: any, b: any) => a.label.localeCompare(b.label, "it"))}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  disabled={compSaving}
+                  onClick={async () => {
+                    try {
+                      setErr("");
+                      setCompSaving(true);
+                      const team = (compOutcome.options?.teams || []).find((t: any) => String(t.id) === winnerId);
+                      const s1 = (compOutcome.options?.scorers || []).find((p: any) => String(p.id) === scorer1Id);
+                      const s2 = (compOutcome.options?.scorers || []).find((p: any) => String(p.id) === scorer2Id);
+
+                      await api.superSaveCompetitionOutcome({
+                        winnerTeamId: winnerId ? Number(winnerId) : null,
+                        winnerTeamName: team?.name ?? null,
+                        topScorerPlayerId: scorer1Id ? Number(scorer1Id) : null,
+                        topScorerPlayerName: s1?.name ?? null,
+                        secondTopScorerPlayerId: scorer2Id ? Number(scorer2Id) : null,
+                        secondTopScorerPlayerName: s2?.name ?? null,
+                      });
+
+                      const refreshed = await api.superCompetitionOutcome();
+                      setCompOutcome(refreshed);
+                      setWinnerId(refreshed?.outcome?.winner?.teamExternalId ? String(refreshed.outcome.winner.teamExternalId) : "");
+                      setScorer1Id(refreshed?.outcome?.topScorer?.playerExternalId ? String(refreshed.outcome.topScorer.playerExternalId) : "");
+                      setScorer2Id(refreshed?.outcome?.secondTopScorer?.playerExternalId ? String(refreshed.outcome.secondTopScorer.playerExternalId) : "");
+                    } catch (e: any) {
+                      setErr(e?.message || "Errore");
+                    } finally {
+                      setCompSaving(false);
+                    }
+                  }}
+                >
+                  {compSaving ? "Salvo…" : "Salva esito globale"}
+                </Button>
+
+                {compOutcome?.outcome?.resolvedAt ? (
+                  <span className="text-xs text-slate-500">Ultimo salvataggio: {new Date(compOutcome.outcome.resolvedAt).toLocaleString("it-IT")}</span>
+                ) : (
+                  <span className="text-xs text-slate-500">Non ancora impostato.</span>
+                )}
+              </div>
+            </>
+          ) : null}
         </CardContent>
       </Card>
       <Card>
@@ -156,99 +237,6 @@ export default function SuperAdminPage() {
           )}
         </CardContent>
       </Card>
-    </div>
-  );
-}
-
-function CompetitionOutcomePanel({
-  data,
-  onSave,
-}: {
-  data: any;
-  onSave: (payload: any) => Promise<void>;
-}) {
-  const teams = (data?.options?.teams || []) as Array<{ id: number; name: string }>;
-  const scorers = (data?.options?.scorers || []) as Array<{ id: number; name: string; teamName?: string | null }>;
-
-  const [winnerId, setWinnerId] = useState<string>(String(data?.outcome?.winner?.teamExternalId || ""));
-  const [scorer1Id, setScorer1Id] = useState<string>(String(data?.outcome?.topScorer?.playerExternalId || ""));
-  const [scorer2Id, setScorer2Id] = useState<string>(String(data?.outcome?.topScorer2?.playerExternalId || ""));
-
-  useEffect(() => {
-    setWinnerId(String(data?.outcome?.winner?.teamExternalId || ""));
-    setScorer1Id(String(data?.outcome?.topScorer?.playerExternalId || ""));
-    setScorer2Id(String(data?.outcome?.topScorer2?.playerExternalId || ""));
-  }, [data]);
-
-  const teamOptions = teams.map((t) => ({ value: String(t.id), label: t.name }));
-  const scorerOptions = scorers.map((p) => ({
-    value: String(p.id),
-    label: p.teamName ? `${p.name} · ${p.teamName}` : p.name,
-  }));
-
-  const selectedTeam = teams.find((t) => String(t.id) === winnerId) || null;
-  const selectedScorer1 = scorers.find((p) => String(p.id) === scorer1Id) || null;
-  const selectedScorer2 = scorers.find((p) => String(p.id) === scorer2Id) || null;
-
-  return (
-    <div className="grid gap-4 md:grid-cols-3">
-      <div className="space-y-2">
-        <div className="text-sm font-medium">Squadra vincente (globale)</div>
-        <SearchableSelect
-          value={winnerId}
-          onChange={setWinnerId}
-          options={teamOptions}
-          placeholder="Seleziona squadra…"
-          emptyLabel="Nessuna"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <div className="text-sm font-medium">Capocannoniere #1 (globale)</div>
-        <SearchableSelect
-          value={scorer1Id}
-          onChange={setScorer1Id}
-          options={scorerOptions}
-          placeholder="Seleziona giocatore…"
-          emptyLabel="Nessuno"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <div className="text-sm font-medium">Capocannoniere #2 (solo se pari merito)</div>
-        <SearchableSelect
-          value={scorer2Id}
-          onChange={setScorer2Id}
-          options={scorerOptions}
-          placeholder="(opzionale)"
-          emptyLabel="Nessuno"
-        />
-      </div>
-
-      <div className="md:col-span-3 flex flex-col gap-2 rounded-xl border border-slate-800 bg-slate-900/20 p-3 text-sm">
-        <div className="text-slate-300">
-          <span className="font-medium text-slate-100">Selezionati:</span>{" "}
-          {selectedTeam ? selectedTeam.name : "—"} · {selectedScorer1 ? selectedScorer1.name : "—"}
-          {selectedScorer2 ? ` · (2°) ${selectedScorer2.name}` : ""}
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            onClick={() =>
-              onSave({
-                winnerTeamId: winnerId ? Number(winnerId) : null,
-                winnerTeamName: selectedTeam?.name ?? null,
-                topScorerPlayerId: scorer1Id ? Number(scorer1Id) : null,
-                topScorerPlayerName: selectedScorer1?.name ?? null,
-                topScorer2PlayerId: scorer2Id ? Number(scorer2Id) : null,
-                topScorer2PlayerName: selectedScorer2?.name ?? null,
-              })
-            }
-          >
-            Salva esito globale
-          </Button>
-          <div className="text-xs text-slate-500">Aggiorna tutte le leghe e ricalcola le classifiche.</div>
-        </div>
-      </div>
     </div>
   );
 }

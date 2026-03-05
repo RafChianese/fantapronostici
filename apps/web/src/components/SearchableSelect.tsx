@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 type Option = { value: string; label: string };
 
@@ -20,6 +21,14 @@ export function SearchableSelect({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const btnRef = useRef<HTMLButtonElement | null>(null);
+  const [panel, setPanel] = useState<{
+    top: number;
+    left: number;
+    width: number;
+    maxHeight: number;
+    placement: "bottom" | "top";
+  } | null>(null);
 
   const selected = useMemo(() => options.find((o) => o.value === value) || null, [options, value]);
 
@@ -45,9 +54,40 @@ export function SearchableSelect({
     if (!open) setQuery("");
   }, [open]);
 
+  // Compute floating panel position (portal) so it doesn't get clipped near the page bottom.
+  useEffect(() => {
+    if (!open) {
+      setPanel(null);
+      return;
+    }
+    function compute() {
+      const btn = btnRef.current;
+      if (!btn) return;
+      const r = btn.getBoundingClientRect();
+      const viewportH = window.innerHeight;
+      const spaceBelow = viewportH - r.bottom;
+      const spaceAbove = r.top;
+      const want = 360; // desired panel height
+      const placement: "bottom" | "top" = spaceBelow >= 220 || spaceBelow >= spaceAbove ? "bottom" : "top";
+      const maxHeight = Math.max(180, Math.min(want, placement === "bottom" ? spaceBelow - 12 : spaceAbove - 12));
+      const top = placement === "bottom" ? r.bottom + 8 : Math.max(8, r.top - 8 - maxHeight);
+      const left = Math.max(8, Math.min(r.left, window.innerWidth - r.width - 8));
+      setPanel({ top, left, width: r.width, maxHeight, placement });
+    }
+
+    compute();
+    window.addEventListener("resize", compute);
+    window.addEventListener("scroll", compute, true);
+    return () => {
+      window.removeEventListener("resize", compute);
+      window.removeEventListener("scroll", compute, true);
+    };
+  }, [open]);
+
   return (
     <div ref={rootRef} className="relative">
       <button
+        ref={btnRef}
         type="button"
         disabled={disabled}
         onClick={() => setOpen((v) => !v)}
@@ -58,48 +98,58 @@ export function SearchableSelect({
         {selected?.label || placeholder || "Seleziona…"}
       </button>
 
-      {open ? (
-        <div className="absolute z-20 mt-2 w-full overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 shadow-xl">
-          <div className="border-b border-slate-800 p-2">
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              autoFocus
-              placeholder="Cerca…"
-              className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-rose-500/35"
-            />
-          </div>
+      {open && panel
+        ? createPortal(
+            <div className="fixed inset-0 z-50" aria-hidden="true">
+              <div className="absolute inset-0" onMouseDown={() => setOpen(false)} onTouchStart={() => setOpen(false)} />
 
-          <div className="max-h-64 overflow-auto p-1">
-            <button
-              type="button"
-              className={`w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-slate-900 ${value === "" ? "bg-slate-900" : ""}`}
-              onClick={() => {
-                onChange("");
-                setOpen(false);
-              }}
-            >
-              {emptyLabel || "—"}
-            </button>
-            {filtered.map((o) => (
-              <button
-                key={o.value}
-                type="button"
-                className={`w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-slate-900 ${o.value === value ? "bg-emerald-950/35" : ""}`}
-                onClick={() => {
-                  onChange(o.value);
-                  setOpen(false);
-                }}
+              <div
+                className="absolute overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl"
+                style={{ top: panel.top, left: panel.left, width: panel.width }}
+                role="listbox"
+                aria-label="Selettore"
               >
-                {o.label}
-              </button>
-            ))}
-            {filtered.length === 0 ? (
-              <div className="px-3 py-4 text-sm text-slate-500">Nessun risultato.</div>
-            ) : null}
-          </div>
-        </div>
-      ) : null}
+                <div className="border-b border-slate-800 p-2">
+                  <input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    autoFocus
+                    placeholder="Cerca…"
+                    className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-rose-500/35"
+                  />
+                </div>
+
+                <div className="overflow-auto p-1" style={{ maxHeight: panel.maxHeight }}>
+                  <button
+                    type="button"
+                    className={`w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-slate-900 ${value === "" ? "bg-slate-900" : ""}`}
+                    onClick={() => {
+                      onChange("");
+                      setOpen(false);
+                    }}
+                  >
+                    {emptyLabel || "—"}
+                  </button>
+                  {filtered.map((o) => (
+                    <button
+                      key={o.value}
+                      type="button"
+                      className={`w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-slate-900 ${o.value === value ? "bg-emerald-950/35" : ""}`}
+                      onClick={() => {
+                        onChange(o.value);
+                        setOpen(false);
+                      }}
+                    >
+                      {o.label}
+                    </button>
+                  ))}
+                  {filtered.length === 0 ? <div className="px-3 py-4 text-sm text-slate-500">Nessun risultato.</div> : null}
+                </div>
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
     </div>
   );
 }

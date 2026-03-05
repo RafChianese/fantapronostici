@@ -104,7 +104,26 @@ function CompetitionPredictionsPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeLeagueId]);
 
-  const enabledAny = !!data?.enabled?.winner || !!data?.enabled?.topScorer;
+  const enabled = useMemo(() => {
+    const d: any = data;
+    const winner = Boolean(
+      d?.enabled?.winner ??
+        d?.enabledWinner ??
+        d?.winnerEnabled ??
+        d?.rules?.enableCompetitionWinner ??
+        d?.leagueRules?.enableCompetitionWinner
+    );
+    const topScorer = Boolean(
+      d?.enabled?.topScorer ??
+        d?.enabledTopScorer ??
+        d?.topScorerEnabled ??
+        d?.rules?.enableCompetitionTopScorer ??
+        d?.leagueRules?.enableCompetitionTopScorer
+    );
+    return { winner, topScorer };
+  }, [data]);
+
+  const enabledAny = enabled.winner || enabled.topScorer;
   const canEdit = !!data?.canEdit;
 
   const deadlineLabel = useMemo(() => {
@@ -165,7 +184,7 @@ function CompetitionPredictionsPanel() {
                 </div>
               </div>
 
-              {data.enabled.winner ? (
+              {enabled.winner ? (
                 <div className="space-y-2">
                   <div className="text-sm font-semibold text-slate-100">Vincitore torneo (+{data.points.winner} punti)</div>
                   <SearchableSelect
@@ -182,7 +201,7 @@ function CompetitionPredictionsPanel() {
                 </div>
               ) : null}
 
-              {data.enabled.topScorer ? (
+              {enabled.topScorer ? (
                 <div className="space-y-2">
                   <div className="text-sm font-semibold text-slate-100">Capocannoniere (+{data.points.topScorer} punti)</div>
                   <SearchableSelect
@@ -248,6 +267,9 @@ export default function PredictionsPage() {
   // Simple in/out transition when switching match in match-by-match mode.
   const [matchEnter, setMatchEnter] = useState(true);
   const matchEnterTimerRef = useRef<any>(null);
+  // Mobile UX: swipe left/right to change match.
+  const swipeStartXRef = useRef<number | null>(null);
+  const swipeStartYRef = useRef<number | null>(null);
   const [toast, setToast] = useState<{ tone: "success" | "danger"; msg: string } | null>(null);
 
   const [detailOpen, setDetailOpen] = useState(false);
@@ -682,7 +704,9 @@ export default function PredictionsPage() {
     const all = Array.from(map.entries()).sort((a, b) => a[0] - b[0]);
 
     const mode = (config?.leagueSettings?.predictionMode as any) || "MATCHDAY_BY_MATCHDAY";
-    if (mode === "TOURNAMENT_PRE") return all;
+    // If the league is configured for "Tutti prima del torneo" (lock all matchdays),
+    // allow navigating/selecting ANY matchday from "I miei pronostici".
+    if (mode === "TOURNAMENT_PRE" || config?.lock?.lockAll) return all;
 
     // If the Home "Ultime 5 giornate" dots link passed a matchday (?md=...), show exactly that matchday.
     if (requestedMdIsValid) {
@@ -1003,7 +1027,7 @@ export default function PredictionsPage() {
             </CardContent>
           </Card>
 
-          {byMatchday.length ? (
+          {uiMode === "MATCH" && byMatchday.length ? (
             <Card>
               <CardHeader title="Giornata" subtitle="Seleziona la giornata su cui inserire i pronostici." />
               <CardContent>
@@ -1074,6 +1098,33 @@ export default function PredictionsPage() {
                   {currentMatch ? (
                     <div
                       className={`mt-4 rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5 transition-all duration-200 ${matchEnter ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1"}`}
+                      onTouchStart={(e) => {
+                        const t = e.touches?.[0];
+                        if (!t) return;
+                        swipeStartXRef.current = t.clientX;
+                        swipeStartYRef.current = t.clientY;
+                      }}
+                      onTouchEnd={(e) => {
+                        const startX = swipeStartXRef.current;
+                        const startY = swipeStartYRef.current;
+                        swipeStartXRef.current = null;
+                        swipeStartYRef.current = null;
+                        if (startX === null || startY === null) return;
+                        const t = e.changedTouches?.[0];
+                        if (!t) return;
+                        const dx = t.clientX - startX;
+                        const dy = t.clientY - startY;
+                        // Ignore vertical scroll gestures.
+                        if (Math.abs(dy) > Math.abs(dx)) return;
+                        const threshold = 48;
+                        if (dx <= -threshold) {
+                          // swipe left => next
+                          setCurrentIndex((i) => Math.min(currentMatches.length - 1, i + 1));
+                        } else if (dx >= threshold) {
+                          // swipe right => previous
+                          setCurrentIndex((i) => Math.max(0, i - 1));
+                        }
+                      }}
                     >
                       <div className="flex items-center justify-between gap-3">
                         <div className="text-xs text-slate-300">
@@ -1213,30 +1264,30 @@ export default function PredictionsPage() {
                         </div>
                       </div>
 
-                      {currentDerived ? (
-                        <div className="mt-4 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
-                          <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-                            <div className="text-slate-300">Esito</div>
-                            <div className="mt-0.5 font-extrabold">{currentDerived.outcome}</div>
-                          </div>
-                          <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-                            <div className="text-slate-300">Somma gol</div>
-                            <div className="mt-0.5 font-extrabold">{currentDerived.sumGoals}</div>
-                          </div>
-                          {underOverEnabled ? (
-                            <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-                              <div className="text-slate-300">U/O 2.5</div>
-                              <div className="mt-0.5 font-extrabold">{currentDerived.underOver}</div>
-                            </div>
-                          ) : null}
-                          <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-                            <div className="text-slate-300">Reale</div>
-                            <div className="mt-0.5 font-extrabold">{currentReal}</div>
-                          </div>
+                      <div className="mt-4 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+                        <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                          <div className="text-slate-300">Esito</div>
+                          <div className="mt-0.5 font-extrabold">{currentDerived ? currentDerived.outcome : "—"}</div>
                         </div>
-                      ) : (
-                        <div className="mt-4 text-xs text-slate-300">Inserisci entrambi i punteggi per vedere esito e metriche.</div>
-                      )}
+                        <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                          <div className="text-slate-300">Somma gol</div>
+                          <div className="mt-0.5 font-extrabold">{currentDerived ? currentDerived.sumGoals : "—"}</div>
+                        </div>
+                        {underOverEnabled ? (
+                          <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                            <div className="text-slate-300">U/O 2.5</div>
+                            <div className="mt-0.5 font-extrabold">{currentDerived ? currentDerived.underOver : "—"}</div>
+                          </div>
+                        ) : null}
+                        <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                          <div className="text-slate-300">Reale</div>
+                          <div className="mt-0.5 font-extrabold">{currentReal}</div>
+                        </div>
+                      </div>
+
+                      {!currentDerived ? (
+                        <div className="mt-2 text-xs text-slate-300">Inserisci entrambi i punteggi per vedere esito e metriche.</div>
+                      ) : null}
 
                       <div className="mt-5 flex items-center justify-between gap-3">
                         <button
@@ -1275,7 +1326,7 @@ export default function PredictionsPage() {
                       </div>
 
                       {canEditCurrent ? (
-                        <div className="mt-4 grid grid-cols-7 gap-1">
+                        <div className="mt-4 grid gap-1.5 [grid-template-columns:repeat(auto-fit,minmax(44px,1fr))]">
                           {quickPicks.map(([a, b]) => (
                             <button
                               key={`${a}-${b}`}
@@ -1584,7 +1635,7 @@ export default function PredictionsPage() {
                       ) : null}
 
                       {canEdit ? (
-                        <div className="mt-2 grid grid-cols-7 gap-1">
+                        <div className="mt-2 grid gap-1.5 [grid-template-columns:repeat(auto-fit,minmax(44px,1fr))]">
                           {quick.map(([a, b]) => (
                             <button
                               key={`${a}-${b}`}
