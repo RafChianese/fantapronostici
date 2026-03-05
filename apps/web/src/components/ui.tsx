@@ -10,7 +10,7 @@ export function Button(
     "inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:translate-y-[1px]";
   const v =
     variant === "primary"
-      ? "bg-gradient-to-b from-[#2EC4B6] to-[#1FA99C] text-white shadow-sm hover:shadow-md hover:brightness-[1.02]"
+      ? "bg-gradient-to-b from-rose-500 to-rose-600 text-white shadow-sm hover:shadow-md hover:brightness-[1.02]"
       : variant === "danger"
       ? "bg-rose-600 text-white hover:bg-rose-500"
       : variant === "ghost"
@@ -26,7 +26,7 @@ export function Input(
   const inputEl = (
     <input
       id={id}
-      className={`w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-[#2EC4B6]/40 ${className}`}
+      className={`w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-rose-500/35 ${className}`}
       {...rest}
     />
   );
@@ -86,7 +86,7 @@ export function Badge({ children, tone = "gray" }: { children: React.ReactNode; 
 }
 
 export function Spinner() {
-  return <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-700 border-t-[#2EC4B6]" />;
+  return <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-700 border-t-rose-500" />;
 }
 
 export function Skeleton({ className = "" }: { className?: string }) {

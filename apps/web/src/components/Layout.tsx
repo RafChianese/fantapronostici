@@ -16,7 +16,7 @@ function Icon({
   name: "dashboard" | "leaderboard" | "predictions" | "leagues" | "menu";
   active?: boolean;
 }) {
-  const stroke = active ? (name === "menu" ? "#ffffff" : "#2EC4B6") : "#64748b"; // slate-500
+  const stroke = active ? (name === "menu" ? "#ffffff" : "#fb7185") : "#64748b"; // rose-400 / slate-500
   const common = {
     width: 22,
     height: 22,
@@ -103,7 +103,7 @@ function NavItem({
       data-tour={tourId}
       className={({ isActive }) =>
         `block w-full rounded-xl px-3 py-2 text-left text-sm font-medium transition-colors ${
-          isActive ? "bg-[#2EC4B6] text-white" : "text-slate-200 hover:bg-slate-800/70"
+          isActive ? "bg-rose-600 text-white" : "text-slate-200 hover:bg-slate-800/70"
         }`
       }
     >
@@ -304,7 +304,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <Icon name="menu" active />
               </button>
             ) : (
-              <div className="hidden h-10 w-10 rounded-2xl bg-[#2EC4B6] md:block" />
+              <div className="hidden h-10 w-10 rounded-2xl bg-rose-600 md:block" />
             )}
 
             <Link to={user ? "/" : "/login"} className="min-w-0">
@@ -580,7 +580,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               data-tour="tab-dashboard"
               className={({ isActive }) =>
                 `flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-3 py-2 text-[11px] font-semibold ${
-                  isActive ? "bg-[#E9FBF9] text-[#0F766E]" : "text-slate-600 hover:bg-slate-50"
+                  isActive ? "bg-rose-500/15 text-rose-200" : "text-slate-300 hover:bg-slate-900/50"
                 }`
               }
             >
@@ -596,7 +596,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               data-tour="tab-leaderboard"
               className={({ isActive }) =>
                 `flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-3 py-2 text-[11px] font-semibold ${
-                  isActive ? "bg-[#E9FBF9] text-[#0F766E]" : "text-slate-600 hover:bg-slate-50"
+                  isActive ? "bg-rose-500/15 text-rose-200" : "text-slate-300 hover:bg-slate-900/50"
                 }`
               }
             >
@@ -612,7 +612,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               data-tour="tab-predictions"
               className={({ isActive }) =>
                 `flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-3 py-2 text-[11px] font-semibold ${
-                  isActive ? "bg-[#E9FBF9] text-[#0F766E]" : "text-slate-600 hover:bg-slate-50"
+                  isActive ? "bg-rose-500/15 text-rose-200" : "text-slate-300 hover:bg-slate-900/50"
                 }`
               }
             >
@@ -629,7 +629,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               data-tour="tab-leagues"
               className={({ isActive }) =>
                 `flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-3 py-2 text-[11px] font-semibold ${
-                  isActive ? "bg-[#E9FBF9] text-[#0F766E]" : "text-slate-600 hover:bg-slate-50"
+                  isActive ? "bg-rose-500/15 text-rose-200" : "text-slate-300 hover:bg-slate-900/50"
                 }`
               }
             >
@@ -644,7 +644,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               type="button"
               data-tour="tab-menu"
               onClick={() => setDrawerOpen(true)}
-              className="flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-3 py-2 text-[11px] font-semibold text-slate-600 hover:bg-slate-50"
+              className="flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-3 py-2 text-[11px] font-semibold text-slate-300 hover:bg-slate-900/50"
               aria-label="Apri menu"
             >
               <Icon name="menu" />

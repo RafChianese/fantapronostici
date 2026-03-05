@@ -66,7 +66,7 @@ export function SearchableSelect({
               onChange={(e) => setQuery(e.target.value)}
               autoFocus
               placeholder="Cerca…"
-              className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-[#2EC4B6]/40"
+              className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-rose-500/35"
             />
           </div>
 

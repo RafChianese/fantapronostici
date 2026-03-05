@@ -118,7 +118,7 @@ export default function LeaderboardPage() {
 
   return (
     <div className="space-y-4">
-      <div className="overflow-hidden rounded-3xl border border-slate-200 shadow-sm">
+      <div className="overflow-hidden rounded-3xl border border-slate-800 shadow-sm">
         <div
           className="text-white"
           style={{
@@ -161,7 +161,7 @@ export default function LeaderboardPage() {
             <div className="hidden sm:block">
               <label className="text-xs text-slate-600">Ordina</label>
               <select
-                className="mt-1 w-[260px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                className="mt-1 w-[260px] rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100"
                 value={sortParam}
                 onChange={(e) => {
                   const v = e.target.value;
@@ -195,13 +195,13 @@ export default function LeaderboardPage() {
             aria-label="Chiudi ordinamento"
             onClick={() => setSortOpen(false)}
           />
-          <div className="absolute bottom-0 left-0 right-0 max-h-[80vh] overflow-auto rounded-t-2xl bg-white p-4 pb-[calc(env(safe-area-inset-bottom)+16px)] shadow-2xl">
+          <div className="absolute bottom-0 left-0 right-0 max-h-[80vh] overflow-auto rounded-t-2xl bg-slate-950 p-4 pb-[calc(env(safe-area-inset-bottom)+16px)] shadow-2xl ring-1 ring-slate-800">
             <div className="mb-2 flex items-center justify-between">
-              <div className="text-base font-semibold">Ordina per</div>
+              <div className="text-base font-semibold text-slate-100">Ordina per</div>
               <Button variant="ghost" onClick={() => setSortOpen(false)} aria-label="Chiudi">✕</Button>
             </div>
 
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-slate-800">
               {sortOptions.map((opt) => {
                 const active = opt.key === sortKey && opt.dir === sortDir;
                 return (
@@ -216,7 +216,7 @@ export default function LeaderboardPage() {
                   >
                     <span className="text-sm text-slate-900">{opt.label}</span>
                     <span
-                      className={`h-5 w-5 rounded-full border ${active ? "border-[#2EC4B6] bg-[#2EC4B6]" : "border-slate-300"}`}
+                      className={`h-5 w-5 rounded-full border ${active ? "border-rose-500 bg-rose-500" : "border-slate-700"}`}
                       aria-hidden="true"
                     />
                   </button>
@@ -228,7 +228,7 @@ export default function LeaderboardPage() {
       ) : null}
       <CardContent>
         {/* Legend / metric explanation */}
-        <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+        <div className="mb-4 rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
           <button
             type="button"
             onClick={() => setLegendOpen((v) => !v)}
@@ -314,13 +314,13 @@ export default function LeaderboardPage() {
               const isMe = !!user?.id && r.userId === user.id;
               const gap = idx === 0 ? 0 : Math.max(0, leaderPoints - Number(r.totalPoints || 0));
               return (
-              <div key={r.userId} className={`py-3 ${top3Row} ${isMe ? "rounded-2xl bg-[#2EC4B6]/10 px-3" : ""} ${flashCls}`}>
+              <div key={r.userId} className={`py-3 ${top3Row} ${isMe ? "rounded-2xl bg-rose-500/10 px-3" : ""} ${flashCls}`}>
                 {/* Mobile: 2 righe senza scroll orizzontale. Desktop: layout a colonne */}
                 <div className="flex flex-col gap-2 sm:grid sm:grid-cols-12 sm:items-center sm:gap-3">
                   <div className="flex items-center justify-between sm:col-span-6 sm:justify-start sm:gap-3">
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-2">
-                        <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-extrabold ${idx <= 2 ? "border-[#2EC4B6]/30 bg-white" : "border-slate-200 bg-slate-50"} ${medalGlow}`}>
+                        <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-extrabold ${idx <= 2 ? "border-rose-500/25 bg-slate-950" : "border-slate-800 bg-slate-900/50"} ${medalGlow}`}>
                           <span className="tabular-nums">#{idx + 1}</span>
                           {medal ? <span aria-hidden="true">{medal}</span> : null}
                         </span>

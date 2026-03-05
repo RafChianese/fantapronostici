@@ -270,7 +270,7 @@ export default function UserSummaryPage() {
 
     return (
       <svg viewBox={`0 0 ${w} ${h}`} className="w-full" role="img" aria-label="Andamento punti">
-        <path d={d} fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-700" />
+        <path d={d} fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-300" />
         {xy.map((p, i) => (
           <circle key={i} cx={p.x} cy={p.y} r={2.5} className="fill-slate-700" />
         ))}
@@ -317,14 +317,14 @@ export default function UserSummaryPage() {
 
         {showAd ? (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-            <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl">
+            <div className="w-full max-w-lg rounded-2xl bg-slate-950 p-5 shadow-xl">
               <div className="flex items-center justify-between">
                 <div className="font-semibold">Pubblicità</div>
                 <button className="text-sm text-slate-500 hover:underline" onClick={() => setShowAd(false)}>
                   Chiudi
                 </button>
               </div>
-              <div className="mt-3 rounded-xl bg-slate-100 p-4 text-sm text-slate-700">
+              <div className="mt-3 rounded-xl bg-slate-100 p-4 text-sm text-slate-300">
                 {demoAdsEnabled ? (
                   <>
                     <div className="mb-2 font-medium">[DEMO] Spazio pubblicitario</div>
@@ -338,7 +338,7 @@ export default function UserSummaryPage() {
                     <div className="opacity-80">
                       Se hai integrato Google Ad Manager (GPT), qui verrà renderizzato lo slot configurato.
                     </div>
-                    <div id="gam-rewarded-slot" className="mt-3 flex min-h-[260px] items-center justify-center rounded-xl border border-slate-200 bg-white">
+                    <div id="gam-rewarded-slot" className="mt-3 flex min-h-[260px] items-center justify-center rounded-xl border border-slate-800 bg-slate-950">
                       <div className="text-xs text-slate-500">Slot GAM</div>
                     </div>
                   </>
@@ -450,7 +450,7 @@ export default function UserSummaryPage() {
   const TeamDot = ({ name, logo }: { name: string; logo?: string | null }) => {
     if (logo) return <img src={logo} alt={name} className="h-6 w-6 rounded-full object-contain" />;
     return (
-      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-[10px] font-bold text-slate-700">
+      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-800 bg-slate-950 text-[10px] font-bold text-slate-300">
         {name.trim().slice(0, 1).toUpperCase()}
       </span>
     );
@@ -571,50 +571,50 @@ export default function UserSummaryPage() {
           right={<Link className="text-sm text-slate-600 hover:underline" to="/leaderboard">← Torna alla classifica</Link>}
         />
         <CardContent className="space-y-4">
-          <div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/40 p-3">
             <UserAvatar avatarId={(safeUser as any).avatarId || null} size={60} mode="full" className="shadow-sm" />
             <div className="min-w-0">
-              <div className="truncate text-sm font-semibold text-slate-900">{safeUser.displayName}</div>
+              <div className="truncate text-sm font-semibold text-slate-100">{safeUser.displayName}</div>
               <div className="mt-0.5 text-xs text-slate-600">{safeLeague.name}</div>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-3">
               <div className="text-[11px] font-medium text-slate-600">% Esatti</div>
-              <div className="mt-1 text-2xl font-semibold text-slate-900">{pctExact}%</div>
+              <div className="mt-1 text-2xl font-semibold text-slate-100">{pctExact}%</div>
               <div className="mt-1 text-xs text-slate-500">Su {finishedCount} partite finite</div>
             </div>
-            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-3">
               <div className="text-[11px] font-medium text-slate-600">% 1X2</div>
-              <div className="mt-1 text-2xl font-semibold text-slate-900">{pctOutcome}%</div>
+              <div className="mt-1 text-2xl font-semibold text-slate-100">{pctOutcome}%</div>
               <div className="mt-1 text-xs text-slate-500">Su {finishedCount} partite finite</div>
             </div>
-            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-3">
               <div className="text-[11px] font-medium text-slate-600">Streak 1X2</div>
-              <div className="mt-1 text-2xl font-semibold text-slate-900">{streakOutcome}</div>
+              <div className="mt-1 text-2xl font-semibold text-slate-100">{streakOutcome}</div>
               <div className="mt-1 text-xs text-slate-500">Consecutivi corretti</div>
             </div>
-            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-3">
               <div className="text-[11px] font-medium text-slate-600">Miglior giornata</div>
-              <div className="mt-1 text-2xl font-semibold text-slate-900">G{bestMatchday.md}</div>
+              <div className="mt-1 text-2xl font-semibold text-slate-100">G{bestMatchday.md}</div>
               <div className="mt-1 text-xs text-slate-500">{bestMatchday.pts} punti</div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl border border-slate-100 bg-white p-3">
+            <div className="rounded-2xl border border-slate-800 bg-slate-950 p-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-sm font-semibold text-slate-900">Andamento punti</div>
+                  <div className="text-sm font-semibold text-slate-100">Andamento punti</div>
                   <div className="text-xs text-slate-500">Totale cumulativo per giornata</div>
                 </div>
                 <Badge tone="gray">Streak esatti {streakExact}</Badge>
               </div>
-              <div className="mt-2 text-slate-900">{renderMiniChart()}</div>
+              <div className="mt-2 text-slate-100">{renderMiniChart()}</div>
             </div>
 
-            <div className="rounded-2xl border border-slate-100 bg-white p-3">
-              <div className="text-sm font-semibold text-slate-900">Sintesi</div>
+            <div className="rounded-2xl border border-slate-800 bg-slate-950 p-3">
+              <div className="text-sm font-semibold text-slate-100">Sintesi</div>
               <div className="mt-1 text-xs text-slate-600">
                 Esatti: <b>{exactHits}</b> · 1X2: <b>{outcomeHits}</b> · Partite finite: <b>{finishedCount}</b>
               </div>
@@ -639,7 +639,7 @@ export default function UserSummaryPage() {
         <CardContent>
           <div className="space-y-6">
             {visibleMatchdays.map((md) => (
-              <Card key={md} className="border border-slate-100">
+              <Card key={md} className="border border-slate-800">
                 <CardHeader
                   title={`Giornata ${md}`}
                   subtitle={`${byMatchday[String(md)]?.length ?? 0} partite`}
@@ -661,7 +661,7 @@ export default function UserSummaryPage() {
                     const status = getStatus(it);
 
                     return (
-                      <div key={m?.id ?? `${m?.kickoffAt}-${m?.homeTeam}`} className="rounded-2xl border border-slate-100 bg-white/70 p-3">
+                      <div key={m?.id ?? `${m?.kickoffAt}-${m?.homeTeam}`} className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2">
                             <StatusDot status={status} />
@@ -679,11 +679,11 @@ export default function UserSummaryPage() {
                             <div className="space-y-1">
                               <div className="flex items-center gap-2 min-w-0">
                                 <TeamDot name={m?.homeTeam || ""} logo={m?.homeLogo} />
-                                <div className="min-w-0 truncate text-sm font-semibold text-slate-900">{m?.homeTeam}</div>
+                                <div className="min-w-0 truncate text-sm font-semibold text-slate-100">{m?.homeTeam}</div>
                               </div>
                               <div className="flex items-center gap-2 min-w-0">
                                 <TeamDot name={m?.awayTeam || ""} logo={m?.awayLogo} />
-                                <div className="min-w-0 truncate text-sm font-semibold text-slate-900">{m?.awayTeam}</div>
+                                <div className="min-w-0 truncate text-sm font-semibold text-slate-100">{m?.awayTeam}</div>
                               </div>
                             </div>
                             <div className="mt-2 text-sm text-slate-600">

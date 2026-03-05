@@ -38,7 +38,7 @@ export default function OnboardingPage() {
           <CardContent>
             <div className="space-y-2">
               {approved.map((m) => (
-                <div key={m.id} className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3">
+                <div key={m.id} className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3">
                   <div className="flex items-center gap-3">
                     <LeagueAvatar
                       leagueId={m.league.id}
@@ -72,7 +72,7 @@ export default function OnboardingPage() {
           <CardContent>
             <div className="space-y-2">
               {pending.map((m) => (
-                <div key={m.id} className="rounded-xl border border-slate-200 px-4 py-3">
+                <div key={m.id} className="rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3">
                   <div className="font-medium">{m.league.name}</div>
                   <div className="text-xs text-slate-600">Codice: {m.league.code} • Stato: {m.status}</div>
                 </div>

@@ -101,7 +101,7 @@ export default function SuperAdminPage() {
             {leagues.map((l) => (
               <button
                 key={l.id}
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-left hover:bg-slate-50"
+                className="w-full rounded-xl border border-slate-800 px-4 py-3 text-left hover:bg-slate-900/40"
                 onClick={() => openLeague(l.id)}
               >
                 <div className="flex items-center justify-between">
@@ -155,7 +155,7 @@ function MonetizationPanel({
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <div className="space-y-3">
-        <div className="flex items-center justify-between rounded-xl border border-slate-200 p-3">
+        <div className="flex items-center justify-between rounded-xl border border-slate-800 p-3">
           <div>
             <div className="font-medium">Ads abilitati</div>
             <div className="text-xs text-slate-600">Se OFF, i pronostici sono visibili senza sblocco</div>
@@ -168,7 +168,7 @@ function MonetizationPanel({
           />
         </div>
 
-        <div className="flex items-center justify-between rounded-xl border border-slate-200 p-3">
+        <div className="flex items-center justify-between rounded-xl border border-slate-800 p-3">
           <div>
             <div className="font-medium">Fallback demo</div>
             <div className="text-xs text-slate-600">Se ON, usa il countdown demo quando Ad Manager non è disponibile</div>
@@ -181,7 +181,7 @@ function MonetizationPanel({
           />
         </div>
 
-        <div className="rounded-xl border border-slate-200 p-3">
+        <div className="rounded-xl border border-slate-800 p-3">
           <div className="font-medium">Durata sblocco (minuti)</div>
           <div className="mt-2 flex items-center gap-2">
             <input
@@ -190,7 +190,7 @@ function MonetizationPanel({
               max={120}
               value={local.unlockMinutes}
               onChange={(e) => setLocal((x) => ({ ...x, unlockMinutes: Number(e.target.value) }))}
-              className="w-28 rounded-lg border border-slate-200 px-3 py-2"
+              className="w-28 rounded-lg border border-slate-800 px-3 py-2"
             />
             <Button onClick={() => onSave({ ...local })}>Salva</Button>
           </div>
@@ -198,29 +198,29 @@ function MonetizationPanel({
       </div>
 
       <div className="space-y-3">
-        <div className="rounded-xl border border-slate-200 p-3">
+        <div className="rounded-xl border border-slate-800 p-3">
           <div className="font-medium">Statistiche</div>
           <div className="mt-2 grid grid-cols-3 gap-2 text-sm">
-            <div className="rounded-lg bg-slate-50 p-2">
+            <div className="rounded-lg bg-slate-900/40 p-2">
               <div className="text-xs text-slate-600">Unlock totali</div>
               <div className="font-semibold">{stats?.totalUnlocks ?? 0}</div>
             </div>
-            <div className="rounded-lg bg-slate-50 p-2">
+            <div className="rounded-lg bg-slate-900/40 p-2">
               <div className="text-xs text-slate-600">Utenti unici</div>
               <div className="font-semibold">{stats?.uniqueUsers ?? 0}</div>
             </div>
-            <div className="rounded-lg bg-slate-50 p-2">
+            <div className="rounded-lg bg-slate-900/40 p-2">
               <div className="text-xs text-slate-600">Media minuti</div>
               <div className="font-semibold">{stats?.avgMinutes ? Math.round(stats.avgMinutes) : "-"}</div>
             </div>
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-200 p-3">
+        <div className="rounded-xl border border-slate-800 p-3">
           <div className="font-medium">Ultimi sblocchi</div>
           <div className="mt-2 space-y-2">
             {(stats?.last || []).slice(0, 8).map((r: any) => (
-              <div key={r.id} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
+              <div key={r.id} className="flex items-center justify-between rounded-lg bg-slate-900/40 px-3 py-2">
                 <div>
                   <div className="text-sm font-medium">{r.user?.displayName || r.user?.email || r.userId}</div>
                   <div className="text-xs text-slate-600">{new Date(r.createdAt).toLocaleString()}</div>
@@ -272,7 +272,7 @@ function FootballDataPanel({ selected, onChanged }: { selected: any; onChanged: 
           <div className="text-xs text-slate-600">Season (opz.)</div>
           <input
             type="number"
-            className="w-40 rounded-xl border border-slate-200 bg-white px-3 py-2"
+            className="w-40 rounded-xl border border-slate-800 bg-slate-950 px-3 py-2"
             value={season}
             onChange={(e) => setSeason(e.target.value)}
             placeholder="es. 2024"
@@ -280,11 +280,11 @@ function FootballDataPanel({ selected, onChanged }: { selected: any; onChanged: 
         </label>
         <label className="space-y-1 text-sm">
           <div className="text-xs text-slate-600">Area (opz.)</div>
-          <input className="w-44 rounded-xl border border-slate-200 bg-white px-3 py-2" value={area} onChange={(e) => setArea(e.target.value)} placeholder="Italy / Europe" />
+          <input className="w-44 rounded-xl border border-slate-800 bg-slate-950 px-3 py-2" value={area} onChange={(e) => setArea(e.target.value)} placeholder="Italy / Europe" />
         </label>
         <label className="space-y-1 text-sm flex-1 min-w-[200px]">
           <div className="text-xs text-slate-600">Search (opz.)</div>
-          <input className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Serie A, Champions, Worldcup..." />
+          <input className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Serie A, Champions, Worldcup..." />
         </label>
         <Button disabled={loading} onClick={doSearch}>Cerca</Button>
       </div>
@@ -302,7 +302,7 @@ function FootballDataPanel({ selected, onChanged }: { selected: any; onChanged: 
             return (
               <button
                 key={code}
-                className={`rounded-xl border p-3 text-left hover:bg-slate-50 ${chosen?.code === code ? "border-slate-900" : "border-slate-200"}`}
+                className={`rounded-xl border p-3 text-left hover:bg-slate-900/40 ${chosen?.code === code ? "border-slate-900" : "border-slate-800"}`}
                 onClick={() => setChosen({ code, name, area: areaName })}
               >
                 <div className="font-medium">{name}</div>
@@ -363,7 +363,7 @@ function FootballDataSyncPanel() {
       <div className="flex flex-wrap items-end gap-2">
         <label className="space-y-1 text-sm">
           <div className="text-xs text-slate-600">Matchday (opz.)</div>
-          <input className="w-40 rounded-xl border border-slate-200 bg-white px-3 py-2" value={matchday} onChange={(e) => setMatchday(e.target.value)} placeholder="es. 1" />
+          <input className="w-40 rounded-xl border border-slate-800 bg-slate-950 px-3 py-2" value={matchday} onChange={(e) => setMatchday(e.target.value)} placeholder="es. 1" />
         </label>
         <Button
           disabled={loading}
@@ -434,7 +434,7 @@ function ExternalProviderPanel({ config, onChanged }: { config: any; onChanged: 
         <label className="space-y-1 text-sm">
           <div className="text-xs text-slate-600">Provider</div>
           <select
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2"
+            className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2"
             value={local.provider}
             onChange={(e) => setLocal((x) => ({ ...x, provider: e.target.value }))}
           >
@@ -447,7 +447,7 @@ function ExternalProviderPanel({ config, onChanged }: { config: any; onChanged: 
           <div className="text-xs text-slate-600">League ID (API-Football)</div>
           <input
             type="number"
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2"
+            className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2"
             value={local.apiFootballLeagueId}
             onChange={(e) => setLocal((x) => ({ ...x, apiFootballLeagueId: Number(e.target.value) }))}
           />
@@ -457,7 +457,7 @@ function ExternalProviderPanel({ config, onChanged }: { config: any; onChanged: 
           <div className="text-xs text-slate-600">Season (es. 2025 per 2025/26)</div>
           <input
             type="number"
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2"
+            className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2"
             value={local.apiFootballSeason}
             onChange={(e) => setLocal((x) => ({ ...x, apiFootballSeason: Number(e.target.value) }))}
           />
@@ -468,7 +468,7 @@ function ExternalProviderPanel({ config, onChanged }: { config: any; onChanged: 
         <label className="space-y-1 text-sm md:col-span-2">
           <div className="text-xs text-slate-600">Timezone</div>
           <input
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2"
+            className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2"
             value={local.apiFootballTimezone}
             onChange={(e) => setLocal((x) => ({ ...x, apiFootballTimezone: e.target.value }))}
           />
@@ -497,11 +497,11 @@ function ExternalProviderPanel({ config, onChanged }: { config: any; onChanged: 
         </div>
       </div>
 
-      <div className="rounded-xl border border-slate-200 p-3">
+      <div className="rounded-xl border border-slate-800 p-3">
         <div className="text-sm font-medium">Trova League ID (ricerca)</div>
         <div className="mt-2 flex flex-wrap gap-2">
           <input
-            className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2"
+            className="flex-1 rounded-xl border border-slate-800 bg-slate-950 px-3 py-2"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Es. Serie A, Champions..."
@@ -525,7 +525,7 @@ function ExternalProviderPanel({ config, onChanged }: { config: any; onChanged: 
             {searchResults.slice(0, 6).map((l: any) => (
               <button
                 key={l.id}
-                className="rounded-xl border border-slate-200 p-3 text-left hover:bg-slate-50"
+                className="rounded-xl border border-slate-800 p-3 text-left hover:bg-slate-900/40"
                 onClick={() => setLocal((x) => ({ ...x, apiFootballLeagueId: l.id }))}
               >
                 <div className="font-medium">{l.name}</div>
@@ -598,7 +598,7 @@ function LeagueDetail({ league, onChanged }: { league: any; onChanged: () => voi
       {err ? <Alert tone="danger">{err}</Alert> : null}
       {ok ? <Alert tone="success">{ok}</Alert> : null}
 
-      <div className="rounded-xl border border-slate-200 p-3">
+      <div className="rounded-xl border border-slate-800 p-3">
         <div className="font-medium">{league.name}</div>
         <div className="text-xs text-slate-600">Code: {league.code} • ID: {league.id}</div>
       </div>
@@ -615,7 +615,7 @@ function LeagueDetail({ league, onChanged }: { league: any; onChanged: () => voi
       {tab === "members" ? (
         <div className="space-y-2">
           {(league.members || []).map((m: any) => (
-            <div key={m.id} className="rounded-xl border border-slate-200 p-3">
+            <div key={m.id} className="rounded-xl border border-slate-800 p-3">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="font-medium">{m.user.displayName}</div>
@@ -703,11 +703,11 @@ function LeagueDetail({ league, onChanged }: { league: any; onChanged: () => voi
                     onChange={(e) => setRules({ ...rules, pointsSumGoals: Number(e.target.value) })}
                   />
 
-                  <div className="rounded-xl border border-slate-200 p-3">
+                  <div className="rounded-xl border border-slate-800 p-3">
                     <div className="font-medium">Modalità punteggio</div>
                     <div className="mt-2">
                       <select
-                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                        className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm"
                         value={rules.scoringMode}
                         onChange={(e) => setRules({ ...rules, scoringMode: e.target.value })}
                       >
@@ -719,7 +719,7 @@ function LeagueDetail({ league, onChanged }: { league: any; onChanged: () => voi
                   </div>
 
                   <div className="grid gap-2 md:grid-cols-2">
-                    <label className="flex items-center gap-2 rounded-xl border border-slate-200 p-3 text-sm">
+                    <label className="flex items-center gap-2 rounded-xl border border-slate-800 p-3 text-sm">
                       <input
                         type="checkbox"
                         checked={!!rules.allowOutcomeWithExact}
@@ -727,7 +727,7 @@ function LeagueDetail({ league, onChanged }: { league: any; onChanged: () => voi
                       />
                       <span>Outcome valido con Exact</span>
                     </label>
-                    <label className="flex items-center gap-2 rounded-xl border border-slate-200 p-3 text-sm">
+                    <label className="flex items-center gap-2 rounded-xl border border-slate-800 p-3 text-sm">
                       <input
                         type="checkbox"
                         checked={!!rules.allowSumGoalsWithExact}
@@ -735,7 +735,7 @@ function LeagueDetail({ league, onChanged }: { league: any; onChanged: () => voi
                       />
                       <span>Somma gol valida con Exact</span>
                     </label>
-                    <label className="flex items-center gap-2 rounded-xl border border-slate-200 p-3 text-sm">
+                    <label className="flex items-center gap-2 rounded-xl border border-slate-800 p-3 text-sm">
                       <input
                         type="checkbox"
                         checked={!!rules.allowSumGoalsWithOutcome}
@@ -743,7 +743,7 @@ function LeagueDetail({ league, onChanged }: { league: any; onChanged: () => voi
                       />
                       <span>Somma gol valida con Outcome</span>
                     </label>
-                    <label className="flex items-center gap-2 rounded-xl border border-slate-200 p-3 text-sm">
+                    <label className="flex items-center gap-2 rounded-xl border border-slate-800 p-3 text-sm">
                       <input
                         type="checkbox"
                         checked={!!rules.enableMatchdayAwards}
@@ -753,7 +753,7 @@ function LeagueDetail({ league, onChanged }: { league: any; onChanged: () => voi
                     </label>
                   </div>
 
-                  <div className="rounded-xl border border-slate-200 p-3">
+                  <div className="rounded-xl border border-slate-800 p-3">
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="font-medium">Under/Over 2.5</div>
@@ -818,7 +818,7 @@ function LeagueDetail({ league, onChanged }: { league: any; onChanged: () => voi
                     }}
                   />
 
-                  <div className="flex items-center justify-between rounded-xl border border-slate-200 p-3">
+                  <div className="flex items-center justify-between rounded-xl border border-slate-800 p-3">
                     <div>
                       <div className="font-medium">Lock forzato</div>
                       <div className="text-xs text-slate-600">Blocca tutto immediatamente</div>
@@ -976,7 +976,7 @@ function SuperMatchRow({ match, onSaved }: { match: any; onSaved: () => void }) 
   const [err, setErr] = useState("");
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4">
+    <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
           <div className="font-medium">{match.homeTeam} - {match.awayTeam}</div>
@@ -990,7 +990,7 @@ function SuperMatchRow({ match, onSaved }: { match: any; onSaved: () => void }) 
         <div className="flex flex-wrap items-end gap-2">
           <label className="space-y-1 text-sm">
             <div className="text-xs text-slate-600">Stato</div>
-            <select className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" value={status} onChange={(e) => setStatus(e.target.value)}>
+            <select className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm" value={status} onChange={(e) => setStatus(e.target.value)}>
               <option value="NOT_STARTED">NON_INIZIATA</option>
               <option value="IN_PROGRESS">IN_CORSO</option>
               <option value="FINISHED">FINITA</option>
