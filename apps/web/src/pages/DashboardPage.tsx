@@ -92,6 +92,7 @@ export default function DashboardPage() {
         setSummary(null);
         setLeader([]);
         setMatches([]);
+        setCompetitionPred(null);
       })
       .finally(() => {
         if (cancelled) return;
@@ -261,19 +262,21 @@ const tournamentMeta = useMemo(() => {
 
   const enableWinner = Boolean(
     d?.enabled?.winner ??
-      d?.enabled?.competitionWinner ??
-      d?.enabledCompetitionWinner ??
-      d?.competitionWinnerEnabled ??
-      d?.rules?.enableCompetitionWinner ??
-      d?.leagueRules?.enableCompetitionWinner
+    d?.enabled?.competitionWinner ??
+    d?.enabledCompetitionWinner ??
+    d?.winnerEnabled ??
+    d?.competitionWinnerEnabled ??
+    d?.rules?.enableCompetitionWinner ??
+    d?.leagueRules?.enableCompetitionWinner
   );
   const enableTopScorer = Boolean(
     d?.enabled?.topScorer ??
-      d?.enabled?.competitionTopScorer ??
-      d?.enabledCompetitionTopScorer ??
-      d?.competitionTopScorerEnabled ??
-      d?.rules?.enableCompetitionTopScorer ??
-      d?.leagueRules?.enableCompetitionTopScorer
+    d?.enabled?.competitionTopScorer ??
+    d?.enabledCompetitionTopScorer ??
+    d?.topScorerEnabled ??
+    d?.competitionTopScorerEnabled ??
+    d?.rules?.enableCompetitionTopScorer ??
+    d?.leagueRules?.enableCompetitionTopScorer
   );
   const total = (enableWinner ? 1 : 0) + (enableTopScorer ? 1 : 0);
 

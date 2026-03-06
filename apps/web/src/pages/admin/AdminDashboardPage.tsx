@@ -1215,22 +1215,16 @@ function RadioCard({
       type="button"
       onClick={onSelect}
       className={`text-left rounded-2xl border p-4 transition ${
-        checked ? "border-rose-400/50 bg-rose-500/10 shadow-[0_10px_30px_rgba(0,0,0,0.25)]" : "border-slate-700/80 bg-slate-950/60 hover:bg-slate-950"
+        checked ? "border-rose-400/45 bg-rose-500/10 shadow-[0_12px_30px_rgba(0,0,0,0.22)]" : "border-slate-700 bg-slate-950/60 hover:border-slate-500 hover:bg-slate-950"
       }`}
-      aria-pressed={checked}
     >
       <div className="flex items-start gap-3">
-        <span
-          className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
-            checked ? "border-rose-400 bg-rose-500/20" : "border-slate-400 bg-transparent"
-          }`}
-          aria-hidden="true"
-        >
-          <span className={`h-2.5 w-2.5 rounded-full ${checked ? "bg-rose-400" : "bg-transparent"}`} />
-        </span>
+        <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${checked ? "border-rose-300 bg-rose-500/15" : "border-slate-500 bg-slate-950"}`}>
+          {checked ? <div className="h-2.5 w-2.5 rounded-full bg-rose-300" /> : null}
+        </div>
         <div className="min-w-0">
           <div className="text-sm font-semibold text-slate-100">{title}</div>
-          <div className="text-xs text-slate-400">{subtitle}</div>
+          <div className="text-xs leading-relaxed text-slate-300">{subtitle}</div>
         </div>
       </div>
     </button>
