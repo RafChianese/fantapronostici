@@ -159,13 +159,13 @@ function CompetitionPredictionsPanel() {
       const winner = data.options.teams.find((t) => String(t.id) === winnerId);
       const scorer = data.options.scorers.find((s) => String(s.id) === scorerId);
 
-      const res = await api.saveCompetitionPredictions({
+      await api.saveCompetitionPredictions({
         winnerTeamId: winnerId ? Number(winnerId) : null,
         winnerTeamName: winner?.name ?? null,
         topScorerPlayerId: scorerId ? Number(scorerId) : null,
         topScorerPlayerName: scorer?.name ?? null,
       });
-      setData(res);
+      await load();
     } catch (e: any) {
       setError(e?.message || "Errore");
     } finally {
@@ -1312,51 +1312,27 @@ export default function PredictionsPage() {
 
                       <div className="mt-5">
                         <div className="flex items-center justify-between gap-3">
-                        <button
-                          type="button"
-                          disabled={currentIndex <= 0}
-                          onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))}
-                          className="inline-flex items-center justify-center gap-2 rounded-xl border border-rose-400/40 bg-black/40 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:bg-black/55"
-                        >
-                          <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-                          Previous
-                        </button>
+                          <button
+                            type="button"
+                            disabled={currentIndex <= 0}
+                            onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))}
+                            className="inline-flex items-center justify-center gap-2 rounded-xl border border-rose-400/40 bg-black/40 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all disabled:cursor-not-allowed disabled:opacity-50 hover:bg-black/55"
+                          >
+                            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                            Previous
+                          </button>
 
-                        <button
-                          type="button"
-                          disabled={currentIndex <= 0}
-                          onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))}
-                          className="inline-flex items-center justify-center gap-2 rounded-xl border border-rose-400/40 bg-black/40 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:bg-black/55"
-                        >
-                          <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-                          Previous
-                        </button>
-
-                        <div className="flex items-center gap-2 text-xs text-slate-200">
-                          {saving ? (
-                            <span className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-                              <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-white/20 border-t-white/80" />
-                              Salvataggio…
-                            </span>
-                          ) : saveHint ? (
-                            <span className="inline-flex items-center gap-2 rounded-xl border border-emerald-300/20 bg-emerald-400/10 px-3 py-2">
-                              <Save className="h-4 w-4" aria-hidden="true" />
-                              {saveHint}
-                            </span>
-                          ) : null}
+                          <button
+                            type="button"
+                            disabled={currentIndex >= currentMatches.length - 1}
+                            onClick={() => setCurrentIndex((i) => Math.min(currentMatches.length - 1, i + 1))}
+                            className="inline-flex items-center justify-center gap-2 rounded-xl border border-rose-400/40 bg-black/40 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all disabled:cursor-not-allowed disabled:opacity-50 hover:bg-black/55"
+                          >
+                            Next
+                            <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                          </button>
                         </div>
-
-                        <button
-                          type="button"
-                          disabled={currentIndex >= currentMatches.length - 1}
-                          onClick={() => setCurrentIndex((i) => Math.min(currentMatches.length - 1, i + 1))}
-                          className="inline-flex items-center justify-center gap-2 rounded-xl border border-rose-400/40 bg-black/40 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:bg-black/55"
-                        >
-                          Next
-                          <ChevronRight className="h-4 w-4" aria-hidden="true" />
-                        </button>
-                        </div>
-                        <div className="mt-2 flex justify-center">
+                        <div className="mt-2 flex min-h-[40px] justify-center">
                           <div className="flex items-center gap-2 text-xs text-slate-200">
                           {saving ? (
                             <span className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">

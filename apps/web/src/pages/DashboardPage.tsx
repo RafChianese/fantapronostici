@@ -79,12 +79,13 @@ export default function DashboardPage() {
       api.matches(),
       api.competitionPredictions(),
     ])
-      .then(([s, lb, m]) => {
+      .then(([s, lb, m, cp]) => {
         if (cancelled) return;
         setSummary(s);
         const raw = (lb?.leaderboard ?? lb?.rows ?? []) as any[];
         setLeader(Array.isArray(raw) ? raw.map(normalizeLeaderRow).filter((x) => x.userId) : []);
         setMatches(Array.isArray(m?.matches) ? m.matches : []);
+        setCompetitionPred(cp ?? null);
       })
       .catch(() => {
         if (cancelled) return;
@@ -258,8 +259,22 @@ const tournamentMeta = useMemo(() => {
   const d: any = competitionPred;
   if (!d) return { enabled: false, total: 0, done: 0, pct: 0 };
 
-  const enableWinner = Boolean(d?.enabled?.winner);
-  const enableTopScorer = Boolean(d?.enabled?.topScorer);
+  const enableWinner = Boolean(
+    d?.enabled?.winner ??
+      d?.enabled?.competitionWinner ??
+      d?.enabledCompetitionWinner ??
+      d?.competitionWinnerEnabled ??
+      d?.rules?.enableCompetitionWinner ??
+      d?.leagueRules?.enableCompetitionWinner
+  );
+  const enableTopScorer = Boolean(
+    d?.enabled?.topScorer ??
+      d?.enabled?.competitionTopScorer ??
+      d?.enabledCompetitionTopScorer ??
+      d?.competitionTopScorerEnabled ??
+      d?.rules?.enableCompetitionTopScorer ??
+      d?.leagueRules?.enableCompetitionTopScorer
+  );
   const total = (enableWinner ? 1 : 0) + (enableTopScorer ? 1 : 0);
 
   const hasWinner = Boolean(d?.picks?.winner?.teamExternalId ?? d?.picks?.winner?.teamId);

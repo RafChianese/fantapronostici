@@ -1215,14 +1215,20 @@ function RadioCard({
       type="button"
       onClick={onSelect}
       className={`text-left rounded-2xl border p-4 transition ${
-        checked ? "border-slate-700 bg-slate-950 shadow-sm" : "border-slate-800 bg-slate-950/60 hover:bg-slate-950"
+        checked ? "border-rose-400/50 bg-rose-500/10 shadow-[0_10px_30px_rgba(0,0,0,0.25)]" : "border-slate-700/80 bg-slate-950/60 hover:bg-slate-950"
       }`}
+      aria-pressed={checked}
     >
       <div className="flex items-start gap-3">
-        <div className={`mt-0.5 h-4 w-4 rounded-full border ${checked ? "border-slate-900" : "border-slate-300"} flex items-center justify-center`}>
-          {checked ? <div className="h-2 w-2 rounded-full bg-slate-900" /> : null}
-        </div>
-        <div>
+        <span
+          className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
+            checked ? "border-rose-400 bg-rose-500/20" : "border-slate-400 bg-transparent"
+          }`}
+          aria-hidden="true"
+        >
+          <span className={`h-2.5 w-2.5 rounded-full ${checked ? "bg-rose-400" : "bg-transparent"}`} />
+        </span>
+        <div className="min-w-0">
           <div className="text-sm font-semibold text-slate-100">{title}</div>
           <div className="text-xs text-slate-400">{subtitle}</div>
         </div>
