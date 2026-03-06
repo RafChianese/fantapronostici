@@ -54,6 +54,7 @@ export default function DashboardPage() {
   const displayName = user?.displayName || "Partecipante";
 
   const [summary, setSummary] = useState<any>(null);
+  const [competitionPred, setCompetitionPred] = useState<any>(null);
   const [leader, setLeader] = useState<LeaderRow[]>([]);
   const [matches, setMatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,6 +77,7 @@ export default function DashboardPage() {
       // Leaderboard uses league header; keep leagueCode only for userSummary.
       api.leaderboard("points_desc"),
       api.matches(),
+      api.competitionPredictions(),
     ])
       .then(([s, lb, m]) => {
         if (cancelled) return;
@@ -253,27 +255,20 @@ export default function DashboardPage() {
 
 
 const tournamentMeta = useMemo(() => {
-  const rules: any = (summary as any)?.leagueRules ?? (summary as any)?.rules ?? (summary as any)?.league?.rules ?? null;
-  const enableWinner = Boolean(
-    rules?.enableCompetitionWinner ?? rules?.enable_competition_winner ?? (summary as any)?.enableCompetitionWinner ?? (summary as any)?.competitionWinnerEnabled
-  );
-  const enableTopScorer = Boolean(
-    rules?.enableCompetitionTopScorer ??
-      rules?.enable_competition_top_scorer ??
-      (summary as any)?.enableCompetitionTopScorer ??
-      (summary as any)?.competitionTopScorerEnabled
-  );
+  const d: any = competitionPred;
+  if (!d) return { enabled: false, total: 0, done: 0, pct: 0 };
 
+  const enableWinner = Boolean(d?.enabled?.winner);
+  const enableTopScorer = Boolean(d?.enabled?.topScorer);
   const total = (enableWinner ? 1 : 0) + (enableTopScorer ? 1 : 0);
 
-  const picks: any = (summary as any)?.competitionPicks ?? (summary as any)?.competitionPick ?? (summary as any)?.tournamentPicks ?? null;
-  const hasWinner = Boolean(picks?.winner?.teamExternalId ?? picks?.winnerTeamExternalId ?? picks?.winnerTeamId);
-  const hasTop = Boolean(picks?.topScorer?.playerExternalId ?? picks?.topScorerPlayerExternalId ?? picks?.topScorerPlayerId);
+  const hasWinner = Boolean(d?.picks?.winner?.teamExternalId ?? d?.picks?.winner?.teamId);
+  const hasTop = Boolean(d?.picks?.topScorer?.playerExternalId ?? d?.picks?.topScorer?.playerId);
   const done = (enableWinner && hasWinner ? 1 : 0) + (enableTopScorer && hasTop ? 1 : 0);
-  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
 
-  return { enableWinner, enableTopScorer, total, done, pct };
-}, [summary]);
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  return { enabled: total > 0, total, done, pct };
+}, [competitionPred]);
 
   const recentFinishedMatches = useMemo(() => {
     const arr = Array.isArray(matches) ? matches : [];

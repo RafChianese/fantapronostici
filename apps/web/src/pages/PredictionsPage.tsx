@@ -52,22 +52,25 @@ function StatusDot({ status }: { status: string }) {
 
 function PredictionsTabs({ tab, setTab }: { tab: "MATCHES" | "TOURNAMENT"; setTab: (t: "MATCHES" | "TOURNAMENT") => void }) {
   return (
-    <div className="flex items-center gap-2">
+    <div className="grid w-full grid-cols-2 overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-[0_10px_30px_rgba(0,0,0,0.35)] backdrop-blur-xl">
       <button
-        className={`rounded-xl px-3 py-2 text-sm font-semibold border transition-all ${tab === "MATCHES" ? "bg-rose-600 text-white border-rose-500 shadow-sm" : "bg-slate-950 text-slate-200 border-slate-800 hover:bg-slate-900/50"}`}
+        className={`px-4 py-3 text-sm font-semibold transition-all ${tab === "MATCHES" ? "bg-rose-600 text-white" : "text-slate-200 hover:bg-white/5"}`}
         onClick={() => setTab("MATCHES")}
+        type="button"
       >
         Partite
       </button>
       <button
-        className={`rounded-xl px-3 py-2 text-sm font-semibold border transition-all ${tab === "TOURNAMENT" ? "bg-rose-600 text-white border-rose-500 shadow-sm" : "bg-slate-950 text-slate-200 border-slate-800 hover:bg-slate-900/50"}`}
+        className={`px-4 py-3 text-sm font-semibold transition-all ${tab === "TOURNAMENT" ? "bg-rose-600 text-white" : "text-slate-200 hover:bg-white/5"}`}
         onClick={() => setTab("TOURNAMENT")}
+        type="button"
       >
         Pronostici torneo
       </button>
     </div>
   );
 }
+
 
 function CompetitionPredictionsPanel() {
   const { activeLeagueId } = useAuth();
@@ -184,7 +187,7 @@ function CompetitionPredictionsPanel() {
 
           {!loading && error ? <Alert tone="danger">{error}</Alert> : null}
 
-          {!loading && data && !enabledAny ? <Alert>In questa lega i pronostici torneo non sono attivi.</Alert> : null}
+          {!loading && data && !enabledAny && !canEdit ? <Alert>In questa lega i pronostici torneo non sono attivi.</Alert> : null}
 
           {!loading && data && enabledAny ? (
             <>
@@ -648,7 +651,7 @@ export default function PredictionsPage() {
           if (changed) {
             setConfig(next);
             await reloadAll({ silent: true });
-            if (next?.lock?.isLocked) setToast({ tone: "danger", msg: "Lock aggiornato: pagina aggiornata." });
+            if (next?.lock?.isLocked) { /* toast rimosso su richiesta */ }
           } else {
             // Still update config to keep countdown accurate.
             setConfig(next);
@@ -1012,33 +1015,38 @@ export default function PredictionsPage() {
 
       {tab === "MATCHES" ? (
         <>
-          <Card>
-            <CardHeader
-              title="Modalità inserimento"
-              subtitle="Scegli come pronosticare"
-              right={
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    className={`rounded-xl px-3 py-2 text-sm font-semibold border transition-all ${uiMode === "MATCH" ? "bg-rose-600 text-white border-rose-500 shadow-sm" : "bg-slate-950 text-slate-200 border-slate-800 hover:bg-slate-900/50"}`}
-                    onClick={() => setUiMode("MATCH")}
-                  >
-                    Match per match
-                  </button>
-                  <button
-                    type="button"
-                    className={`rounded-xl px-3 py-2 text-sm font-semibold border transition-all ${uiMode === "LIST" ? "bg-rose-600 text-white border-rose-500 shadow-sm" : "bg-slate-950 text-slate-200 border-slate-800 hover:bg-slate-900/50"}`}
-                    onClick={() => setUiMode("LIST")}
-                  >
-                    Lista
-                  </button>
-                </div>
-              }
-            />
-            <CardContent className="text-sm text-slate-300">
-              {uiMode === "MATCH" ? "Scorri una partita alla volta (consigliato su mobile)." : "Vedi tutte le partite della giornata in elenco."}
-            </CardContent>
-          </Card>
+          <div className="mt-2 flex items-center justify-end gap-2">
+            <div className="group relative">
+              <button
+                type="button"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-800 bg-slate-950 text-slate-200 hover:bg-slate-900/50"
+                aria-label="Info modalità"
+              >
+                <Info className="h-4 w-4" aria-hidden="true" />
+              </button>
+              <div className="pointer-events-none absolute right-0 top-11 z-40 hidden w-64 rounded-2xl border border-white/10 bg-slate-950/90 p-3 text-xs text-slate-200 shadow-[0_10px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl group-hover:block">
+                <div className="font-semibold text-slate-100">Modalità inserimento</div>
+                <div className="mt-1 text-slate-300">Match per match: scorri una partita alla volta (consigliato su mobile). Lista: vedi tutte le partite della giornata.</div>
+              </div>
+            </div>
+
+            <div className="inline-flex overflow-hidden rounded-xl border border-slate-800 bg-slate-950">
+              <button
+                type="button"
+                className={`px-3 py-2 text-sm font-semibold transition-all ${uiMode === "MATCH" ? "bg-rose-600 text-white" : "text-slate-200 hover:bg-slate-900/50"}`}
+                onClick={() => setUiMode("MATCH")}
+              >
+                Match
+              </button>
+              <button
+                type="button"
+                className={`px-3 py-2 text-sm font-semibold transition-all ${uiMode === "LIST" ? "bg-rose-600 text-white" : "text-slate-200 hover:bg-slate-900/50"}`}
+                onClick={() => setUiMode("LIST")}
+              >
+                Lista
+              </button>
+            </div>
+          </div>
 
           {uiMode === "MATCH" && byMatchday.length ? (
             <Card>
@@ -1302,7 +1310,18 @@ export default function PredictionsPage() {
                         <div className="mt-2 text-xs text-slate-300">Inserisci entrambi i punteggi per vedere esito e metriche.</div>
                       ) : null}
 
-                      <div className="mt-5 flex items-center justify-between gap-3">
+                      <div className="mt-5">
+                        <div className="flex items-center justify-between gap-3">
+                        <button
+                          type="button"
+                          disabled={currentIndex <= 0}
+                          onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))}
+                          className="inline-flex items-center justify-center gap-2 rounded-xl border border-rose-400/40 bg-black/40 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:bg-black/55"
+                        >
+                          <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                          Previous
+                        </button>
+
                         <button
                           type="button"
                           disabled={currentIndex <= 0}
@@ -1336,6 +1355,22 @@ export default function PredictionsPage() {
                           Next
                           <ChevronRight className="h-4 w-4" aria-hidden="true" />
                         </button>
+                        </div>
+                        <div className="mt-2 flex justify-center">
+                          <div className="flex items-center gap-2 text-xs text-slate-200">
+                          {saving ? (
+                            <span className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                              <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-white/20 border-t-white/80" />
+                              Salvataggio…
+                            </span>
+                          ) : saveHint ? (
+                            <span className="inline-flex items-center gap-2 rounded-xl border border-emerald-300/20 bg-emerald-400/10 px-3 py-2">
+                              <Save className="h-4 w-4" aria-hidden="true" />
+                              {saveHint}
+                            </span>
+                          ) : null}
+                        </div>
+                        </div>
                       </div>
 
                       {canEditCurrent ? (
