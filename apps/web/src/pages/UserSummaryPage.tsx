@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../lib/api";
 import { useLoading } from "../lib/loading";
 import { Badge, Button, Card, CardContent, CardHeader, Skeleton } from "../components/ui";
@@ -20,7 +20,8 @@ export default function UserSummaryPage() {
   const [showAd, setShowAd] = useState(false);
   const [adSecondsLeft, setAdSecondsLeft] = useState(15);
   const [demoAdsEnabled, setDemoAdsEnabled] = useState(true);
-  const [showAllMatchdays, setShowAllMatchdays] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [selectedMatchday, setSelectedMatchday] = useState<number | "all">("all");
 
   const refetch = () => {
     show();
@@ -443,9 +444,20 @@ export default function UserSummaryPage() {
     return md ?? null;
   })();
 
-  const visibleMatchdays = showAllMatchdays
+  useEffect(() => {
+    const mdParam = Number(searchParams.get("md") || 0);
+    if (mdParam && matchdays.includes(mdParam)) {
+      setSelectedMatchday(mdParam);
+      return;
+    }
+    setSelectedMatchday(currentMatchday || matchdays[0] || "all");
+  }, [searchParams, currentMatchday, matchdays]);
+
+  const visibleMatchdays = selectedMatchday === "all"
     ? matchdays
-    : [currentMatchday, nextMatchday].filter((x): x is number => typeof x === "number");
+    : [selectedMatchday].filter((x): x is number => typeof x === "number");
+
+  const selectedMatchdayLabel = selectedMatchday === "all" ? "Tutte le giornate" : `Giornata ${selectedMatchday}`;
 
   const TeamDot = ({ name, logo }: { name: string; logo?: string | null }) => {
     if (logo) return <img src={logo} alt={name} className="h-6 w-6 rounded-full object-contain" />;
@@ -629,14 +641,47 @@ export default function UserSummaryPage() {
       <Card>
         <CardHeader
           title="Partite e punteggi"
-          subtitle={showAllMatchdays ? "Stai visualizzando tutte le giornate." : "Di default vedi solo la giornata in corso e la prossima (non iniziata)."}
+          subtitle={`Visualizzazione: ${selectedMatchdayLabel}`}
           right={
-            <Button variant="secondary" onClick={() => setShowAllMatchdays((v) => !v)}>
-              {showAllMatchdays ? "Mostra solo (corrente + prossima)" : "Mostra tutte"}
-            </Button>
+            <div className="flex items-center gap-2">
+              <select
+                className="min-w-[180px] rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm font-semibold text-slate-100 outline-none focus:ring-2 focus:ring-rose-500/30"
+                value={selectedMatchday === "all" ? "all" : String(selectedMatchday)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  const next = v === "all" ? "all" : Number(v);
+                  setSelectedMatchday(next as any);
+                  const sp = new URLSearchParams(searchParams);
+                  if (v === "all") sp.delete("md");
+                  else sp.set("md", v);
+                  setSearchParams(sp, { replace: true });
+                }}
+              >
+                <option value="all">Tutte le giornate</option>
+                {matchdays.map((md) => (
+                  <option key={md} value={md}>
+                    Giornata {md}
+                  </option>
+                ))}
+              </select>
+            </div>
           }
         />
         <CardContent>
+          <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Vista attiva</div>
+              <div className="mt-1 text-sm font-bold text-slate-100">{selectedMatchdayLabel}</div>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Giornata corrente</div>
+              <div className="mt-1 text-sm font-bold text-slate-100">Giornata {currentMatchday}</div>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Prossima giornata</div>
+              <div className="mt-1 text-sm font-bold text-slate-100">{nextMatchday ? `Giornata ${nextMatchday}` : "—"}</div>
+            </div>
+          </div>
           <div className="space-y-6">
             {visibleMatchdays.map((md) => (
               <Card key={md} className="border border-slate-800">

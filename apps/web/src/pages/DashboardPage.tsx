@@ -79,20 +79,18 @@ export default function DashboardPage() {
       api.matches(),
       api.competitionPredictions(),
     ])
-      .then(([s, lb, m, cp]) => {
+      .then(([s, lb, m]) => {
         if (cancelled) return;
         setSummary(s);
         const raw = (lb?.leaderboard ?? lb?.rows ?? []) as any[];
         setLeader(Array.isArray(raw) ? raw.map(normalizeLeaderRow).filter((x) => x.userId) : []);
         setMatches(Array.isArray(m?.matches) ? m.matches : []);
-        setCompetitionPred(cp ?? null);
       })
       .catch(() => {
         if (cancelled) return;
         setSummary(null);
         setLeader([]);
         setMatches([]);
-        setCompetitionPred(null);
       })
       .finally(() => {
         if (cancelled) return;
@@ -260,24 +258,8 @@ const tournamentMeta = useMemo(() => {
   const d: any = competitionPred;
   if (!d) return { enabled: false, total: 0, done: 0, pct: 0 };
 
-  const enableWinner = Boolean(
-    d?.enabled?.winner ??
-    d?.enabled?.competitionWinner ??
-    d?.enabledCompetitionWinner ??
-    d?.winnerEnabled ??
-    d?.competitionWinnerEnabled ??
-    d?.rules?.enableCompetitionWinner ??
-    d?.leagueRules?.enableCompetitionWinner
-  );
-  const enableTopScorer = Boolean(
-    d?.enabled?.topScorer ??
-    d?.enabled?.competitionTopScorer ??
-    d?.enabledCompetitionTopScorer ??
-    d?.topScorerEnabled ??
-    d?.competitionTopScorerEnabled ??
-    d?.rules?.enableCompetitionTopScorer ??
-    d?.leagueRules?.enableCompetitionTopScorer
-  );
+  const enableWinner = Boolean(d?.enabled?.winner);
+  const enableTopScorer = Boolean(d?.enabled?.topScorer);
   const total = (enableWinner ? 1 : 0) + (enableTopScorer ? 1 : 0);
 
   const hasWinner = Boolean(d?.picks?.winner?.teamExternalId ?? d?.picks?.winner?.teamId);
@@ -606,9 +588,10 @@ const tournamentMeta = useMemo(() => {
                 const isMe = r.userId === user?.id;
                 const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : String(idx + 1);
                 return (
-                  <div
+                  <Link
+                    to={`/users/${r.userId}`}
                     key={r.userId}
-                    className={`flex items-center justify-between gap-3 rounded-2xl border px-3 py-2 ${
+                    className={`flex items-center justify-between gap-3 rounded-2xl border px-3 py-2 transition hover:brightness-110 ${
                       isMe ? "border-rose-400/40 bg-rose-500/10" : "border-white/10 bg-white/5"
                     }`}
                   >
@@ -617,14 +600,13 @@ const tournamentMeta = useMemo(() => {
                       <div className="min-w-0">
                         <div className="truncate text-sm font-semibold text-slate-100">
                           {r.displayName || "—"}
-                          {isMe ? "  (TU)" : ""}
                         </div>
                       </div>
                     </div>
                     <div className="shrink-0 rounded-xl border border-white/10 bg-black/20 px-2 py-1 text-sm font-extrabold text-slate-100">
                       {r.totalPoints}
                     </div>
-                  </div>
+                  </Link>
                 );
               })}
             </div>

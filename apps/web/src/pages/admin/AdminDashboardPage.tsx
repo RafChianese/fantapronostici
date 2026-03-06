@@ -1215,16 +1215,16 @@ function RadioCard({
       type="button"
       onClick={onSelect}
       className={`text-left rounded-2xl border p-4 transition ${
-        checked ? "border-rose-400/45 bg-rose-500/10 shadow-[0_12px_30px_rgba(0,0,0,0.22)]" : "border-slate-700 bg-slate-950/60 hover:border-slate-500 hover:bg-slate-950"
+        checked ? "border-slate-700 bg-slate-950 shadow-sm" : "border-slate-800 bg-slate-950/60 hover:bg-slate-950"
       }`}
     >
       <div className="flex items-start gap-3">
-        <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${checked ? "border-rose-300 bg-rose-500/15" : "border-slate-500 bg-slate-950"}`}>
-          {checked ? <div className="h-2.5 w-2.5 rounded-full bg-rose-300" /> : null}
+        <div className={`mt-0.5 h-4 w-4 rounded-full border ${checked ? "border-slate-900" : "border-slate-300"} flex items-center justify-center`}>
+          {checked ? <div className="h-2 w-2 rounded-full bg-slate-900" /> : null}
         </div>
-        <div className="min-w-0">
+        <div>
           <div className="text-sm font-semibold text-slate-100">{title}</div>
-          <div className="text-xs leading-relaxed text-slate-300">{subtitle}</div>
+          <div className="text-xs text-slate-400">{subtitle}</div>
         </div>
       </div>
     </button>
