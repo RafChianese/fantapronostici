@@ -395,31 +395,6 @@ export default function UserSummaryPage() {
   if (!data) return <div className="text-sm text-slate-600">Nessun dato.</div>;
 
   return (
-      <div className="w-full">
-        <svg viewBox={`0 0 ${w} ${h}`} className="h-20 w-full">
-          <path d={d} fill="none" stroke="currentColor" strokeWidth={2.2} className="text-teal-600" />
-          {pts.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r={2.2} className="text-teal-600" fill="currentColor" />)}
-        </svg>
-        <div className="mt-1 flex items-center justify-between text-[11px] text-slate-500">
-          <span>{chartSeries[0].label}</span>
-          <span>{chartSeries[chartSeries.length - 1].label}</span>
-        </div>
-      </div>
-    );
-  };
-
-  const TeamDot = ({ name, logo }: { name: string; logo?: string | null }) => {
-    if (logo) return <img src={logo} alt={name} className="h-7 w-7 rounded-full object-contain" />;
-    return <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-800 bg-slate-950 text-[10px] font-bold text-slate-300">{name.trim().slice(0, 1).toUpperCase()}</span>;
-  };
-
-  const StatusPill = ({ status }: { status: string }) => {
-    if (status === "FINISHED") return <Badge tone="gray">Terminata</Badge>;
-    if (status === "IN_PROGRESS") return <Badge tone="green">In corso</Badge>;
-    return <Badge tone="gray">Non iniziata</Badge>;
-  };
-
-  return (
     <div className="space-y-6">
       <Card>
         <CardHeader
