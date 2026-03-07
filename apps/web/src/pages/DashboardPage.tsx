@@ -79,18 +79,20 @@ export default function DashboardPage() {
       api.matches(),
       api.competitionPredictions(),
     ])
-      .then(([s, lb, m]) => {
+      .then(([s, lb, m, cp]) => {
         if (cancelled) return;
         setSummary(s);
         const raw = (lb?.leaderboard ?? lb?.rows ?? []) as any[];
         setLeader(Array.isArray(raw) ? raw.map(normalizeLeaderRow).filter((x) => x.userId) : []);
         setMatches(Array.isArray(m?.matches) ? m.matches : []);
+        setCompetitionPred(cp ?? null);
       })
       .catch(() => {
         if (cancelled) return;
         setSummary(null);
         setLeader([]);
         setMatches([]);
+        setCompetitionPred(null);
       })
       .finally(() => {
         if (cancelled) return;
@@ -258,8 +260,24 @@ const tournamentMeta = useMemo(() => {
   const d: any = competitionPred;
   if (!d) return { enabled: false, total: 0, done: 0, pct: 0 };
 
-  const enableWinner = Boolean(d?.enabled?.winner);
-  const enableTopScorer = Boolean(d?.enabled?.topScorer);
+  const enableWinner = Boolean(
+    d?.enabled?.winner ??
+    d?.enabled?.competitionWinner ??
+    d?.enabledCompetitionWinner ??
+    d?.winnerEnabled ??
+    d?.competitionWinnerEnabled ??
+    d?.rules?.enableCompetitionWinner ??
+    d?.leagueRules?.enableCompetitionWinner
+  );
+  const enableTopScorer = Boolean(
+    d?.enabled?.topScorer ??
+    d?.enabled?.competitionTopScorer ??
+    d?.enabledCompetitionTopScorer ??
+    d?.topScorerEnabled ??
+    d?.competitionTopScorerEnabled ??
+    d?.rules?.enableCompetitionTopScorer ??
+    d?.leagueRules?.enableCompetitionTopScorer
+  );
   const total = (enableWinner ? 1 : 0) + (enableTopScorer ? 1 : 0);
 
   const hasWinner = Boolean(d?.picks?.winner?.teamExternalId ?? d?.picks?.winner?.teamId);
@@ -589,22 +607,27 @@ const tournamentMeta = useMemo(() => {
                 const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : String(idx + 1);
                 return (
                   <Link
-                    to={`/users/${r.userId}`}
                     key={r.userId}
-                    className={`flex items-center justify-between gap-3 rounded-2xl border px-3 py-2 transition hover:brightness-110 ${
+                    to={`/users/${r.userId}`}
+                    className={`group block rounded-2xl border px-3 py-2 transition hover:-translate-y-0.5 hover:border-rose-400/40 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-rose-400/40 ${
                       isMe ? "border-rose-400/40 bg-rose-500/10" : "border-white/10 bg-white/5"
                     }`}
+                    aria-label={`Apri il dettaglio di ${r.displayName || "questo partecipante"}`}
                   >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <div className="w-7 text-center text-sm font-extrabold">{medal}</div>
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold text-slate-100">
-                          {r.displayName || "—"}
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="w-7 text-center text-sm font-extrabold">{medal}</div>
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-semibold text-slate-100 group-hover:text-white">
+                            {r.displayName || "—"}
+                            {isMe ? "  (TU)" : ""}
+                          </div>
+                          <div className="text-[11px] text-slate-400">Tocca per vedere i pronostici</div>
                         </div>
                       </div>
-                    </div>
-                    <div className="shrink-0 rounded-xl border border-white/10 bg-black/20 px-2 py-1 text-sm font-extrabold text-slate-100">
-                      {r.totalPoints}
+                      <div className="shrink-0 rounded-xl border border-white/10 bg-black/20 px-2 py-1 text-sm font-extrabold text-slate-100">
+                        {r.totalPoints}
+                      </div>
                     </div>
                   </Link>
                 );

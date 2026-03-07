@@ -151,44 +151,6 @@ export default function LeaderboardPage() {
       </div>
 
       <Card>
-      <CardHeader
-        title="Classifica generale"
-        subtitle={leagueName ? `Lega: ${leagueName}` : "Seleziona una lega per vedere la classifica."}
-        right={
-          <div className="flex flex-col items-end gap-2">
-            {myRank ? <Badge tone="green">La tua posizione: #{myRank}</Badge> : null}
-
-            {/* Desktop: inline sort select. Mobile: bottom-sheet modal */}
-            <div className="hidden sm:block">
-              <label className="text-xs text-slate-400">Ordina</label>
-              <select
-                className="mt-1 w-[260px] rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100"
-                value={sortParam}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  const [k, d] = v.split("_") as any;
-                  setSortKey(k);
-                  setSortDir(d);
-                }}
-              >
-                {sortOptions.map((opt) => (
-                  <option key={`${opt.key}_${opt.dir}`} value={`${opt.key}_${opt.dir}`}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="sm:hidden">
-              <Button variant="secondary" onClick={() => setSortOpen(true)} aria-label="Ordina">
-                <ArrowDownUp size={18} aria-hidden="true" />
-                <span className="ml-2">Ordina</span>
-              </Button>
-            </div>
-          </div>
-        }
-      />
-
       {sortOpen ? (
         <div className="fixed inset-0 z-[60]">
           <button
@@ -228,6 +190,35 @@ export default function LeaderboardPage() {
         </div>
       ) : null}
       <CardContent>
+        <div className="mb-4 flex items-center justify-end gap-2">
+          <div className="hidden sm:block">
+            <label className="text-xs text-slate-400">Ordina</label>
+            <select
+              className="mt-1 w-[260px] rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+              value={sortParam}
+              onChange={(e) => {
+                const v = e.target.value;
+                const [k, d] = v.split("_") as any;
+                setSortKey(k);
+                setSortDir(d);
+              }}
+            >
+              {sortOptions.map((opt) => (
+                <option key={`${opt.key}_${opt.dir}`} value={`${opt.key}_${opt.dir}`}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="sm:hidden">
+            <Button variant="secondary" onClick={() => setSortOpen(true)} aria-label="Ordina">
+              <ArrowDownUp size={18} aria-hidden="true" />
+              <span className="ml-2">Ordina</span>
+            </Button>
+          </div>
+        </div>
+
         {/* Legend / metric explanation */}
         <div className="mb-4 rounded-2xl border border-white/10 bg-white/5 p-3">
           <button
@@ -315,11 +306,12 @@ export default function LeaderboardPage() {
               const isMe = !!user?.id && r.userId === user.id;
               const gap = idx === 0 ? 0 : Math.max(0, leaderPoints - Number(r.totalPoints || 0));
               return (
-              <Link
-                key={r.userId}
-                to={`/users/${r.userId}`}
-                className={`block py-3 transition hover:brightness-110 ${top3Row} ${isMe ? "bg-rose-500/10 px-3" : ""} ${flashCls}`}
-              >
+              <div key={r.userId} className={`py-3 ${top3Row} ${isMe ? "brightness-110" : ""} ${flashCls}`}>
+                <Link
+                  to={`/users/${r.userId}`}
+                  className="group block rounded-2xl px-2 py-2 transition hover:bg-slate-900/40 focus:outline-none focus:ring-2 focus:ring-rose-400/40"
+                  aria-label={`Apri il dettaglio di ${r.displayName}`}
+                >
                 {/* Mobile: 2 righe senza scroll orizzontale. Desktop: layout a colonne */}
                 <div className="flex flex-col gap-2 sm:grid sm:grid-cols-12 sm:items-center sm:gap-3">
                   <div className="flex items-center justify-between sm:col-span-6 sm:justify-start sm:gap-3">
@@ -337,7 +329,10 @@ export default function LeaderboardPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <UserAvatar avatarId={(r as any).avatarId || null} size={26} className={`shadow-sm ${idx <= 2 ? "tm-top3-avatar" : ""}`} />
-                        <span className="font-medium">{r.displayName}</span>
+                        <div>
+                          <div className="font-medium group-hover:underline">{r.displayName}</div>
+                          <div className="text-[11px] text-slate-500">Apri dettaglio e pronostici</div>
+                        </div>
                         {/* Keep the row highlight for the logged user, but avoid extra labels ("Tu" / "Top"). */}
                       </div>
                     </div>
@@ -399,7 +394,8 @@ export default function LeaderboardPage() {
                     ) : null}
                   </div>
                 </div>
-              </Link>
+                </Link>
+              </div>
             );
             })}
             {rows.length === 0 ? <div className="py-6 text-sm text-slate-600">Nessun partecipante attivo.</div> : null}

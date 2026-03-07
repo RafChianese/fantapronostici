@@ -159,13 +159,13 @@ function CompetitionPredictionsPanel() {
       const winner = data.options.teams.find((t) => String(t.id) === winnerId);
       const scorer = data.options.scorers.find((s) => String(s.id) === scorerId);
 
-      const res = await api.saveCompetitionPredictions({
+      await api.saveCompetitionPredictions({
         winnerTeamId: winnerId ? Number(winnerId) : null,
         winnerTeamName: winner?.name ?? null,
         topScorerPlayerId: scorerId ? Number(scorerId) : null,
         topScorerPlayerName: scorer?.name ?? null,
       });
-      setData(res);
+      await load();
     } catch (e: any) {
       setError(e?.message || "Errore");
     } finally {
@@ -986,27 +986,6 @@ export default function PredictionsPage() {
         <Alert tone={toast.tone}>{toast.msg}</Alert>
       ) : null}
 
-      <Card>
-        <CardHeader
-          title="I miei pronostici"
-          subtitle="Inserisci un pronostico (risultato esatto). Puoi modificare finché la finestra è aperta."
-          right={
-            saveHint ? <span className="text-xs font-medium text-slate-300">{saveHint}</span> : null
-          }
-        />
-        <CardContent>
-          {isLocked ? (
-            <Alert tone="danger">
-              Pronostici bloccati.
-            </Alert>
-          ) : (
-            <div className="text-sm text-slate-300">
-              Puoi inserire e modificare i pronostici finché la finestra è aperta.
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
       <div className="flex items-center justify-between">
         <PredictionsTabs tab={tab} setTab={setTab} />
       </div>
@@ -1116,9 +1095,16 @@ export default function PredictionsPage() {
                     </div>
                   ) : null}
 
-                  {currentMatch ? (
-                    <div
-                      className={`mt-4 rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5 transition-all duration-200 ${matchEnter ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1"}`}
+                  {currentMatch ? (() => {
+                    const exactHitCurrent = Number(currentPred?.pointsExact ?? 0) > 0;
+                    const hasMatchPointsCurrent = Number(currentPred?.totalPoints ?? 0) > 0;
+                    const currentCardClass = exactHitCurrent
+                      ? "border border-emerald-300/35 bg-[linear-gradient(180deg,rgba(16,185,129,0.18),rgba(255,255,255,0.05))] shadow-[0_0_0_1px_rgba(16,185,129,0.14),0_18px_40px_rgba(6,95,70,0.30)]"
+                      : currentMatch.isJolly
+                      ? "border border-amber-300/30 bg-[linear-gradient(180deg,rgba(251,191,36,0.18),rgba(255,255,255,0.05))] shadow-[0_0_0_1px_rgba(251,191,36,0.15),0_18px_40px_rgba(120,53,15,0.35)]"
+                      : "border border-white/10 bg-white/5";
+                    return <div
+                      className={`mt-4 rounded-2xl p-4 sm:p-5 transition-all duration-200 ${currentCardClass} ${matchEnter ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1"}`}
                       onTouchStart={(e) => {
                         const t = e.touches?.[0];
                         if (!t) return;
@@ -1148,8 +1134,13 @@ export default function PredictionsPage() {
                       }}
                     >
                       <div className="flex items-center justify-between gap-3">
-                        <div className="text-xs text-slate-300">
-                          {currentMatch.status === "NOT_STARTED" ? "Non iniziata" : currentMatch.status === "IN_PROGRESS" ? "In corso" : "Terminata"}
+                        <div className="inline-flex flex-wrap items-center gap-2 text-xs text-slate-300">
+                          <span>{currentMatch.status === "NOT_STARTED" ? "Non iniziata" : currentMatch.status === "IN_PROGRESS" ? "In corso" : "Terminata"}</span>
+                          {currentMatch.isJolly ? (
+                            <span className="inline-flex items-center gap-1 rounded-xl border border-amber-300/35 bg-amber-400/15 px-2.5 py-1 font-semibold text-amber-100 shadow-[0_0_20px_rgba(251,191,36,0.12)]">
+                              ⭐ Partita Jolly
+                            </span>
+                          ) : null}
                         </div>
                         <div className="inline-flex items-center gap-2">
                           {!canEditCurrent ? (
@@ -1324,30 +1315,6 @@ export default function PredictionsPage() {
 
                         <button
                           type="button"
-                          disabled={currentIndex <= 0}
-                          onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))}
-                          className="inline-flex items-center justify-center gap-2 rounded-xl border border-rose-400/40 bg-black/40 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:bg-black/55"
-                        >
-                          <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-                          Previous
-                        </button>
-
-                        <div className="flex items-center gap-2 text-xs text-slate-200">
-                          {saving ? (
-                            <span className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-                              <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-white/20 border-t-white/80" />
-                              Salvataggio…
-                            </span>
-                          ) : saveHint ? (
-                            <span className="inline-flex items-center gap-2 rounded-xl border border-emerald-300/20 bg-emerald-400/10 px-3 py-2">
-                              <Save className="h-4 w-4" aria-hidden="true" />
-                              {saveHint}
-                            </span>
-                          ) : null}
-                        </div>
-
-                        <button
-                          type="button"
                           disabled={currentIndex >= currentMatches.length - 1}
                           onClick={() => setCurrentIndex((i) => Math.min(currentMatches.length - 1, i + 1))}
                           className="inline-flex items-center justify-center gap-2 rounded-xl border border-rose-400/40 bg-black/40 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:bg-black/55"
@@ -1373,6 +1340,25 @@ export default function PredictionsPage() {
                         </div>
                       </div>
 
+                      {currentMatch.status === "FINISHED" && currentPred ? (
+                        <div className={`mt-4 rounded-2xl border px-3 py-3 text-sm ${exactHitCurrent ? "border-emerald-300/30 bg-emerald-400/10" : hasMatchPointsCurrent ? "border-sky-300/20 bg-sky-400/10" : "border-white/10 bg-white/5"}`}>
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                              <div className="text-xs uppercase tracking-wide text-slate-300">Punti ottenuti</div>
+                              <div className="mt-1 text-lg font-extrabold text-white">
+                                <AnimatedNumber value={Number(currentPred.totalPoints ?? 0)} /> pt
+                              </div>
+                            </div>
+                            {exactHitCurrent ? (
+                              <span className="inline-flex items-center gap-2 rounded-xl border border-emerald-300/30 bg-emerald-400/10 px-3 py-2 text-xs font-semibold text-emerald-100">
+                                ✅ Risultato esatto preso
+                              </span>
+                            ) : null}
+                          </div>
+                          <div className="mt-2 text-xs text-slate-200">{buildBreakdown(currentPred, !!config?.features?.underOver25)}</div>
+                        </div>
+                      ) : null}
+
                       {canEditCurrent ? (
                         <div className="mt-4 grid gap-1.5 [grid-template-columns:repeat(auto-fit,minmax(44px,1fr))]">
                           {quickPicks.map(([a, b]) => (
@@ -1387,8 +1373,8 @@ export default function PredictionsPage() {
                           ))}
                         </div>
                       ) : null}
-                    </div>
-                  ) : (
+                    </div>;
+                  })() : (
                     <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-200">Nessuna partita trovata per questa giornata.</div>
                   )}
                 </div>
