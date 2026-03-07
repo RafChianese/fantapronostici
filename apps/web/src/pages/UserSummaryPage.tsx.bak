@@ -137,146 +137,6 @@ export default function UserSummaryPage() {
     };
   }, [showAd, demoAdsEnabled]);
 
-  const safeLeague = data?.league ?? { name: "Lega" };
-  const safeUser = data?.user ?? { displayName: "Utente" };
-  const safeItems: SummaryItem[] = Array.isArray(data?.detail) ? data.detail : [];
-  const features = data?.features ?? { underOver25: false, matchdayAwards: false };
-  const safeSummary = data?.totals ?? { total: 0, exact: 0, outcome: 0, sumGoals: 0, underOver: 0 };
-
-  const buildBreakdown = (pts: any) => {
-    const parts: string[] = [];
-    if ((pts?.exact ?? 0) > 0) parts.push(`Esatto ${pts.exact}`);
-    if ((pts?.outcome ?? 0) > 0) parts.push(`1X2 ${pts.outcome}`);
-    if ((pts?.sumGoals ?? 0) > 0) parts.push(`Somma gol ${pts.sumGoals}`);
-    if (!!features.underOver25 && (pts?.underOver ?? 0) > 0) parts.push(`U/O 2.5 ${pts.underOver}`);
-    return parts.length ? parts.join(" · ") : "Nessun punto";
-  };
-
-  const outcomeOf = (home: number, away: number) => (home > away ? "1" : home < away ? "2" : "X");
-  const getStatus = (it: SummaryItem): "NOT_STARTED" | "IN_PROGRESS" | "FINISHED" => {
-    const raw = String(it?.match?.status || "NOT_STARTED");
-    if (raw === "FINISHED" || raw === "IN_PROGRESS" || raw === "NOT_STARTED") return raw as any;
-    return "NOT_STARTED";
-  };
-
-  const byMatchday = useMemo(() => {
-    return safeItems.reduce((acc: Record<number, SummaryItem[]>, it: SummaryItem) => {
-      const md = Number(it?.match?.matchday ?? 1);
-      (acc[md] ??= []).push(it);
-      return acc;
-    }, {});
-  }, [safeItems]);
-
-  const matchdays = useMemo(() => Object.keys(byMatchday).map(Number).sort((a, b) => a - b), [byMatchday]);
-  const nowTs = Date.now();
-
-  const isAllFinished = (md: number) => {
-    const items = byMatchday[md] ?? [];
-    if (!items.length) return true;
-    return items.every((it) => {
-      const s = getStatus(it);
-      if (s === "FINISHED") return true;
-      const ko = new Date(it?.match?.kickoffAt).getTime();
-      return Number.isFinite(ko) ? ko < nowTs - 4 * 60 * 60 * 1000 : false;
-    });
-  };
-
-  const defaultMatchday = useMemo(() => {
-    const current = matchdays.find((md) => !isAllFinished(md));
-    return String(current ?? matchdays[matchdays.length - 1] ?? 1);
-  }, [matchdays]);
-
-  useEffect(() => {
-    setSelectedMatchday((prev) => {
-      if (prev === "ALL") return prev;
-      if (matchdays.includes(Number(prev))) return prev;
-      return defaultMatchday;
-    });
-  }, [defaultMatchday, matchdays.join(",")]);
-
-  const visibleMatchdays = selectedMatchday === "ALL" ? matchdays : matchdays.filter((md) => String(md) === selectedMatchday);
-
-  const finishedItems = safeItems
-    .filter((it) => !!it?.prediction && !!it?.real && getStatus(it) === "FINISHED")
-    .slice()
-    .sort((a, b) => new Date(a?.match?.kickoffAt || 0).getTime() - new Date(b?.match?.kickoffAt || 0).getTime());
-
-  const isExactHit = (it: SummaryItem) => {
-    const p = it?.prediction;
-    const r = it?.real;
-    return !!p && !!r && Number(p.homeGoals) === Number(r.home) && Number(p.awayGoals) === Number(r.away);
-  };
-  const isOutcomeHit = (it: SummaryItem) => {
-    const p = it?.prediction;
-    const r = it?.real;
-    return !!p && !!r && outcomeOf(Number(p.homeGoals), Number(p.awayGoals)) === outcomeOf(Number(r.home), Number(r.away));
-  };
-
-  const finishedCount = finishedItems.length;
-  const exactHits = finishedItems.filter(isExactHit).length;
-  const outcomeHits = finishedItems.filter(isOutcomeHit).length;
-  const pctExact = finishedCount ? Math.round((exactHits / finishedCount) * 100) : 0;
-  const pctOutcome = finishedCount ? Math.round((outcomeHits / finishedCount) * 100) : 0;
-
-  const streakFromEnd = (fn: (it: SummaryItem) => boolean) => {
-    let s = 0;
-    for (let i = finishedItems.length - 1; i >= 0; i -= 1) {
-      if (fn(finishedItems[i])) s += 1;
-      else break;
-    }
-    return s;
-  };
-
-  const streakOutcome = streakFromEnd(isOutcomeHit);
-  const streakExact = streakFromEnd(isExactHit);
-
-  const pointsByMatchday = new Map<number, number>();
-  for (const it of safeItems) {
-    const md = Number(it?.match?.matchday ?? 1);
-    const pts = Number(it?.points?.total ?? 0);
-    pointsByMatchday.set(md, (pointsByMatchday.get(md) ?? 0) + (Number.isFinite(pts) ? pts : 0));
-  }
-  const mdSeries = matchdays.map((md) => ({ md, pts: pointsByMatchday.get(md) ?? 0 }));
-  const bestMatchday = mdSeries.reduce((acc, it) => (it.pts > acc.pts ? it : acc), mdSeries[0] ?? { md: 1, pts: 0 });
-  const chartSeries = mdSeries.map((s, idx) => ({ label: `G${s.md}`, y: mdSeries.slice(0, idx + 1).reduce((tot, x) => tot + x.pts, 0) }));
-
-  const renderMiniChart = () => {
-    if (chartSeries.length < 2) return <div className="text-xs text-slate-500">Nessun andamento disponibile.</div>;
-    const w = 100;
-    const h = 60;
-    const pad = 6;
-    const ys = chartSeries.map((p) => p.y);
-    const minY = Math.min(...ys);
-    const maxY = Math.max(...ys);
-    const xStep = (w - pad * 2) / (chartSeries.length - 1);
-    const scaleY = (y: number) => (maxY === minY ? h / 2 : pad + (h - pad * 2) * (1 - (y - minY) / (maxY - minY)));
-    const pts = chartSeries.map((p, i) => ({ x: pad + i * xStep, y: scaleY(p.y) }));
-    const d = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(" ");
-    return (
-      <div className="w-full">
-        <svg viewBox={`0 0 ${w} ${h}`} className="h-20 w-full">
-          <path d={d} fill="none" stroke="currentColor" strokeWidth={2.2} className="text-teal-600" />
-          {pts.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r={2.2} className="text-teal-600" fill="currentColor" />)}
-        </svg>
-        <div className="mt-1 flex items-center justify-between text-[11px] text-slate-500">
-          <span>{chartSeries[0].label}</span>
-          <span>{chartSeries[chartSeries.length - 1].label}</span>
-        </div>
-      </div>
-    );
-  };
-
-  const TeamDot = ({ name, logo }: { name: string; logo?: string | null }) => {
-    if (logo) return <img src={logo} alt={name} className="h-7 w-7 rounded-full object-contain" />;
-    return <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-800 bg-slate-950 text-[10px] font-bold text-slate-300">{name.trim().slice(0, 1).toUpperCase()}</span>;
-  };
-
-  const StatusPill = ({ status }: { status: string }) => {
-    if (status === "FINISHED") return <Badge tone="gray">Terminata</Badge>;
-    if (status === "IN_PROGRESS") return <Badge tone="green">In corso</Badge>;
-    return <Badge tone="gray">Non iniziata</Badge>;
-  };
-
   if (loading) {
     return (
       <div className="space-y-6">
@@ -394,7 +254,122 @@ export default function UserSummaryPage() {
   if (error) return <div className="text-sm text-red-600">{error}</div>;
   if (!data) return <div className="text-sm text-slate-600">Nessun dato.</div>;
 
-  return (
+  const safeLeague = data?.league ?? { name: "Lega" };
+  const safeUser = data?.user ?? { displayName: "Utente" };
+  const safeItems: SummaryItem[] = Array.isArray(data?.detail) ? data.detail : [];
+  const features = data?.features ?? { underOver25: false, matchdayAwards: false };
+  const safeSummary = data?.totals ?? { total: 0, exact: 0, outcome: 0, sumGoals: 0, underOver: 0 };
+
+  const buildBreakdown = (pts: any) => {
+    const parts: string[] = [];
+    if ((pts?.exact ?? 0) > 0) parts.push(`Esatto ${pts.exact}`);
+    if ((pts?.outcome ?? 0) > 0) parts.push(`1X2 ${pts.outcome}`);
+    if ((pts?.sumGoals ?? 0) > 0) parts.push(`Somma gol ${pts.sumGoals}`);
+    if (!!features.underOver25 && (pts?.underOver ?? 0) > 0) parts.push(`U/O 2.5 ${pts.underOver}`);
+    return parts.length ? parts.join(" · ") : "Nessun punto";
+  };
+
+  const outcomeOf = (home: number, away: number) => (home > away ? "1" : home < away ? "2" : "X");
+  const getStatus = (it: SummaryItem): "NOT_STARTED" | "IN_PROGRESS" | "FINISHED" => {
+    const raw = String(it?.match?.status || "NOT_STARTED");
+    if (raw === "FINISHED" || raw === "IN_PROGRESS" || raw === "NOT_STARTED") return raw as any;
+    return "NOT_STARTED";
+  };
+
+  const byMatchday = useMemo(() => {
+    return safeItems.reduce((acc: Record<number, SummaryItem[]>, it: SummaryItem) => {
+      const md = Number(it?.match?.matchday ?? 1);
+      (acc[md] ??= []).push(it);
+      return acc;
+    }, {});
+  }, [safeItems]);
+
+  const matchdays = useMemo(() => Object.keys(byMatchday).map(Number).sort((a, b) => a - b), [byMatchday]);
+  const nowTs = Date.now();
+
+  const isAllFinished = (md: number) => {
+    const items = byMatchday[md] ?? [];
+    if (!items.length) return true;
+    return items.every((it) => {
+      const s = getStatus(it);
+      if (s === "FINISHED") return true;
+      const ko = new Date(it?.match?.kickoffAt).getTime();
+      return Number.isFinite(ko) ? ko < nowTs - 4 * 60 * 60 * 1000 : false;
+    });
+  };
+
+  const defaultMatchday = useMemo(() => {
+    const current = matchdays.find((md) => !isAllFinished(md));
+    return String(current ?? matchdays[matchdays.length - 1] ?? 1);
+  }, [matchdays]);
+
+  useEffect(() => {
+    setSelectedMatchday((prev) => {
+      if (prev === "ALL") return prev;
+      if (matchdays.includes(Number(prev))) return prev;
+      return defaultMatchday;
+    });
+  }, [defaultMatchday, matchdays.join(",")]);
+
+  const visibleMatchdays = selectedMatchday === "ALL" ? matchdays : matchdays.filter((md) => String(md) === selectedMatchday);
+
+  const finishedItems = safeItems
+    .filter((it) => !!it?.prediction && !!it?.real && getStatus(it) === "FINISHED")
+    .slice()
+    .sort((a, b) => new Date(a?.match?.kickoffAt || 0).getTime() - new Date(b?.match?.kickoffAt || 0).getTime());
+
+  const isExactHit = (it: SummaryItem) => {
+    const p = it?.prediction;
+    const r = it?.real;
+    return !!p && !!r && Number(p.homeGoals) === Number(r.home) && Number(p.awayGoals) === Number(r.away);
+  };
+  const isOutcomeHit = (it: SummaryItem) => {
+    const p = it?.prediction;
+    const r = it?.real;
+    return !!p && !!r && outcomeOf(Number(p.homeGoals), Number(p.awayGoals)) === outcomeOf(Number(r.home), Number(r.away));
+  };
+
+  const finishedCount = finishedItems.length;
+  const exactHits = finishedItems.filter(isExactHit).length;
+  const outcomeHits = finishedItems.filter(isOutcomeHit).length;
+  const pctExact = finishedCount ? Math.round((exactHits / finishedCount) * 100) : 0;
+  const pctOutcome = finishedCount ? Math.round((outcomeHits / finishedCount) * 100) : 0;
+
+  const streakFromEnd = (fn: (it: SummaryItem) => boolean) => {
+    let s = 0;
+    for (let i = finishedItems.length - 1; i >= 0; i -= 1) {
+      if (fn(finishedItems[i])) s += 1;
+      else break;
+    }
+    return s;
+  };
+
+  const streakOutcome = streakFromEnd(isOutcomeHit);
+  const streakExact = streakFromEnd(isExactHit);
+
+  const pointsByMatchday = new Map<number, number>();
+  for (const it of safeItems) {
+    const md = Number(it?.match?.matchday ?? 1);
+    const pts = Number(it?.points?.total ?? 0);
+    pointsByMatchday.set(md, (pointsByMatchday.get(md) ?? 0) + (Number.isFinite(pts) ? pts : 0));
+  }
+  const mdSeries = matchdays.map((md) => ({ md, pts: pointsByMatchday.get(md) ?? 0 }));
+  const bestMatchday = mdSeries.reduce((acc, it) => (it.pts > acc.pts ? it : acc), mdSeries[0] ?? { md: 1, pts: 0 });
+  const chartSeries = mdSeries.map((s, idx) => ({ label: `G${s.md}`, y: mdSeries.slice(0, idx + 1).reduce((tot, x) => tot + x.pts, 0) }));
+
+  const renderMiniChart = () => {
+    if (chartSeries.length < 2) return <div className="text-xs text-slate-500">Nessun andamento disponibile.</div>;
+    const w = 100;
+    const h = 60;
+    const pad = 6;
+    const ys = chartSeries.map((p) => p.y);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+    const xStep = (w - pad * 2) / (chartSeries.length - 1);
+    const scaleY = (y: number) => (maxY === minY ? h / 2 : pad + (h - pad * 2) * (1 - (y - minY) / (maxY - minY)));
+    const pts = chartSeries.map((p, i) => ({ x: pad + i * xStep, y: scaleY(p.y) }));
+    const d = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(" ");
+    return (
       <div className="w-full">
         <svg viewBox={`0 0 ${w} ${h}`} className="h-20 w-full">
           <path d={d} fill="none" stroke="currentColor" strokeWidth={2.2} className="text-teal-600" />
