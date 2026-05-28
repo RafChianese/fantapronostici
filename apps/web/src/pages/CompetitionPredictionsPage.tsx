@@ -93,7 +93,7 @@ export default function CompetitionPredictionsPage() {
 
           {!loading && data && enabledAny ? (
             <>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 space-y-1">
+              <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4 text-sm text-slate-300 space-y-1">
                 <div>
                   <b>Deadline:</b> {deadlineLabel || "(automatica)"}
                 </div>
@@ -104,9 +104,9 @@ export default function CompetitionPredictionsPage() {
 
               {data.enabled.winner ? (
                 <div className="space-y-2">
-                  <div className="text-sm font-semibold text-slate-900">Vincitore competizione (+{data.points.winner} punti)</div>
+                  <div className="text-sm font-semibold text-slate-100">Vincitore competizione (+{data.points.winner} punti)</div>
                   <select
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                    className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100"
                     disabled={!canEdit || saving}
                     value={winnerId}
                     onChange={(e) => setWinnerId(e.target.value)}
@@ -126,9 +126,9 @@ export default function CompetitionPredictionsPage() {
 
               {data.enabled.topScorer ? (
                 <div className="space-y-2">
-                  <div className="text-sm font-semibold text-slate-900">Capocannoniere (+{data.points.topScorer} punti)</div>
+                  <div className="text-sm font-semibold text-slate-100">Capocannoniere (+{data.points.topScorer} punti)</div>
                   <select
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                    className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100"
                     disabled={!canEdit || saving}
                     value={scorerId}
                     onChange={(e) => setScorerId(e.target.value)}

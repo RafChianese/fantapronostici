@@ -10,12 +10,12 @@ export function Button(
     "inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:translate-y-[1px]";
   const v =
     variant === "primary"
-      ? "bg-gradient-to-b from-[#2EC4B6] to-[#1FA99C] text-white shadow-sm hover:shadow-md hover:brightness-[1.02]"
+      ? "bg-gradient-to-r from-rose-600 to-rose-700 text-white shadow-sm hover:shadow-md hover:brightness-110"
       : variant === "danger"
-      ? "bg-rose-600 text-white hover:bg-rose-500"
+      ? "bg-rose-600 text-white hover:brightness-110"
       : variant === "ghost"
       ? "bg-transparent text-slate-200 hover:bg-slate-800/70"
-      : "bg-slate-900 text-slate-100 border border-slate-800 shadow-sm hover:shadow-md hover:bg-slate-800/80";
+      : "tm-glass text-slate-100 border border-white/10 shadow-sm hover:shadow-md hover:bg-white/10";
   return <button className={`${base} ${v} ${className}`} {...rest} />;
 }
 
@@ -26,7 +26,7 @@ export function Input(
   const inputEl = (
     <input
       id={id}
-      className={`w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-[#2EC4B6]/40 ${className}`}
+      className={`w-full rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-rose-500/35 ${className}`}
       {...rest}
     />
   );
@@ -48,21 +48,48 @@ export function Card({ children, className = "" }: { children: React.ReactNode; 
   // making them appear anchored in the middle of the page.
   return (
     <div
-      className={`rounded-2xl border border-slate-800/70 bg-gradient-to-b from-slate-950 to-slate-900/70 shadow-sm transition-shadow duration-200 hover:shadow-lg ${className}`}
+      className={`tm-glass shadow-sm transition-shadow duration-200 hover:shadow-lg ${className}`}
     >
       {children}
     </div>
   );
 }
 
-export function CardHeader({ title, subtitle, right }: { title: string; subtitle?: string; right?: React.ReactNode }) {
+export function CardHeader(
+  props:
+    | {
+        title: string;
+        subtitle?: string;
+        right?: React.ReactNode;
+        className?: string;
+        children?: never;
+      }
+    | {
+        title?: never;
+        subtitle?: never;
+        right?: never;
+        className?: string;
+        children: React.ReactNode;
+      }
+) {
+  // Backward/forward compatible:
+  // - Preferred: <CardHeader title="..." subtitle="..." right={...} />
+  // - Legacy pages: <CardHeader className="...">...</CardHeader>
+  const anyProps: any = props as any;
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-slate-800/70 p-4 sm:p-5 bg-gradient-to-r from-slate-950 to-slate-900/70">
-      <div>
-        <div className="text-lg font-semibold text-slate-100">{title}</div>
-        {subtitle ? <div className="mt-1 text-sm text-slate-400">{subtitle}</div> : null}
-      </div>
-      {right}
+    <div className={`tm-glass-header flex items-start justify-between gap-4 p-4 sm:p-5 ${anyProps.className || ""}`}
+    >
+      {anyProps.children ? (
+        anyProps.children
+      ) : (
+        <>
+          <div>
+            <div className="text-lg font-semibold text-slate-100">{anyProps.title}</div>
+            {anyProps.subtitle ? <div className="mt-1 text-sm text-slate-400">{anyProps.subtitle}</div> : null}
+          </div>
+          {anyProps.right}
+        </>
+      )}
     </div>
   );
 }
@@ -71,7 +98,13 @@ export function CardContent({ children, className = "" }: { children: React.Reac
   return <div className={`p-4 sm:p-5 ${className}`}>{children}</div>;
 }
 
-export function Badge({ children, tone = "gray" }: { children: React.ReactNode; tone?: "gray" | "green" | "amber" | "blue" | "rose" }) {
+export function Badge({
+  children,
+  tone = "gray",
+}: {
+  children: React.ReactNode;
+  tone?: "gray" | "slate" | "green" | "amber" | "blue" | "rose";
+}) {
   const t =
     tone === "green"
       ? "bg-emerald-950/40 text-emerald-200 border-emerald-900/60"
@@ -81,12 +114,14 @@ export function Badge({ children, tone = "gray" }: { children: React.ReactNode; 
       ? "bg-sky-950/40 text-sky-200 border-sky-900/60"
       : tone === "rose"
       ? "bg-rose-950/40 text-rose-200 border-rose-900/60"
-      : "bg-slate-900/70 text-slate-200 border-slate-800";
+      : tone === "slate"
+      ? "bg-slate-900/65 text-slate-200 border-white/10"
+      : "bg-slate-900/65 text-slate-200 border-white/10";
   return <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${t}`}>{children}</span>;
 }
 
 export function Spinner() {
-  return <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-700 border-t-[#2EC4B6]" />;
+  return <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-700 border-t-rose-500" />;
 }
 
 export function Skeleton({ className = "" }: { className?: string }) {

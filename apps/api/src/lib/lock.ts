@@ -1,7 +1,7 @@
 import { prisma } from "./prisma.js";
 import { ensureLeagueConfig } from "../services/ensureLeagueConfig.js";
 import { decodeLeagueSettings, type PredictionMode } from "./leagueConfigEncoding.js";
-import { getPredictionWindow, isPredictableMatch } from "./matchPredictability.js";
+import { filterPredictableMatches } from "./predictableMatches.js";
 
 const AUTO_FALLBACK_HOURS = 12;
 
@@ -27,14 +27,11 @@ type DynamicLock = {
 
 async function computeDynamicLockInfo(leagueId: string, predictionMode: PredictionMode, offsetMinutes: number): Promise<DynamicLock> {
   const now = new Date();
-  const [rawMatches, predictionWindow] = await Promise.all([
-    prisma.match.findMany({
-      orderBy: [{ matchday: "asc" }, { kickoffAt: "asc" }],
-      select: { id: true, matchday: true, kickoffAt: true, status: true, homeTeam: true, awayTeam: true },
-    }),
-    getPredictionWindow(),
-  ]);
-  const matches = rawMatches.filter((m) => isPredictableMatch(m, predictionWindow));
+  const allMatches = await prisma.match.findMany({
+    orderBy: [{ matchday: "asc" }, { kickoffAt: "asc" }],
+    select: { id: true, matchday: true, kickoffAt: true, status: true, homeTeam: true, awayTeam: true },
+  });
+  const matches = await filterPredictableMatches(allMatches);
 
   // No matches yet: keep unlocked.
   if (!matches.length) {

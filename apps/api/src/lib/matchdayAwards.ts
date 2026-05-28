@@ -1,10 +1,12 @@
 import { prisma } from "./prisma.js";
+import { filterPredictableMatches } from "./predictableMatches.js";
 
 async function isMatchdayCompleted(matchday: number): Promise<{ completed: boolean; matchIds: string[] }> {
-  const matches = await prisma.match.findMany({
+  const allMatches = await prisma.match.findMany({
     where: { matchday },
-    select: { id: true, status: true, homeScore: true, awayScore: true },
+    select: { id: true, status: true, homeScore: true, awayScore: true, homeTeam: true, awayTeam: true, kickoffAt: true },
   });
+  const matches = await filterPredictableMatches(allMatches);
   if (matches.length === 0) return { completed: false, matchIds: [] };
   const completed = matches.every((m) => m.status === "FINISHED" && m.homeScore !== null && m.awayScore !== null);
   return { completed, matchIds: matches.map((m) => m.id) };
@@ -18,11 +20,11 @@ export async function recomputeMatchdayAwardsForLeague(leagueId: string, matchda
     typeof matchday === "number"
       ? [matchday]
       : (
-          await prisma.match.findMany({
-            select: { matchday: true },
+          await filterPredictableMatches(await prisma.match.findMany({
+            select: { matchday: true, homeTeam: true, awayTeam: true, kickoffAt: true },
             distinct: ["matchday"],
             orderBy: { matchday: "asc" },
-          })
+          }))
         ).map((m) => m.matchday);
 
   for (const md of matchdays) {

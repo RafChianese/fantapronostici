@@ -116,7 +116,7 @@ export function GuidedTour({
 
       {highlight ? (
         <div
-          className="absolute rounded-2xl ring-4 ring-[#2EC4B6] shadow-[0_0_0_9999px_rgba(0,0,0,0.55)]"
+          className="absolute rounded-2xl ring-4 ring-rose-500 shadow-[0_0_0_9999px_rgba(0,0,0,0.65)]"
           style={{
             top: highlight.top,
             left: highlight.left,
@@ -154,7 +154,7 @@ export function GuidedTour({
             </button>
             <button
               type="button"
-              className="rounded-xl bg-[#2EC4B6] px-3 py-2 text-sm font-semibold text-white hover:opacity-90"
+              className="rounded-xl bg-rose-600 px-3 py-2 text-sm font-semibold text-white hover:bg-rose-500"
               onClick={() => (isLast ? finish() : setIdx((i) => Math.min(steps.length - 1, i + 1)))}
             >
               {isLast ? "Fine" : "Avanti"}

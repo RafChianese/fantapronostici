@@ -15,7 +15,7 @@ import {
 } from "../services/footballDataService.js";
 import { fetchFixtureEvents, fetchFixtureLineups, fetchFixturesRange } from "../services/apiFootball.js";
 import { AvatarPresetIdSchema } from "../lib/avatarPresets.js";
-import { assertMatchesPredictable, getPredictionWindow, isPredictableMatch } from "../lib/matchPredictability.js";
+import { assertPredictableMatches, getPredictionWindow, isPredictableMatch } from "../lib/predictableMatches.js";
 
 function normTeamName(s: string) {
   return String(s || "")
@@ -150,15 +150,13 @@ meRouter.get("/lock", async (req, res) => {
 meRouter.get("/predictions", requireLeagueMember, async (req: AuthedRequest, res) => {
   const leagueId = resolveLeagueId(req)!;
 
-  const [rawPredictions, predictionWindow] = await Promise.all([
-    prisma.prediction.findMany({
-      where: { userId: req.user!.id, leagueId },
-      include: { match: true },
-      orderBy: { match: { kickoffAt: "asc" } },
-    }),
-    getPredictionWindow(),
-  ]);
-  const predictions = rawPredictions.filter((p) => isPredictableMatch(p.match, predictionWindow));
+  const allPredictions = await prisma.prediction.findMany({
+    where: { userId: req.user!.id, leagueId },
+    include: { match: true },
+    orderBy: { match: { kickoffAt: "asc" } },
+  });
+  const window = await getPredictionWindow();
+  const predictions = allPredictions.filter((p: any) => isPredictableMatch(p.match, window));
 
   // Include scorer picks so the FE can show the selected scorer on match cards.
   const matchIds = predictions.map((p) => p.matchId);
@@ -186,7 +184,7 @@ meRouter.get("/matches/:matchId/detail", requireLeagueMember, async (req: Authed
   if (!match) return res.status(404).json({ message: "Match non trovato" });
   const predictionWindow = await getPredictionWindow();
   if (!isPredictableMatch(match, predictionWindow)) {
-    return res.status(400).json({ message: "Match non pronosticabile.", reason: "MATCH_NOT_PREDICTABLE", matchId });
+    return res.status(400).json({ message: "Partita non pronosticabile.", reason: "MATCH_NOT_PREDICTABLE" });
   }
 
   const scorerEnabled = !!(rules as any)?.enableScorer;
@@ -392,7 +390,7 @@ meRouter.put("/matches/:matchId/scorer", requireLeagueMember, async (req: Authed
   if (!match) return res.status(404).json({ message: "Match non trovato" });
   const predictionWindow = await getPredictionWindow();
   if (!isPredictableMatch(match, predictionWindow)) {
-    return res.status(400).json({ message: "Match non pronosticabile.", reason: "MATCH_NOT_PREDICTABLE", matchId });
+    return res.status(400).json({ message: "Partita non pronosticabile.", reason: "MATCH_NOT_PREDICTABLE" });
   }
 
   if (!((rules as any)?.enableScorer)) {
@@ -501,7 +499,7 @@ meRouter.put("/predictions", requireLeagueMember, async (req: AuthedRequest, res
   const { predictions } = PutPredictionsSchema.parse(req.body);
 
   try {
-    await assertMatchesPredictable(predictions.map((p) => p.matchId));
+    await assertPredictableMatches(predictions.map((p) => p.matchId));
     await assertPredictionsEditableForMatches(
       leagueId,
       predictions.map((p) => p.matchId)

@@ -1,6 +1,7 @@
 import { prisma } from "./prisma.js";
 import type { ScoringMode } from "@prisma/client";
 import { recomputeMatchdayAwardsForLeague } from "./matchdayAwards.js";
+import { getPredictionWindow, isPredictableMatch } from "./predictableMatches.js";
 
 function outcome(home: number, away: number): "H" | "D" | "A" {
   if (home > away) return "H";
@@ -111,7 +112,8 @@ export async function recalcAllScoresForLeague(leagueId: string) {
     prisma.scorerPick.findMany({ where: { leagueId } }),
   ]);
 
-  const matchById = new Map(matches.map((m) => [m.id, m]));
+  const predictionWindow = await getPredictionWindow();
+  const matchById = new Map(matches.map((m: any) => [m.id, m]));
   const jollyByMatchId = new Set<string>(jollyRows.map((r: any) => String(r.matchId)));
   const scorerByUserMatch = new Map<string, string>();
   for (const sp of scorerPicks as any[]) scorerByUserMatch.set(`${sp.userId}:${sp.matchId}`, String(sp.playerExternalId));
@@ -119,7 +121,7 @@ export async function recalcAllScoresForLeague(leagueId: string) {
 
   for (const p of predictions) {
     const m = matchById.get(p.matchId);
-    if (!m || m.status !== "FINISHED" || m.homeScore === null || m.awayScore === null) {
+    if (!m || !isPredictableMatch(m as any, predictionWindow) || m.status !== "FINISHED" || m.homeScore === null || m.awayScore === null) {
       updates.push({ id: p.id, pointsExact: 0, pointsOutcome: 0, pointsSumGoals: 0, pointsUnderOver: 0, pointsScorer: 0, totalPoints: 0 });
       continue;
     }
@@ -188,6 +190,14 @@ export async function recalcScoresForMatchForLeague(leagueId: string, matchId: s
   ]);
 
   if (!match) return;
+  const predictionWindow = await getPredictionWindow();
+  if (!isPredictableMatch(match as any, predictionWindow)) {
+    await prisma.prediction.updateMany({
+      where: { leagueId, matchId },
+      data: { pointsExact: 0, pointsOutcome: 0, pointsSumGoals: 0, pointsUnderOver: 0, pointsScorer: 0, totalPoints: 0 },
+    });
+    return;
+  }
 
   const updates: { id: string; pointsExact: number; pointsOutcome: number; pointsSumGoals: number; pointsUnderOver: number; pointsScorer: number; totalPoints: number }[] = [];
 
