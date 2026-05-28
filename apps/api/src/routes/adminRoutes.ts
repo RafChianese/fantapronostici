@@ -9,6 +9,7 @@ import { Prisma } from "@prisma/client";
 import { runSyncOnce } from "../jobs/syncJob.js";
 import { ensureLeagueConfig } from "../services/ensureLeagueConfig.js";
 import { buildAutoLockSentinel, decodeLeagueSettings } from "../lib/leagueConfigEncoding.js";
+import { getPredictionWindow, isPredictableMatch } from "../lib/matchPredictability.js";
 
 export const adminRouter = Router();
 
@@ -57,13 +58,16 @@ adminRouter.get("/members", async (req, res) => {
     });
   }
 
-  const matches = await prisma.match.findMany({
-    orderBy: [{ matchday: "asc" }, { kickoffAt: "asc" }],
-    select: { id: true, matchday: true, status: true },
-  });
+  const [matches, predictionWindow] = await Promise.all([
+    prisma.match.findMany({
+      orderBy: [{ matchday: "asc" }, { kickoffAt: "asc" }],
+      select: { id: true, matchday: true, status: true, homeTeam: true, awayTeam: true, kickoffAt: true },
+    }),
+    getPredictionWindow(),
+  ]);
 
   const editableMatchIds = matches
-    .filter((mx: any) => mx.status === "NOT_STARTED" && !lockedSet.has(Number(mx.matchday || 1)))
+    .filter((mx: any) => mx.status === "NOT_STARTED" && isPredictableMatch(mx, predictionWindow) && !lockedSet.has(Number(mx.matchday || 1)))
     .map((mx: any) => String(mx.id));
 
   const required = editableMatchIds.length;
@@ -332,6 +336,10 @@ adminRouter.put("/jolly/:matchday", async (req, res) => {
 
   const match = await prisma.match.findUnique({ where: { id: matchId } });
   if (!match) return res.status(404).json({ message: "Match non trovato" });
+  const predictionWindow = await getPredictionWindow();
+  if (!isPredictableMatch(match, predictionWindow)) {
+    return res.status(400).json({ message: "Match non pronosticabile.", reason: "MATCH_NOT_PREDICTABLE", matchId });
+  }
   if (match.matchday !== matchday) return res.status(400).json({ message: "La partita selezionata non appartiene a questa giornata" });
 
   const row = await prisma.matchdayJolly.upsert({

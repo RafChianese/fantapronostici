@@ -270,6 +270,10 @@ export const api = {
   // league public rules+settings (used by "Regolamento")
   regolamentoConfig: () => request(`/api/regolamento-config`) as Promise<RegolamentoConfigResponse>,
 
+  // public: league regolamento config (uses league header x-league-id)
+  regolamentoConfig: () => request(`/api/regolamento-config`),
+
+
   // leagues
   myLeagues: () => request(`/api/leagues/mine`),
   createLeague: (name: string, opts?: { entryFeeCents?: number; prizes?: Array<{ position: number; amountCents: number }> }) =>
@@ -385,17 +389,6 @@ export const api = {
   // super admin - external football provider
   superExternalConfig: () => request(`/api/super/external-config`),
   superSaveExternalConfig: (patch: any) => request(`/api/super/external-config`, { method: "PUT", body: JSON.stringify(patch) }),
-
-  // super admin - global competition outcome (winner + top scorer)
-  superCompetitionOutcome: () => request(`/api/super/competition-outcome`),
-  superSaveCompetitionOutcome: (payload: {
-    winnerTeamId?: number | null;
-    winnerTeamName?: string | null;
-    topScorerPlayerId?: number | null;
-    topScorerPlayerName?: string | null;
-    secondTopScorerPlayerId?: number | null;
-    secondTopScorerPlayerName?: string | null;
-  }) => request(`/api/super/competition-outcome`, { method: "PUT", body: JSON.stringify(payload) }),
   superSearchExternalLeagues: (search: string, season?: number) => {
     const params = new URLSearchParams();
     params.set("search", search);

@@ -162,7 +162,7 @@ export function LockProvider({ children }: { children: React.ReactNode }) {
                 const path = window.location.pathname;
                 const isPredictionsPage = path === "/"; // "I miei pronostici"
                 if (isPredictionsPage) {
-                  push({ tone: "info", msg: "", ttlMs: 1600 });
+                  push({ tone: "info", msg: "Lock aggiornato: ricarico i pronostici…", ttlMs: 1600 });
                   setTimeout(() => window.location.reload(), 150);
                 }
               }

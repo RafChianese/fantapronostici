@@ -15,6 +15,7 @@ import {
 } from "../services/footballDataService.js";
 import { fetchFixtureEvents, fetchFixtureLineups, fetchFixturesRange } from "../services/apiFootball.js";
 import { AvatarPresetIdSchema } from "../lib/avatarPresets.js";
+import { assertMatchesPredictable, getPredictionWindow, isPredictableMatch } from "../lib/matchPredictability.js";
 
 function normTeamName(s: string) {
   return String(s || "")
@@ -149,11 +150,15 @@ meRouter.get("/lock", async (req, res) => {
 meRouter.get("/predictions", requireLeagueMember, async (req: AuthedRequest, res) => {
   const leagueId = resolveLeagueId(req)!;
 
-  const predictions = await prisma.prediction.findMany({
-    where: { userId: req.user!.id, leagueId },
-    include: { match: true },
-    orderBy: { match: { kickoffAt: "asc" } },
-  });
+  const [rawPredictions, predictionWindow] = await Promise.all([
+    prisma.prediction.findMany({
+      where: { userId: req.user!.id, leagueId },
+      include: { match: true },
+      orderBy: { match: { kickoffAt: "asc" } },
+    }),
+    getPredictionWindow(),
+  ]);
+  const predictions = rawPredictions.filter((p) => isPredictableMatch(p.match, predictionWindow));
 
   // Include scorer picks so the FE can show the selected scorer on match cards.
   const matchIds = predictions.map((p) => p.matchId);
@@ -179,6 +184,10 @@ meRouter.get("/matches/:matchId/detail", requireLeagueMember, async (req: Authed
     prisma.scorerPick.findUnique({ where: { userId_leagueId_matchId: { userId: req.user!.id, leagueId, matchId } } }).catch(() => null as any),
   ]);
   if (!match) return res.status(404).json({ message: "Match non trovato" });
+  const predictionWindow = await getPredictionWindow();
+  if (!isPredictableMatch(match, predictionWindow)) {
+    return res.status(400).json({ message: "Match non pronosticabile.", reason: "MATCH_NOT_PREDICTABLE", matchId });
+  }
 
   const scorerEnabled = !!(rules as any)?.enableScorer;
   const pointsScorer = Number((rules as any)?.pointsScorer ?? 3) || 3;
@@ -381,6 +390,10 @@ meRouter.put("/matches/:matchId/scorer", requireLeagueMember, async (req: Authed
     prisma.rule.findUnique({ where: { leagueId } }),
   ]);
   if (!match) return res.status(404).json({ message: "Match non trovato" });
+  const predictionWindow = await getPredictionWindow();
+  if (!isPredictableMatch(match, predictionWindow)) {
+    return res.status(400).json({ message: "Match non pronosticabile.", reason: "MATCH_NOT_PREDICTABLE", matchId });
+  }
 
   if (!((rules as any)?.enableScorer)) {
     return res.status(400).json({ message: "Funzionalità marcatore non attiva", reason: "SCORER_DISABLED" });
@@ -488,6 +501,7 @@ meRouter.put("/predictions", requireLeagueMember, async (req: AuthedRequest, res
   const { predictions } = PutPredictionsSchema.parse(req.body);
 
   try {
+    await assertMatchesPredictable(predictions.map((p) => p.matchId));
     await assertPredictionsEditableForMatches(
       leagueId,
       predictions.map((p) => p.matchId)

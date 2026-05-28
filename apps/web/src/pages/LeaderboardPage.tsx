@@ -19,7 +19,6 @@ type Row = {
   sumGoalsHits: number;
   underOverHits?: number;
   matchdayWins?: number;
-  competitionPoints?: number;
 };
 
 type SortValue = {
@@ -119,7 +118,7 @@ export default function LeaderboardPage() {
 
   return (
     <div className="space-y-4">
-      <div className="overflow-hidden rounded-3xl border border-slate-800 shadow-sm">
+      <div className="overflow-hidden rounded-3xl border border-slate-200 shadow-sm">
         <div
           className="text-white"
           style={{
@@ -151,6 +150,44 @@ export default function LeaderboardPage() {
       </div>
 
       <Card>
+      <CardHeader
+        title="Classifica generale"
+        subtitle={leagueName ? `Lega: ${leagueName}` : "Seleziona una lega per vedere la classifica."}
+        right={
+          <div className="flex flex-col items-end gap-2">
+            {myRank ? <Badge tone="green">La tua posizione: #{myRank}</Badge> : null}
+
+            {/* Desktop: inline sort select. Mobile: bottom-sheet modal */}
+            <div className="hidden sm:block">
+              <label className="text-xs text-slate-600">Ordina</label>
+              <select
+                className="mt-1 w-[260px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                value={sortParam}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  const [k, d] = v.split("_") as any;
+                  setSortKey(k);
+                  setSortDir(d);
+                }}
+              >
+                {sortOptions.map((opt) => (
+                  <option key={`${opt.key}_${opt.dir}`} value={`${opt.key}_${opt.dir}`}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="sm:hidden">
+              <Button variant="secondary" onClick={() => setSortOpen(true)} aria-label="Ordina">
+                <ArrowDownUp size={18} aria-hidden="true" />
+                <span className="ml-2">Ordina</span>
+              </Button>
+            </div>
+          </div>
+        }
+      />
+
       {sortOpen ? (
         <div className="fixed inset-0 z-[60]">
           <button
@@ -158,13 +195,13 @@ export default function LeaderboardPage() {
             aria-label="Chiudi ordinamento"
             onClick={() => setSortOpen(false)}
           />
-          <div className="absolute bottom-0 left-0 right-0 max-h-[80vh] overflow-auto rounded-t-2xl tm-glass-sheet p-4 pb-[calc(env(safe-area-inset-bottom)+16px)] shadow-2xl">
+          <div className="absolute bottom-0 left-0 right-0 max-h-[80vh] overflow-auto rounded-t-2xl bg-white p-4 pb-[calc(env(safe-area-inset-bottom)+16px)] shadow-2xl">
             <div className="mb-2 flex items-center justify-between">
-              <div className="text-base font-semibold text-slate-100">Ordina per</div>
+              <div className="text-base font-semibold">Ordina per</div>
               <Button variant="ghost" onClick={() => setSortOpen(false)} aria-label="Chiudi">✕</Button>
             </div>
 
-            <div className="divide-y divide-slate-800">
+            <div className="divide-y divide-slate-100">
               {sortOptions.map((opt) => {
                 const active = opt.key === sortKey && opt.dir === sortDir;
                 return (
@@ -177,9 +214,9 @@ export default function LeaderboardPage() {
                       setSortOpen(false);
                     }}
                   >
-                    <span className="text-sm text-slate-100">{opt.label}</span>
+                    <span className="text-sm text-slate-900">{opt.label}</span>
                     <span
-                      className={`h-5 w-5 rounded-full border ${active ? "border-rose-500 bg-rose-500" : "border-slate-700"}`}
+                      className={`h-5 w-5 rounded-full border ${active ? "border-[#2EC4B6] bg-[#2EC4B6]" : "border-slate-300"}`}
                       aria-hidden="true"
                     />
                   </button>
@@ -190,43 +227,14 @@ export default function LeaderboardPage() {
         </div>
       ) : null}
       <CardContent>
-        <div className="mb-4 flex items-center justify-end gap-2">
-          <div className="hidden sm:block">
-            <label className="text-xs text-slate-400">Ordina</label>
-            <select
-              className="mt-1 w-[260px] rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100"
-              value={sortParam}
-              onChange={(e) => {
-                const v = e.target.value;
-                const [k, d] = v.split("_") as any;
-                setSortKey(k);
-                setSortDir(d);
-              }}
-            >
-              {sortOptions.map((opt) => (
-                <option key={`${opt.key}_${opt.dir}`} value={`${opt.key}_${opt.dir}`}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="sm:hidden">
-            <Button variant="secondary" onClick={() => setSortOpen(true)} aria-label="Ordina">
-              <ArrowDownUp size={18} aria-hidden="true" />
-              <span className="ml-2">Ordina</span>
-            </Button>
-          </div>
-        </div>
-
         {/* Legend / metric explanation */}
-        <div className="mb-4 rounded-2xl border border-white/10 bg-white/5 p-3">
+        <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
           <button
             type="button"
             onClick={() => setLegendOpen((v) => !v)}
             className="w-full flex items-center justify-between gap-3"
           >
-            <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
+            <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
               <Info size={16} aria-hidden="true" />
               Legenda & criteri
             </div>
@@ -234,12 +242,11 @@ export default function LeaderboardPage() {
           </button>
 
           {legendOpen ? (
-            <div className="mt-3 grid gap-2 text-xs text-slate-300 sm:grid-cols-2">
+            <div className="mt-3 grid gap-2 text-xs text-slate-700 sm:grid-cols-2">
               <div className="flex items-center gap-2"><Trophy size={16} aria-hidden="true" /> <b>Punti</b>: totale punti in classifica</div>
               <div className="flex items-center gap-2"><Target size={16} aria-hidden="true" /> <b>Esatti</b>: risultati esatti</div>
               <div className="flex items-center gap-2"><CheckCircle2 size={16} aria-hidden="true" /> <b>1X2</b>: esito corretto</div>
               <div className="flex items-center gap-2"><Sigma size={16} aria-hidden="true" /> <b>Somma gol</b>: totale gol corretto</div>
-              <div className="flex items-center gap-2"><span className="text-base" aria-hidden="true">🏆</span> <b>Bonus torneo</b>: punti da vincitore e/o capocannoniere</div>
               {features.underOver25 ? (
                 <div className="flex items-center gap-2"><TrendingUp size={16} aria-hidden="true" /> <b>U/O 2.5</b>: Under (≤2) / Over (≥3)</div>
               ) : null}
@@ -248,7 +255,7 @@ export default function LeaderboardPage() {
               ) : null}
 
               {tieBreakers.length ? (
-                <div className="sm:col-span-2 text-xs text-slate-300 pt-1">
+                <div className="sm:col-span-2 text-xs text-slate-600 pt-1">
                   <b>Tie-break</b> (a parità di punti): {tieBreakers.join(" → ")}
                 </div>
               ) : null}
@@ -301,23 +308,19 @@ export default function LeaderboardPage() {
               const flashCls = tr === "up" ? "tm-flash-up" : tr === "down" ? "tm-flash-down" : "";
               const delta = deltas[r.userId] || 0;
               const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : "";
+              const medalTone = idx === 0 ? "amber" : idx === 1 ? "blue" : idx === 2 ? "rose" : "gray";
               const medalGlow = idx <= 2 ? "tm-medal-glow" : "";
               const top3Row = idx <= 2 ? "tm-top3-row" : "";
               const isMe = !!user?.id && r.userId === user.id;
               const gap = idx === 0 ? 0 : Math.max(0, leaderPoints - Number(r.totalPoints || 0));
               return (
-              <div key={r.userId} className={`py-3 ${top3Row} ${isMe ? "brightness-110" : ""} ${flashCls}`}>
-                <Link
-                  to={`/users/${r.userId}`}
-                  className="group block rounded-2xl px-2 py-2 transition hover:bg-slate-900/40 focus:outline-none focus:ring-2 focus:ring-rose-400/40"
-                  aria-label={`Apri il dettaglio di ${r.displayName}`}
-                >
+              <div key={r.userId} className={`py-3 ${top3Row} ${isMe ? "rounded-2xl bg-[#2EC4B6]/10 px-3" : ""} ${flashCls}`}>
                 {/* Mobile: 2 righe senza scroll orizzontale. Desktop: layout a colonne */}
                 <div className="flex flex-col gap-2 sm:grid sm:grid-cols-12 sm:items-center sm:gap-3">
                   <div className="flex items-center justify-between sm:col-span-6 sm:justify-start sm:gap-3">
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-2">
-                        <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-extrabold ${idx <= 2 ? "border-rose-500/25 bg-slate-950" : "border-slate-800 bg-slate-900/50"} ${medalGlow}`}>
+                        <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-extrabold ${idx <= 2 ? "border-[#2EC4B6]/30 bg-white" : "border-slate-200 bg-slate-50"} ${medalGlow}`}>
                           <span className="tabular-nums">#{idx + 1}</span>
                           {medal ? <span aria-hidden="true">{medal}</span> : null}
                         </span>
@@ -329,46 +332,20 @@ export default function LeaderboardPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <UserAvatar avatarId={(r as any).avatarId || null} size={26} className={`shadow-sm ${idx <= 2 ? "tm-top3-avatar" : ""}`} />
-                        <div>
-                          <div className="font-medium group-hover:underline">{r.displayName}</div>
-                          <div className="text-[11px] text-slate-500">Apri dettaglio e pronostici</div>
-                        </div>
-                        {/* Keep the row highlight for the logged user, but avoid extra labels ("Tu" / "Top"). */}
+                        <Link className="font-medium hover:underline" to={`/users/${r.userId}`}>{r.displayName}</Link>
+                        {isMe ? <Badge tone="green">Tu</Badge> : null}
+                        {idx <= 2 ? <Badge tone={medalTone}>Top {idx + 1}</Badge> : null}
                       </div>
                     </div>
                     <div className="text-right text-sm font-extrabold sm:hidden">
-                      <div className="flex flex-col items-end gap-1">
-                        <div>
-                          <AnimatedNumber value={r.totalPoints} /> pt
-                          {idx !== 0 ? <span className="ml-2 text-xs font-semibold text-slate-500">-{gap}</span> : null}
-                        </div>
-                        {(r.competitionPoints ?? 0) > 0 ? (
-                          <span
-                            className="inline-flex items-center gap-1 rounded-full border border-amber-400/20 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-200"
-                            title="Bonus pronostici torneo (vincitore e/o capocannoniere)"
-                          >
-                            +{r.competitionPoints} <span aria-hidden="true">🏆</span>
-                          </span>
-                        ) : null}
-                      </div>
+                      <AnimatedNumber value={r.totalPoints} /> pt
+                      {idx !== 0 ? <span className="ml-2 text-xs font-semibold text-slate-500">-{gap}</span> : null}
                     </div>
                   </div>
 
                   <div className="hidden sm:col-span-2 sm:block sm:text-right sm:text-sm sm:font-extrabold">
-                    <div className="flex flex-col items-end gap-1">
-                      <div>
-                        <AnimatedNumber value={r.totalPoints} /> pt
-                        {idx !== 0 ? <span className="ml-2 text-[11px] font-semibold text-slate-500">-{gap}</span> : null}
-                      </div>
-                      {(r.competitionPoints ?? 0) > 0 ? (
-                        <span
-                          className="inline-flex items-center gap-1 rounded-full border border-amber-400/20 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-200"
-                          title="Bonus pronostici torneo (vincitore e/o capocannoniere)"
-                        >
-                          +{r.competitionPoints} <span aria-hidden="true">🏆</span>
-                        </span>
-                      ) : null}
-                    </div>
+                    <AnimatedNumber value={r.totalPoints} /> pt
+                    {idx !== 0 ? <span className="ml-2 text-[11px] font-semibold text-slate-500">-{gap}</span> : null}
                   </div>
 
                   <div className="flex flex-wrap items-center justify-start gap-x-4 gap-y-1 text-xs text-slate-700 sm:col-span-4 sm:justify-end sm:flex-nowrap sm:gap-x-4">
@@ -394,7 +371,6 @@ export default function LeaderboardPage() {
                     ) : null}
                   </div>
                 </div>
-                </Link>
               </div>
             );
             })}

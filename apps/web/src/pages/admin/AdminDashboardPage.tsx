@@ -112,7 +112,7 @@ function CustomizeTab({ goToRules }: { goToRules: () => void }) {
         <div className="flex flex-col items-center gap-3">
           <div className="relative">
             <div
-              className={`h-32 w-32 rounded-full border border-slate-800 bg-slate-100 overflow-hidden flex items-center justify-center ${logoBusy ? "opacity-70" : ""}`}
+              className={`h-32 w-32 rounded-full border border-slate-200 bg-slate-100 overflow-hidden flex items-center justify-center ${logoBusy ? "opacity-70" : ""}`}
             >
               {logoSrc ? (
                 <img src={logoSrc} alt="Logo lega" className="h-full w-full object-cover" />
@@ -139,7 +139,7 @@ function CustomizeTab({ goToRules }: { goToRules: () => void }) {
             <label
               htmlFor="league-logo-input"
               title={logoSrc ? "Modifica logo" : "Carica logo"}
-              className={`absolute -right-2 bottom-3 h-10 w-10 rounded-full border border-slate-800 bg-slate-950 shadow-sm flex items-center justify-center cursor-pointer hover:shadow transition ${logoBusy ? "pointer-events-none opacity-60" : ""}`}
+              className={`absolute -right-2 bottom-3 h-10 w-10 rounded-full border border-slate-200 bg-white shadow-sm flex items-center justify-center cursor-pointer hover:shadow transition ${logoBusy ? "pointer-events-none opacity-60" : ""}`}
             >
               {logoSrc ? (
                 // pencil
@@ -162,7 +162,7 @@ function CustomizeTab({ goToRules }: { goToRules: () => void }) {
                 type="button"
                 title="Rimuovi logo"
                 onClick={removeLogo}
-                className={`absolute -left-2 bottom-3 h-10 w-10 rounded-full border border-slate-800 bg-slate-950 shadow-sm flex items-center justify-center hover:shadow transition ${logoBusy ? "pointer-events-none opacity-60" : ""}`}
+                className={`absolute -left-2 bottom-3 h-10 w-10 rounded-full border border-slate-200 bg-white shadow-sm flex items-center justify-center hover:shadow transition ${logoBusy ? "pointer-events-none opacity-60" : ""}`}
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
@@ -170,7 +170,7 @@ function CustomizeTab({ goToRules }: { goToRules: () => void }) {
               </button>
             ) : null}
           </div>
-          <div className="text-xs text-slate-400">PNG/JPG/WebP • max ~1.5MB • salvataggio automatico</div>
+          <div className="text-xs text-slate-600">PNG/JPG/WebP • max ~1.5MB • salvataggio automatico</div>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
@@ -252,7 +252,7 @@ function MembersTab() {
               return (
             <div
               key={m.id}
-              className="flex flex-col gap-2 rounded-xl border border-slate-800 p-4 md:flex-row md:items-center md:justify-between"
+              className="flex flex-col gap-2 rounded-xl border border-slate-200 p-4 md:flex-row md:items-center md:justify-between"
             >
               <div>
                 <div className="flex items-center gap-2">
@@ -269,13 +269,13 @@ function MembersTab() {
                         </span>
                       )
                     ) : (
-                      <span className="inline-flex items-center justify-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-extrabold text-slate-400" title="Nessuna giornata pronosticabile al momento">
+                      <span className="inline-flex items-center justify-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-extrabold text-slate-600" title="Nessuna giornata pronosticabile al momento">
                         —
                       </span>
                     )
                   ) : null}
                 </div>
-                <div className="text-xs text-slate-400">{m.user.email}</div>
+                <div className="text-xs text-slate-600">{m.user.email}</div>
                 <div className="mt-1 flex gap-2">
                   <Badge>{m.status}</Badge>
                   <Badge>{m.role}</Badge>
@@ -292,7 +292,7 @@ function MembersTab() {
                       </div>
                     )
                   ) : (
-                    <div className="mt-1 text-xs font-semibold text-slate-400">Nessuna giornata pronosticabile</div>
+                    <div className="mt-1 text-xs font-semibold text-slate-600">Nessuna giornata pronosticabile</div>
                   )
                 ) : null}
               </div>
@@ -376,11 +376,7 @@ function RulesTab() {
     setErr("");
     try {
       const [r1, r2, r3, r4] = await Promise.all([api.adminRules(), api.adminSettings(), api.matches(), api.adminJolly()]);
-      // TEMP: disable scorer picks (paid lineup API not available).
-      setRules({
-        ...(r1.rules || {}),
-        enableScorer: false,
-      });
+      setRules(r1.rules);
       setSettings(r2.settings);
       setMatches(r3.matches || []);
       setJolly(r4);
@@ -485,22 +481,17 @@ function RulesTab() {
 
                 <SwitchRow
                   label="Abilita Marcatore (⚽)"
-                  hint="Disabilitato: richiede API lineup a pagamento."
-                  checked={false}
-                  disabled
-                  onChange={() => {
-                    // intentionally disabled
-                  }}
+                  hint="Permette di selezionare un giocatore marcatore (solo se la lineup del match è disponibile)."
+                  checked={!!(rules as any)?.enableScorer}
+                  onChange={(v) => setRules({ ...(rules as any), enableScorer: v })}
                 />
                 <div className="pl-1">
                   <Input
                     label="Punti Marcatore"
                     type="number"
-                    disabled
+                    disabled={!((rules as any)?.enableScorer)}
                     value={String((rules as any)?.pointsScorer ?? 3)}
-                    onChange={() => {
-                      // intentionally disabled
-                    }}
+                    onChange={(e) => setRules({ ...(rules as any), pointsScorer: Number(e.target.value) })}
                   />
                 </div>
 
@@ -545,7 +536,7 @@ function RulesTab() {
             <Section title="Modalità punteggio" hint="Scegli come combinare i punteggi (cumulativo, solo il migliore, oppure misto configurabile).">
               <div className="space-y-3">
                 <select
-                  className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
                   value={rules?.scoringMode || "CUMULATIVE"}
                   onChange={(e) => setRules({ ...rules, scoringMode: e.target.value })}
                 >
@@ -554,20 +545,10 @@ function RulesTab() {
                   <option value="MIXED">Misto (configurabile)</option>
                 </select>
 
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/30 p-3 text-xs text-slate-400">
-                  {rules?.scoringMode === "CUMULATIVE" ? (
-                    <span>In modalità <b className="text-slate-200">Cumulativo</b> ogni categoria corretta si somma. Se Under/Over 2.5 è attivo, si somma sempre anche lui.</span>
-                  ) : rules?.scoringMode === "BEST_ONLY" ? (
-                    <span>In modalità <b className="text-slate-200">Solo punteggio più alto</b> viene conteggiata una sola categoria: in caso di parità la priorità è <b className="text-slate-200">Esatto → 1X2 → Somma gol → U/O 2.5</b>.</span>
-                  ) : (
-                    <span>In modalità <b className="text-slate-200">Mista</b> puoi decidere quali categorie si sommano. Le opzioni sotto governano anche quando <b className="text-slate-200">U/O 2.5</b> si aggiunge a Esatto, 1X2 o Somma gol.</span>
-                  )}
-                </div>
-
                 {rules?.scoringMode === "MIXED" ? (
-                  <div className="rounded-2xl border border-slate-800 p-4 space-y-3">
-                    <div className="text-sm font-semibold text-slate-100 flex items-center gap-2">
-                      Regole modalità mista <HelpHint text="Definisci quali punti si sommano quando prendi un risultato esatto o un esito (1X2). Under/Over 2.5 resta configurabile con i tre flag dedicati qui sotto." />
+                  <div className="rounded-2xl border border-slate-200 p-4 space-y-3">
+                    <div className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+                      Regole modalità mista <HelpHint text="Definisci quali punti si sommano quando prendi un risultato esatto o un esito (1X2)." />
                     </div>
                     <SwitchRow
                       label="Se prendo Esatto sommo anche 1X2"
@@ -586,11 +567,11 @@ function RulesTab() {
                     />
 
                     {rules?.enableUnderOver25 ? (
-                      <div className="mt-2 rounded-xl border border-slate-800 bg-slate-900/40 p-3 space-y-2">
-                        <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                      <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-slate-600">
                           Under/Over 2.5 in modalità mista
                         </div>
-                        <div className="text-xs text-slate-400">
+                        <div className="text-xs text-slate-600">
                           Scegli quando i punti <b>U/O 2.5</b> si sommano al punteggio principale (Esatto / 1X2 / Somma gol).
                         </div>
                         <SwitchRow
@@ -661,7 +642,7 @@ function RulesTab() {
               >
                 Salva regole
               </Button>
-              <span className="text-xs text-slate-400">Le modifiche ricalcolano la classifica.</span>
+              <span className="text-xs text-slate-600">Le modifiche ricalcolano la classifica.</span>
             </div>
           </CardContent>
         </Card>
@@ -672,7 +653,7 @@ function RulesTab() {
           <Card>
             <CardHeader title="Quota & premi" subtitle="Opzionale (visibile nel regolamento)" />
             <CardContent className="space-y-4">
-              <div className="text-sm text-slate-300 flex items-center gap-2">
+              <div className="text-sm text-slate-700 flex items-center gap-2">
                 Impostazioni facoltative <HelpHint text="Se lasci vuoto, nel regolamento non verrà mostrata alcuna quota/premio." />
               </div>
 
@@ -689,7 +670,7 @@ function RulesTab() {
                     setRules({ ...rules, entryFeeCents: Number.isFinite(cents) ? cents : null });
                   }}
                 />
-                <div className="rounded-xl border border-slate-800 p-3">
+                <div className="rounded-xl border border-slate-200 p-3">
                   <div className="text-xs text-slate-500">Posizioni a premio</div>
                   <div className="text-sm font-semibold">{prizes.length}</div>
                   <div className="text-xs text-slate-500 mt-1">Aggiungi/rimuovi sotto</div>
@@ -717,7 +698,7 @@ function RulesTab() {
 
                     <button
                       type="button"
-                      className="mb-[6px] h-10 w-10 rounded-xl border border-slate-800 bg-slate-950 hover:shadow-sm transition flex items-center justify-center"
+                      className="mb-[6px] h-10 w-10 rounded-xl border border-slate-200 bg-white hover:shadow-sm transition flex items-center justify-center"
                       title="Rimuovi premio"
                       onClick={() => {
                         const next = prizes.filter((_, i) => i !== idx).map((x, i) => ({ ...x, position: i + 1 }));
@@ -748,7 +729,7 @@ function RulesTab() {
                 </Button>
               </div>
 
-              <div className="text-xs text-slate-400">
+              <div className="text-xs text-slate-600">
                 Suggerimento: imposta importi in € (l'app salva in centesimi).
               </div>
             </CardContent>
@@ -758,7 +739,7 @@ function RulesTab() {
           <Card>
             <CardHeader title="Partita Jolly ⭐" subtitle="Seleziona la partita per giornata (opzionale)" />
             <CardContent className="space-y-4">
-              <div className="text-sm text-slate-300">
+              <div className="text-sm text-slate-700">
                 {rules?.enableJolly ? (
                   <>
                     Scegli una partita per ogni giornata: i punti ottenuti su quella partita vengono moltiplicati per <span className="font-semibold">x{Number(rules?.jollyMultiplier ?? 2) || 2}</span>.
@@ -788,14 +769,14 @@ function RulesTab() {
                       const list = (byMd.get(md) || []).slice().sort((a: any, b: any) => new Date(a.kickoffAt).getTime() - new Date(b.kickoffAt).getTime());
                       const current = selMap.get(md) || "";
                       return (
-                        <div key={md} className="rounded-2xl border border-slate-800 p-3">
+                        <div key={md} className="rounded-2xl border border-slate-200 p-3">
                           <div className="mb-2 flex items-center justify-between">
-                            <div className="text-sm font-semibold text-slate-100">Giornata {md}</div>
+                            <div className="text-sm font-semibold text-slate-900">Giornata {md}</div>
                             {current ? <span className="text-xs font-semibold text-amber-700">⭐ Selezionata</span> : <span className="text-xs text-slate-500">—</span>}
                           </div>
 
                           <select
-                            className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm"
+                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
                             value={current}
                             onChange={async (e) => {
                               const v = e.target.value || "";
@@ -849,11 +830,11 @@ function RulesTab() {
           <Card>
             <CardHeader title="Lock pronostici" subtitle="Blocco automatico gestito dal calendario" />
             <CardContent className="space-y-4">
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <div className="text-sm font-semibold flex items-center gap-2">
                   Come funziona <HelpHint text="Il lock è automatico: parte X minuti prima del match rilevante. In modalità 'giornata per giornata' il lock è per-matchday (solo la giornata interessata), così i rinvii non bloccano le giornate successive." />
                 </div>
-                <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-slate-400">
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-slate-600">
                   <li>Automatico con anticipo configurabile.</li>
                   <li>Con rinvii: si blocca solo la matchday in lock, non tutta la lega.</li>
                 </ul>
@@ -881,7 +862,7 @@ function RulesTab() {
 
               <Section title="Anticipo lock" hint="Quanto tempo prima del primo match rilevante bloccare i pronostici.">
                 <select
-                  className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
                   value={String(settings?.lockOffsetMinutes ?? 30)}
                   onChange={(e) => setSettings({ ...settings, lockOffsetMinutes: Number(e.target.value) })}
                 >
@@ -890,7 +871,7 @@ function RulesTab() {
                   <option value="15">15 minuti prima</option>
                   <option value="0">All'inizio della partita (0 min)</option>
                 </select>
-                <div className="mt-1 text-xs text-slate-400">Esempio: primo match 20:45 con 30 min → lock dalle 20:15.</div>
+                <div className="mt-1 text-xs text-slate-600">Esempio: primo match 20:45 con 30 min → lock dalle 20:15.</div>
               </Section>
 
               <Section
@@ -920,7 +901,7 @@ function RulesTab() {
                     }
                   }}
                 />
-                <div className="mt-1 text-xs text-slate-400">Suggerimento: imposta la deadline prima della prima giornata.</div>
+                <div className="mt-1 text-xs text-slate-600">Suggerimento: imposta la deadline prima della prima giornata.</div>
               </Section>
 
               <Section title="Lock forzato" hint="Blocca subito i pronostici indipendentemente dal calendario. Usa questa opzione solo in emergenza.">
@@ -1020,7 +1001,7 @@ function RulesTab() {
         <CardContent>
           {settings ? (
             <div className="space-y-3">
-              <div className="text-sm text-slate-400 flex items-center gap-2">
+              <div className="text-sm text-slate-600 flex items-center gap-2">
                 La classifica è ordinata per <b>punti totali</b>. A parità di punti si applicano questi criteri.
                 <HelpHint text="Questi criteri vengono usati solo quando due utenti hanno gli stessi punti totali. Consiglio: scegli criteri diversi tra loro." />
               </div>
@@ -1074,8 +1055,8 @@ function TieBreakerRow({
 }) {
   return (
     <label className="flex items-center justify-between gap-3 text-sm">
-      <span className="text-slate-300">{label}</span>
-      <select className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm" value={value} onChange={(e) => onChange(e.target.value as any)}>
+      <span className="text-slate-700">{label}</span>
+      <select className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" value={value} onChange={(e) => onChange(e.target.value as any)}>
         <option value="EXACT">Risultati esatti</option>
         <option value="OUTCOME">Pronostici (1X2)</option>
         <option value="SUM_GOALS">Somma gol</option>
@@ -1087,7 +1068,7 @@ function TieBreakerRow({
 function ToggleRow({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <label className="flex items-center justify-between gap-3 text-sm">
-      <span className="text-slate-300">{label}</span>
+      <span className="text-slate-700">{label}</span>
       <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
     </label>
   );
@@ -1103,7 +1084,7 @@ function HelpHint({ text }: { text: string }) {
       <button
         type="button"
         aria-label="Aiuto"
-        className="h-5 w-5 rounded-full border border-slate-800 bg-slate-950 text-slate-400 hover:shadow-sm transition inline-flex items-center justify-center"
+        className="h-5 w-5 rounded-full border border-slate-200 bg-white text-slate-600 hover:shadow-sm transition inline-flex items-center justify-center"
         onClick={() => setOpen((v) => !v)}
       >
         ?
@@ -1117,24 +1098,24 @@ function HelpHint({ text }: { text: string }) {
               aria-label="Chiudi aiuto"
               onClick={() => setOpen(false)}
             />
-            <div className="absolute bottom-0 left-0 right-0 rounded-t-2xl bg-slate-950 p-4 shadow-2xl">
+            <div className="absolute bottom-0 left-0 right-0 rounded-t-2xl bg-white p-4 shadow-2xl">
               <div className="mb-2 flex items-center justify-between">
-                <div className="text-base font-semibold text-slate-100">Info</div>
-                <button type="button" className="text-sm font-semibold text-slate-400" onClick={() => setOpen(false)}>
+                <div className="text-base font-semibold text-slate-900">Info</div>
+                <button type="button" className="text-sm font-semibold text-slate-600" onClick={() => setOpen(false)}>
                   Chiudi
                 </button>
               </div>
-              <div className="max-h-[60vh] overflow-auto whitespace-pre-wrap text-sm text-slate-300 pr-1">
+              <div className="max-h-[60vh] overflow-auto whitespace-pre-wrap text-sm text-slate-700 pr-1">
                 {text}
               </div>
               <div className="h-[calc(env(safe-area-inset-bottom)+8px)]" />
             </div>
           </div>
         ) : (
-          <div className="absolute z-30 top-7 right-0 w-72 rounded-xl border border-slate-800 bg-slate-950 p-3 text-xs text-slate-300 shadow-lg">
+          <div className="absolute z-30 top-7 right-0 w-72 rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-700 shadow-lg">
             <div className="whitespace-pre-wrap">{text}</div>
             <div className="mt-2 flex justify-end">
-              <button type="button" className="text-xs text-slate-500 hover:text-slate-300" onClick={() => setOpen(false)}>
+              <button type="button" className="text-xs text-slate-500 hover:text-slate-700" onClick={() => setOpen(false)}>
                 Chiudi
               </button>
             </div>
@@ -1147,11 +1128,11 @@ function HelpHint({ text }: { text: string }) {
 
 function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-slate-800 p-4">
+    <div className="rounded-2xl border border-slate-200 p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="text-sm font-semibold text-slate-100">{title}</div>
-          {hint ? <div className="mt-1 text-xs text-slate-400">{hint}</div> : null}
+          <div className="text-sm font-semibold text-slate-900">{title}</div>
+          {hint ? <div className="mt-1 text-xs text-slate-600">{hint}</div> : null}
         </div>
         {hint ? <HelpHint text={hint} /> : null}
       </div>
@@ -1165,18 +1146,16 @@ function SwitchRow({
   hint,
   checked,
   onChange,
-  disabled,
 }: {
   label: string;
   hint?: string;
   checked: boolean;
   onChange: (v: boolean) => void;
-  disabled?: boolean;
 }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div className="min-w-0 flex-1">
-        <div className="text-sm text-slate-300 flex items-start gap-2">
+        <div className="text-sm text-slate-700 flex items-start gap-2">
           <span className="break-words">{label}</span>
           {hint ? <HelpHint text={hint} /> : null}
         </div>
@@ -1186,21 +1165,13 @@ function SwitchRow({
         type="button"
         role="switch"
         aria-checked={checked}
-        aria-disabled={disabled ? "true" : "false"}
-        onClick={() => {
-          if (disabled) return;
-          onChange(!checked);
-        }}
+        onClick={() => onChange(!checked)}
         className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition ${
-          disabled
-            ? "cursor-not-allowed opacity-60 bg-slate-950/40 border-slate-800"
-            : checked
-              ? "bg-slate-900 border-slate-900"
-              : "bg-slate-200 border-slate-800"
+          checked ? "bg-slate-900 border-slate-900" : "bg-slate-200 border-slate-200"
         }`}
       >
         <span
-          className={`inline-block h-5 w-5 transform rounded-full bg-slate-950 shadow-sm transition ${
+          className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition ${
             checked ? "translate-x-5" : "translate-x-1"
           }`}
         />
@@ -1225,16 +1196,16 @@ function RadioCard({
       type="button"
       onClick={onSelect}
       className={`text-left rounded-2xl border p-4 transition ${
-        checked ? "border-rose-400/45 bg-rose-500/10 shadow-[0_12px_30px_rgba(0,0,0,0.22)]" : "border-slate-700 bg-slate-950/60 hover:border-slate-500 hover:bg-slate-950"
+        checked ? "border-slate-300 bg-white shadow-sm" : "border-slate-200 bg-white/70 hover:bg-white"
       }`}
     >
       <div className="flex items-start gap-3">
-        <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${checked ? "border-rose-300 bg-rose-500/15" : "border-slate-500 bg-slate-950"}`}>
-          {checked ? <div className="h-2.5 w-2.5 rounded-full bg-rose-300" /> : null}
+        <div className={`mt-0.5 h-4 w-4 rounded-full border ${checked ? "border-slate-900" : "border-slate-300"} flex items-center justify-center`}>
+          {checked ? <div className="h-2 w-2 rounded-full bg-slate-900" /> : null}
         </div>
-        <div className="min-w-0">
-          <div className="text-sm font-semibold text-slate-100">{title}</div>
-          <div className="text-xs leading-relaxed text-slate-300">{subtitle}</div>
+        <div>
+          <div className="text-sm font-semibold text-slate-900">{title}</div>
+          <div className="text-xs text-slate-600">{subtitle}</div>
         </div>
       </div>
     </button>

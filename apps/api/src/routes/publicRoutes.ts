@@ -4,6 +4,7 @@ import { verifyToken } from "../lib/auth.js";
 import { getMonetizationConfig } from "../lib/monetization.js";
 import { getLockInfo } from "../lib/lock.js";
 import { ensureLeagueConfig } from "../services/ensureLeagueConfig.js";
+import { getPredictionWindow, isPredictableMatch } from "../lib/matchPredictability.js";
 
 export const publicRouter = Router();
 
@@ -53,7 +54,11 @@ publicRouter.get("/matches", async (req, res) => {
     );
   }
 
-  const matches = await prisma.match.findMany({ orderBy: [{ matchday: "asc" }, { kickoffAt: "asc" }] });
+  const [rawMatches, predictionWindow] = await Promise.all([
+    prisma.match.findMany({ orderBy: [{ matchday: "asc" }, { kickoffAt: "asc" }] }),
+    getPredictionWindow(),
+  ]);
+  const matches = rawMatches.filter((m) => isPredictableMatch(m, predictionWindow));
 
   // Optional league-scoped extras (non-breaking): Partita Jolly
   const leagueId = typeof req.headers["x-league-id"] === "string" ? String(req.headers["x-league-id"]) : undefined;

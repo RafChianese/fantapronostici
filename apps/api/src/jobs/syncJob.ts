@@ -286,13 +286,6 @@ export async function runSyncOnce() {
   // --- Competition predictions resolution (best-effort, football-data only) ---
   // If the competition is fully finished, resolve outcome once per league and award points.
   try {
-    // If Super Admin has set a GLOBAL manual outcome, do not auto-resolve via provider.
-    if (superSetting?.competitionOutcomeResolvedAt) {
-      // Manual global resolution is applied immediately on save.
-      // This guard prevents overwriting points/outcome via provider sync.
-      return { ok: true, message: `Synced ${matches.length} matches from football-data.org (${competitionCode}${season ? `/${season}` : ""})` };
-    }
-
     const allFinished = matches.every((m: any) => mapFootballDataStatus(String(m.status || "")) === "FINISHED");
     if (allFinished && competitionCode) {
       const leagues = await prisma.league.findMany({

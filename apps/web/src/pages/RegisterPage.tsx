@@ -88,7 +88,7 @@ export default function RegisterPage() {
             </Button>
 
             <div className="text-center text-sm text-slate-600">
-              Hai già un account? <Link className="text-rose-300 underline" to="/login">Accedi</Link>
+              Hai già un account? <Link className="text-slate-900 underline" to="/login">Accedi</Link>
             </div>
           </div>
         </CardContent>

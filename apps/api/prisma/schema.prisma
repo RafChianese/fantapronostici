@@ -474,20 +474,9 @@ model SuperSetting {
   footballDataCompetitionCode String?
   footballDataSeason          Int?
 
-  // --- Global competition outcome (winner + top scorers) ---
-  // When set by Super Admin, this outcome is applied across ALL leagues.
-  competitionOutcomeWinnerTeamExternalId       Int?
-  competitionOutcomeWinnerTeamName             String?
-  competitionOutcomeTopScorerPlayerExternalId  Int?
-  competitionOutcomeTopScorerPlayerName        String?
-  // Optional second top scorer in case of tied goals (Super Admin choice).
-  competitionOutcomeSecondTopScorerPlayerExternalId Int?
-  competitionOutcomeSecondTopScorerPlayerName       String?
-  competitionOutcomeResolvedAt DateTime?
-
-  // Cached player options for global top-scorer selection.
-  competitionPlayerOptionsJson      Json?
-  competitionPlayerOptionsFetchedAt DateTime?
+  // Optional global window for matches that can be predicted.
+  predictionWindowStart DateTime?
+  predictionWindowEnd   DateTime?
 
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
