@@ -249,11 +249,37 @@ export default function DashboardPage() {
     });
   }, [pillMatchdays, byMatchday]);
 
+  const allMatchesMeta = useMemo(() => {
+    const seen = new Set<string>();
+    let predicted = 0;
+    let firstKickoff: string | undefined;
+
+    for (const it of items || []) {
+      const matchId = String(it?.match?.id ?? it?.matchId ?? "");
+      if (matchId) seen.add(matchId);
+
+      const hs = it?.prediction?.homeGoals ?? it?.homeGoals;
+      const as = it?.prediction?.awayGoals ?? it?.awayGoals;
+      if (hs !== undefined && hs !== null && as !== undefined && as !== null) predicted += 1;
+
+      const ko = it?.match?.kickoffAt;
+      const status = it?.match?.status || it?.status;
+      if (ko && status === "NOT_STARTED") {
+        if (!firstKickoff) firstKickoff = ko;
+        else if (new Date(ko).getTime() < new Date(firstKickoff).getTime()) firstKickoff = ko;
+      }
+    }
+
+    return { totalMatches: seen.size || (items || []).length || 0, predicted, firstKickoff };
+  }, [items]);
+
+  const isTournamentPreMode = predictionMode === "TOURNAMENT_PRE";
   const nextMeta = nextEditableMatchday ? matchdayMeta[nextEditableMatchday] : null;
-  const nextTotal = Math.max(0, Number(nextMeta?.totalMatches || 0));
-  const nextDone = Math.min(nextTotal, Math.max(0, Number(nextMeta?.predicted || 0)));
+  const progressMeta = isTournamentPreMode ? allMatchesMeta : nextMeta;
+  const nextTotal = Math.max(0, Number(progressMeta?.totalMatches || 0));
+  const nextDone = Math.min(nextTotal, Math.max(0, Number(progressMeta?.predicted || 0)));
   const nextPct = nextTotal > 0 ? Math.round((nextDone / nextTotal) * 100) : 0;
-  const nextCountdown = useCountdown(nextMeta?.firstKickoff);
+  const nextCountdown = useCountdown(progressMeta?.firstKickoff);
 
 
 const tournamentMeta = useMemo(() => {
@@ -278,11 +304,49 @@ const tournamentMeta = useMemo(() => {
     d?.rules?.enableCompetitionTopScorer ??
     d?.leagueRules?.enableCompetitionTopScorer
   );
-  const total = (enableWinner ? 1 : 0) + (enableTopScorer ? 1 : 0);
+  const enableQuarterFinalist = Boolean(
+    d?.enabled?.quarterFinalist ??
+    d?.enabled?.competitionQuarterFinalist ??
+    d?.enabledQuarterFinalist ??
+    d?.quarterFinalistEnabled ??
+    d?.rules?.enableCompetitionQuarterFinalist ??
+    d?.leagueRules?.enableCompetitionQuarterFinalist
+  );
+  const enableSemiFinalist = Boolean(
+    d?.enabled?.semiFinalist ??
+    d?.enabled?.competitionSemiFinalist ??
+    d?.enabledSemiFinalist ??
+    d?.semiFinalistEnabled ??
+    d?.rules?.enableCompetitionSemiFinalist ??
+    d?.leagueRules?.enableCompetitionSemiFinalist
+  );
+  const enableFinalist = Boolean(
+    d?.enabled?.finalist ??
+    d?.enabled?.competitionFinalist ??
+    d?.enabledFinalist ??
+    d?.finalistEnabled ??
+    d?.rules?.enableCompetitionFinalist ??
+    d?.leagueRules?.enableCompetitionFinalist
+  );
 
+  const total =
+    (enableQuarterFinalist ? 1 : 0) +
+    (enableSemiFinalist ? 1 : 0) +
+    (enableFinalist ? 1 : 0) +
+    (enableWinner ? 1 : 0) +
+    (enableTopScorer ? 1 : 0);
+
+  const hasQuarterFinalist = Boolean(d?.picks?.quarterFinalist?.teamExternalId ?? d?.picks?.quarterFinalist?.teamId);
+  const hasSemiFinalist = Boolean(d?.picks?.semiFinalist?.teamExternalId ?? d?.picks?.semiFinalist?.teamId);
+  const hasFinalist = Boolean(d?.picks?.finalist?.teamExternalId ?? d?.picks?.finalist?.teamId);
   const hasWinner = Boolean(d?.picks?.winner?.teamExternalId ?? d?.picks?.winner?.teamId);
   const hasTop = Boolean(d?.picks?.topScorer?.playerExternalId ?? d?.picks?.topScorer?.playerId);
-  const done = (enableWinner && hasWinner ? 1 : 0) + (enableTopScorer && hasTop ? 1 : 0);
+  const done =
+    (enableQuarterFinalist && hasQuarterFinalist ? 1 : 0) +
+    (enableSemiFinalist && hasSemiFinalist ? 1 : 0) +
+    (enableFinalist && hasFinalist ? 1 : 0) +
+    (enableWinner && hasWinner ? 1 : 0) +
+    (enableTopScorer && hasTop ? 1 : 0);
 
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
   return { enabled: total > 0, total, done, pct };
@@ -371,9 +435,9 @@ const tournamentMeta = useMemo(() => {
           <div className="p-4 sm:p-5">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="text-xs font-bold uppercase tracking-wide text-slate-300">Prossima giornata</div>
+                <div className="text-xs font-bold uppercase tracking-wide text-slate-300">{isTournamentPreMode ? "Pronostici partite" : "Prossima giornata"}</div>
                 <div className="mt-1 truncate text-2xl font-extrabold tracking-tight text-slate-100">
-                  {nextEditableMatchday ? `Giornata ${nextEditableMatchday}` : "—"}
+                  {nextEditableMatchday ? (isTournamentPreMode ? "Tutte le partite" : `Giornata ${nextEditableMatchday}`) : "—"}
                 </div>
                 <div className="mt-2 text-sm text-slate-200">
                   {nextEditableMatchday ? (
@@ -410,7 +474,7 @@ const tournamentMeta = useMemo(() => {
   <div
     className="relative grid h-[74px] w-[74px] shrink-0 place-items-center rounded-full border border-white/10 bg-white/5 shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
     style={{ background: `conic-gradient(rgba(225,29,72,0.95) ${nextPct}%, rgba(255,255,255,0.08) 0)` }}
-    title="Pronostici giornata"
+    title={isTournamentPreMode ? "Pronostici tutte le partite" : "Pronostici giornata"}
   >
     <div className="grid h-[58px] w-[58px] place-items-center rounded-full border border-white/10 bg-slate-950/50">
       <div className="text-center">
@@ -443,15 +507,15 @@ const tournamentMeta = useMemo(() => {
 
                 <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div className="text-xs text-slate-300">
-                    {nextMeta?.firstKickoff ? (
+                    {progressMeta?.firstKickoff ? (
                       <>
-                        Prima partita: {new Date(nextMeta.firstKickoff).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                        Prima partita: {new Date(progressMeta.firstKickoff).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
                       </>
                     ) : (
                       <>Prima partita: —</>
                     )}
                   </div>
-                  <Link to={`/predictions?md=${nextEditableMatchday}`}>
+                  <Link to={isTournamentPreMode ? "/predictions" : `/predictions?md=${nextEditableMatchday}`}>
                     <Button disabled={!canInsert}>{canInsert ? "Inserisci pronostici" : "Pronostici bloccati"}</Button>
                   </Link>
                 </div>

@@ -29,9 +29,8 @@ function formatPrediction(homeGoals: number | null | undefined, awayGoals: numbe
 
 function formatMatchColumn(match: { matchday?: number | null; kickoffAt?: Date | string | null; homeTeam: string; awayTeam: string }): string {
   const md = typeof match.matchday === "number" ? `G${match.matchday} - ` : "";
-  const date = match.kickoffAt ? new Date(match.kickoffAt).toLocaleDateString("it-IT", { timeZone: "Europe/Rome", day: "2-digit", month: "2-digit" }) : "";
-  const datePart = date ? `${date} - ` : "";
-  return `${md}${datePart}${match.homeTeam} - ${match.awayTeam}`;
+  // Nell'export servono solo squadre e pronostico inserito: la data non va messa nelle colonne.
+  return `${md}${match.homeTeam} - ${match.awayTeam}`;
 }
 
 function pickLabel(pick: { teamName?: string | null; playerName?: string | null; teamExternalId?: number | null; playerExternalId?: number | null } | undefined): string {

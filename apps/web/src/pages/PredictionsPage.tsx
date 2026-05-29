@@ -242,23 +242,6 @@ function CompetitionPredictionsPanel() {
                 </div>
               </div>
 
-              {enabled.winner ? (
-                <div className="space-y-2">
-                  <div className="text-sm font-semibold text-slate-100">Vincitore torneo (+{data.points.winner} punti)</div>
-                  <SearchableSelect
-                    disabled={!canEdit || saving}
-                    value={winnerId}
-                    onChange={(v) => setWinnerId(v)}
-                    placeholder="Seleziona squadra…"
-                    emptyLabel="—"
-                    options={data.options.teams
-                      .map((t) => ({ value: String(t.id), label: t.name }))
-                      .sort((a, b) => a.label.localeCompare(b.label, "it"))}
-                  />
-                  {data.picks.winner?.pointsAwarded ? <div className="text-xs text-slate-600">Punti assegnati: {data.picks.winner.pointsAwarded}</div> : null}
-                </div>
-              ) : null}
-
               {enabled.quarterFinalist ? (
                 <TeamPickSearchableSelect
                   title={`Squadra che arriva ai quarti (+${data.points.quarterFinalist ?? 8} punti)`}
@@ -290,6 +273,23 @@ function CompetitionPredictionsPanel() {
                   disabled={!canEdit || saving}
                   pointsAwarded={data.picks.finalist?.pointsAwarded}
                 />
+              ) : null}
+
+              {enabled.winner ? (
+                <div className="space-y-2">
+                  <div className="text-sm font-semibold text-slate-100">Vincitore torneo (+{data.points.winner} punti)</div>
+                  <SearchableSelect
+                    disabled={!canEdit || saving}
+                    value={winnerId}
+                    onChange={(v) => setWinnerId(v)}
+                    placeholder="Seleziona squadra…"
+                    emptyLabel="—"
+                    options={data.options.teams
+                      .map((t) => ({ value: String(t.id), label: t.name }))
+                      .sort((a, b) => a.label.localeCompare(b.label, "it"))}
+                  />
+                  {data.picks.winner?.pointsAwarded ? <div className="text-xs text-slate-600">Punti assegnati: {data.picks.winner.pointsAwarded}</div> : null}
+                </div>
               ) : null}
 
               {enabled.topScorer ? (
