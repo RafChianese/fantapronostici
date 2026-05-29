@@ -283,6 +283,8 @@ adminRouter.put("/rules", async (req, res) => {
   }
 
   await recalcAllScoresForLeague(leagueId);
+  const superSetting = await prisma.superSetting.findFirst({ orderBy: { createdAt: "asc" } }).catch(() => null as any);
+  const competitionType = String((superSetting as any)?.competitionType || "LEAGUE");
   res.json({ rules: rules ? { ...rules, competitionType } : rules });
 });
 
