@@ -1140,12 +1140,7 @@ function TieBreakerRow({
 }
 
 function ToggleRow({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <label className="flex items-center justify-between gap-3 text-sm">
-      <span className="text-slate-300">{label}</span>
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
-    </label>
-  );
+  return <SwitchRow label={label} checked={checked} onChange={onChange} />;
 }
 
 
@@ -1237,7 +1232,19 @@ function SwitchRow({
         </div>
       </div>
 
-      <button
+      <div className="flex items-center gap-2">
+        <span
+          className={`rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide ${
+            disabled
+              ? "bg-slate-800 text-slate-500"
+              : checked
+                ? "bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-400/40"
+                : "bg-slate-800 text-slate-300 ring-1 ring-slate-600"
+          }`}
+        >
+          {checked ? "ON" : "OFF"}
+        </span>
+        <button
         type="button"
         role="switch"
         aria-checked={checked}
@@ -1246,20 +1253,24 @@ function SwitchRow({
           if (disabled) return;
           onChange(!checked);
         }}
-        className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition ${
+        className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full border-2 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
           disabled
             ? "cursor-not-allowed opacity-60 bg-slate-950/40 border-slate-800"
             : checked
-              ? "bg-slate-900 border-slate-900"
-              : "bg-slate-200 border-slate-800"
+              ? "bg-emerald-500 border-emerald-300 shadow-[0_0_18px_rgba(16,185,129,0.35)]"
+              : "bg-slate-700 border-slate-500 hover:bg-slate-600"
         }`}
       >
         <span
-          className={`inline-block h-5 w-5 transform rounded-full bg-slate-950 shadow-sm transition ${
-            checked ? "translate-x-5" : "translate-x-1"
+          className={`inline-block h-5 w-5 transform rounded-full shadow-md ring-1 transition ${
+            checked
+              ? "translate-x-5 bg-white ring-emerald-100"
+              : "translate-x-1 bg-slate-200 ring-slate-400"
           }`}
         />
-      </button>
+        <span className={`sr-only ${checked ? "text-emerald-100" : "text-slate-300"}`}>{checked ? "Attivo" : "Disattivo"}</span>
+        </button>
+      </div>
     </div>
   );
 }
