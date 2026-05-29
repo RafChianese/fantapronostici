@@ -81,6 +81,9 @@ function CompetitionPredictionsPanel() {
 
   const [winnerId, setWinnerId] = useState<string>("");
   const [scorerId, setScorerId] = useState<string>("");
+  const [quarterId, setQuarterId] = useState<string>("");
+  const [semiId, setSemiId] = useState<string>("");
+  const [finalistId, setFinalistId] = useState<string>("");
 
   async function load() {
     setLoading(true);
@@ -90,6 +93,9 @@ function CompetitionPredictionsPanel() {
       setData(res);
       setWinnerId(res.picks.winner?.teamExternalId ? String(res.picks.winner.teamExternalId) : "");
       setScorerId(res.picks.topScorer?.playerExternalId ? String(res.picks.topScorer.playerExternalId) : "");
+      setQuarterId(res.picks.quarterFinalist?.teamExternalId ? String(res.picks.quarterFinalist.teamExternalId) : "");
+      setSemiId(res.picks.semiFinalist?.teamExternalId ? String(res.picks.semiFinalist.teamExternalId) : "");
+      setFinalistId(res.picks.finalist?.teamExternalId ? String(res.picks.finalist.teamExternalId) : "");
     } catch (e: any) {
       setError(e?.message || "Errore");
     } finally {
@@ -136,10 +142,37 @@ function CompetitionPredictionsPanel() {
         d?.leagueRules?.enableCompetitionTopScorer
     );
 
-    return { winner, topScorer };
+    const quarterFinalist = Boolean(
+      d?.enabled?.quarterFinalist ??
+        d?.enabled?.competitionQuarterFinalist ??
+        d?.enabledQuarterFinalist ??
+        d?.quarterFinalistEnabled ??
+        d?.rules?.enableCompetitionQuarterFinalist ??
+        d?.leagueRules?.enableCompetitionQuarterFinalist
+    );
+
+    const semiFinalist = Boolean(
+      d?.enabled?.semiFinalist ??
+        d?.enabled?.competitionSemiFinalist ??
+        d?.enabledSemiFinalist ??
+        d?.semiFinalistEnabled ??
+        d?.rules?.enableCompetitionSemiFinalist ??
+        d?.leagueRules?.enableCompetitionSemiFinalist
+    );
+
+    const finalist = Boolean(
+      d?.enabled?.finalist ??
+        d?.enabled?.competitionFinalist ??
+        d?.enabledFinalist ??
+        d?.finalistEnabled ??
+        d?.rules?.enableCompetitionFinalist ??
+        d?.leagueRules?.enableCompetitionFinalist
+    );
+
+    return { winner, topScorer, quarterFinalist, semiFinalist, finalist };
   }, [data]);
 
-  const enabledAny = enabled.winner || enabled.topScorer;
+  const enabledAny = enabled.winner || enabled.topScorer || enabled.quarterFinalist || enabled.semiFinalist || enabled.finalist;
   const canEdit = !!data?.canEdit;
 
   const deadlineLabel = useMemo(() => {
@@ -158,12 +191,21 @@ function CompetitionPredictionsPanel() {
     try {
       const winner = data.options.teams.find((t) => String(t.id) === winnerId);
       const scorer = data.options.scorers.find((s) => String(s.id) === scorerId);
+      const quarter = data.options.teams.find((t) => String(t.id) === quarterId);
+      const semi = data.options.teams.find((t) => String(t.id) === semiId);
+      const finalist = data.options.teams.find((t) => String(t.id) === finalistId);
 
       await api.saveCompetitionPredictions({
         winnerTeamId: winnerId ? Number(winnerId) : null,
         winnerTeamName: winner?.name ?? null,
         topScorerPlayerId: scorerId ? Number(scorerId) : null,
         topScorerPlayerName: scorer?.name ?? null,
+        quarterFinalistTeamId: quarterId ? Number(quarterId) : null,
+        quarterFinalistTeamName: quarter?.name ?? null,
+        semiFinalistTeamId: semiId ? Number(semiId) : null,
+        semiFinalistTeamName: semi?.name ?? null,
+        finalistTeamId: finalistId ? Number(finalistId) : null,
+        finalistTeamName: finalist?.name ?? null,
       });
       await load();
     } catch (e: any) {
@@ -176,7 +218,7 @@ function CompetitionPredictionsPanel() {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader title="Pronostici torneo" subtitle="Vincitore e capocannoniere" right={<Button variant="secondary" onClick={load}>Aggiorna</Button>} />
+        <CardHeader title="Pronostici torneo" subtitle="Vincitore, fasi a eliminazione e capocannoniere" right={<Button variant="secondary" onClick={load}>Aggiorna</Button>} />
         <CardContent className="space-y-4">
           {loading ? (
             <div className="flex items-center gap-3 text-sm text-slate-300">
@@ -217,6 +259,39 @@ function CompetitionPredictionsPanel() {
                 </div>
               ) : null}
 
+              {enabled.quarterFinalist ? (
+                <TeamPickSearchableSelect
+                  title={`Squadra che arriva ai quarti (+${data.points.quarterFinalist ?? 8} punti)`}
+                  value={quarterId}
+                  onChange={setQuarterId}
+                  teams={data.options.teams}
+                  disabled={!canEdit || saving}
+                  pointsAwarded={data.picks.quarterFinalist?.pointsAwarded}
+                />
+              ) : null}
+
+              {enabled.semiFinalist ? (
+                <TeamPickSearchableSelect
+                  title={`Squadra che arriva in semifinale (+${data.points.semiFinalist ?? 10} punti)`}
+                  value={semiId}
+                  onChange={setSemiId}
+                  teams={data.options.teams}
+                  disabled={!canEdit || saving}
+                  pointsAwarded={data.picks.semiFinalist?.pointsAwarded}
+                />
+              ) : null}
+
+              {enabled.finalist ? (
+                <TeamPickSearchableSelect
+                  title={`Squadra che arriva in finale (+${data.points.finalist ?? 12} punti)`}
+                  value={finalistId}
+                  onChange={setFinalistId}
+                  teams={data.options.teams}
+                  disabled={!canEdit || saving}
+                  pointsAwarded={data.picks.finalist?.pointsAwarded}
+                />
+              ) : null}
+
               {enabled.topScorer ? (
                 <div className="space-y-2">
                   <div className="text-sm font-semibold text-slate-100">Capocannoniere (+{data.points.topScorer} punti)</div>
@@ -245,6 +320,39 @@ function CompetitionPredictionsPanel() {
           ) : null}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function TeamPickSearchableSelect({
+  title,
+  value,
+  onChange,
+  teams,
+  disabled,
+  pointsAwarded,
+}: {
+  title: string;
+  value: string;
+  onChange: (v: string) => void;
+  teams: Array<{ id: number; name: string }>;
+  disabled: boolean;
+  pointsAwarded?: number | null;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="text-sm font-semibold text-slate-100">{title}</div>
+      <SearchableSelect
+        disabled={disabled}
+        value={value}
+        onChange={onChange}
+        placeholder="Seleziona squadra…"
+        emptyLabel="—"
+        options={teams
+          .map((t) => ({ value: String(t.id), label: t.name }))
+          .sort((a, b) => a.label.localeCompare(b.label, "it"))}
+      />
+      {pointsAwarded ? <div className="text-xs text-slate-600">Punti assegnati: {pointsAwarded}</div> : null}
     </div>
   );
 }
