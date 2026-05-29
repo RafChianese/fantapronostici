@@ -147,6 +147,8 @@ adminRouter.get("/rules", async (req, res) => {
 
   await ensureLeagueConfig(leagueId);
   const rules = await prisma.rule.findUnique({ where: { leagueId } });
+  const superSetting = await prisma.superSetting.findFirst({ orderBy: { createdAt: "asc" } }).catch(() => null as any);
+  const competitionType = String((superSetting as any)?.competitionType || "LEAGUE");
   const monetization = await prisma.leagueMonetization.findUnique({
     where: { leagueId },
     include: { prizes: true },
@@ -158,6 +160,7 @@ adminRouter.get("/rules", async (req, res) => {
   if (monetization && rules) {
     const shaped = {
       ...rules,
+      competitionType,
       entryFeeCents: typeof monetization.entryFeeCents === "number" ? monetization.entryFeeCents : rules.entryFeeCents,
       prizesJson:
         monetization.prizes?.length
@@ -169,7 +172,7 @@ adminRouter.get("/rules", async (req, res) => {
     };
     return res.json({ rules: shaped });
   }
-  res.json({ rules });
+  res.json({ rules: rules ? { ...rules, competitionType } : rules });
 });
 
 const RulesSchema = z.object({
@@ -192,6 +195,12 @@ const RulesSchema = z.object({
   pointsCompetitionWinner: z.number().int().min(0).max(200).optional().default(15),
   enableCompetitionTopScorer: z.boolean().optional().default(false),
   pointsCompetitionTopScorer: z.number().int().min(0).max(200).optional().default(12),
+  enableCompetitionQuarterFinalist: z.boolean().optional().default(false),
+  pointsCompetitionQuarterFinalist: z.number().int().min(0).max(200).optional().default(8),
+  enableCompetitionSemiFinalist: z.boolean().optional().default(false),
+  pointsCompetitionSemiFinalist: z.number().int().min(0).max(200).optional().default(10),
+  enableCompetitionFinalist: z.boolean().optional().default(false),
+  pointsCompetitionFinalist: z.number().int().min(0).max(200).optional().default(12),
   scoringMode: z.enum(["CUMULATIVE", "BEST_ONLY", "MIXED"]),
   allowOutcomeWithExact: z.boolean(),
   allowSumGoalsWithExact: z.boolean(),
@@ -274,7 +283,7 @@ adminRouter.put("/rules", async (req, res) => {
   }
 
   await recalcAllScoresForLeague(leagueId);
-  res.json({ rules });
+  res.json({ rules: rules ? { ...rules, competitionType } : rules });
 });
 
 // --- Partita Jolly (matchday selection) ---

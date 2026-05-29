@@ -365,7 +365,8 @@ publicRouter.get("/users/:id/summary", async (req, res) => {
   const member = await prisma.leagueMember.findUnique({ where: { leagueId_userId: { leagueId: league.id, userId } }, include: { user: true } });
   if (!member || member.status !== "APPROVED") return res.status(404).json({ message: "User not in league" });
 
-  const matches = await prisma.match.findMany({ orderBy: { kickoffAt: "asc" } });
+  const allSummaryMatches = await prisma.match.findMany({ orderBy: { kickoffAt: "asc" } });
+  const matches = await filterPredictableMatches(allSummaryMatches);
   const preds = await prisma.prediction.findMany({ where: { leagueId: league.id, userId } });
   const predByMatch = new Map(preds.map((p) => [p.matchId, p]));
 

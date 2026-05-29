@@ -252,6 +252,7 @@ superRouter.get("/external-config", async (_req, res) => {
       apiFootballTimezone: row?.apiFootballTimezone || "Europe/Rome",
       predictionWindowStart: (row as any)?.predictionWindowStart ? new Date((row as any).predictionWindowStart).toISOString() : null,
       predictionWindowEnd: (row as any)?.predictionWindowEnd ? new Date((row as any).predictionWindowEnd).toISOString() : null,
+      competitionType: String((row as any)?.competitionType || "LEAGUE"),
       apiFootballKeyPresent: !!env.API_FOOTBALL_KEY?.trim(),
     },
   });
@@ -264,6 +265,7 @@ const ExternalConfigSchema = z.object({
   apiFootballTimezone: z.string().min(1).nullable().optional(),
   predictionWindowStart: z.string().datetime().nullable().optional(),
   predictionWindowEnd: z.string().datetime().nullable().optional(),
+  competitionType: z.enum(["LEAGUE", "KNOCKOUT_CUP"]).optional(),
 });
 
 superRouter.put("/external-config", async (req, res) => {
@@ -279,6 +281,7 @@ superRouter.put("/external-config", async (req, res) => {
       ...(patch.apiFootballTimezone !== undefined ? { apiFootballTimezone: patch.apiFootballTimezone } : {}),
       ...(patch.predictionWindowStart !== undefined ? { predictionWindowStart: patch.predictionWindowStart ? new Date(patch.predictionWindowStart) : null } : {}),
       ...(patch.predictionWindowEnd !== undefined ? { predictionWindowEnd: patch.predictionWindowEnd ? new Date(patch.predictionWindowEnd) : null } : {}),
+      ...(patch.competitionType !== undefined ? { competitionType: patch.competitionType } : {}),
     } as any,
   });
   res.json({
@@ -289,6 +292,7 @@ superRouter.put("/external-config", async (req, res) => {
       apiFootballTimezone: updated.apiFootballTimezone || "Europe/Rome",
       predictionWindowStart: (updated as any).predictionWindowStart ? new Date((updated as any).predictionWindowStart).toISOString() : null,
       predictionWindowEnd: (updated as any).predictionWindowEnd ? new Date((updated as any).predictionWindowEnd).toISOString() : null,
+      competitionType: String((updated as any).competitionType || "LEAGUE"),
       apiFootballKeyPresent: !!env.API_FOOTBALL_KEY?.trim(),
     },
   });

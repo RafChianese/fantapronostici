@@ -389,7 +389,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   <NavItem to="/predictions" onClick={() => setDesktopMenuOpen(false)}>
                     Pronostici
                   </NavItem>
-                  <NavItem to="/leagues" onClick={() => setDesktopMenuOpen(false)}>
+                  <NavItem to="/onboarding" onClick={() => setDesktopMenuOpen(false)}>
                     Leghe
                   </NavItem>
                   {user && activeMembership ? (

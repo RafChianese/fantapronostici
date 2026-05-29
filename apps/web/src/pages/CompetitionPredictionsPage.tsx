@@ -12,6 +12,9 @@ export default function CompetitionPredictionsPage() {
 
   const [winnerId, setWinnerId] = useState<string>("");
   const [scorerId, setScorerId] = useState<string>("");
+  const [quarterId, setQuarterId] = useState<string>("");
+  const [semiId, setSemiId] = useState<string>("");
+  const [finalistId, setFinalistId] = useState<string>("");
 
   async function load() {
     setLoading(true);
@@ -21,6 +24,9 @@ export default function CompetitionPredictionsPage() {
       setData(res);
       setWinnerId(res.picks.winner?.teamExternalId ? String(res.picks.winner.teamExternalId) : "");
       setScorerId(res.picks.topScorer?.playerExternalId ? String(res.picks.topScorer.playerExternalId) : "");
+      setQuarterId(res.picks.quarterFinalist?.teamExternalId ? String(res.picks.quarterFinalist.teamExternalId) : "");
+      setSemiId(res.picks.semiFinalist?.teamExternalId ? String(res.picks.semiFinalist.teamExternalId) : "");
+      setFinalistId(res.picks.finalist?.teamExternalId ? String(res.picks.finalist.teamExternalId) : "");
     } catch (e: any) {
       setError(e?.message || "Errore");
     } finally {
@@ -38,7 +44,7 @@ export default function CompetitionPredictionsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeLeagueId]);
 
-  const enabledAny = !!data?.enabled?.winner || !!data?.enabled?.topScorer;
+  const enabledAny = !!data?.enabled?.winner || !!data?.enabled?.topScorer || !!data?.enabled?.quarterFinalist || !!data?.enabled?.semiFinalist || !!data?.enabled?.finalist;
 
   const deadlineLabel = useMemo(() => {
     if (!data?.deadline) return "";
@@ -58,14 +64,23 @@ export default function CompetitionPredictionsPage() {
     try {
       const winner = data.options.teams.find((t) => String(t.id) === winnerId);
       const scorer = data.options.scorers.find((s) => String(s.id) === scorerId);
+      const quarter = data.options.teams.find((t) => String(t.id) === quarterId);
+      const semi = data.options.teams.find((t) => String(t.id) === semiId);
+      const finalist = data.options.teams.find((t) => String(t.id) === finalistId);
 
-      const res = await api.saveCompetitionPredictions({
+      await api.saveCompetitionPredictions({
         winnerTeamId: winnerId ? Number(winnerId) : null,
         winnerTeamName: winner?.name ?? null,
         topScorerPlayerId: scorerId ? Number(scorerId) : null,
         topScorerPlayerName: scorer?.name ?? null,
+        quarterFinalistTeamId: quarterId ? Number(quarterId) : null,
+        quarterFinalistTeamName: quarter?.name ?? null,
+        semiFinalistTeamId: semiId ? Number(semiId) : null,
+        semiFinalistTeamName: semi?.name ?? null,
+        finalistTeamId: finalistId ? Number(finalistId) : null,
+        finalistTeamName: finalist?.name ?? null,
       });
-      setData(res);
+      await load();
     } catch (e: any) {
       setError(e?.message || "Errore");
     } finally {
@@ -76,7 +91,7 @@ export default function CompetitionPredictionsPage() {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader title="Pronostici competizione" subtitle="Vincitore e capocannoniere" right={<Button variant="secondary" onClick={load}>Aggiorna</Button>} />
+        <CardHeader title="Pronostici del torneo" subtitle="Vincitore, fasi a eliminazione e capocannoniere" right={<Button variant="secondary" onClick={load}>Aggiorna</Button>} />
         <CardContent className="space-y-4">
           {loading ? (
             <div className="flex items-center gap-3 text-sm text-slate-700">
@@ -124,6 +139,40 @@ export default function CompetitionPredictionsPage() {
                 </div>
               ) : null}
 
+
+              {data.enabled.quarterFinalist ? (
+                <TeamPickSelect
+                  title={`Squadra che arriva ai quarti (+${data.points.quarterFinalist ?? 8} punti)`}
+                  value={quarterId}
+                  onChange={setQuarterId}
+                  teams={data.options.teams}
+                  disabled={!canEdit || saving}
+                  pointsAwarded={data.picks.quarterFinalist?.pointsAwarded}
+                />
+              ) : null}
+
+              {data.enabled.semiFinalist ? (
+                <TeamPickSelect
+                  title={`Squadra che arriva in semifinale (+${data.points.semiFinalist ?? 10} punti)`}
+                  value={semiId}
+                  onChange={setSemiId}
+                  teams={data.options.teams}
+                  disabled={!canEdit || saving}
+                  pointsAwarded={data.picks.semiFinalist?.pointsAwarded}
+                />
+              ) : null}
+
+              {data.enabled.finalist ? (
+                <TeamPickSelect
+                  title={`Squadra che arriva in finale (+${data.points.finalist ?? 12} punti)`}
+                  value={finalistId}
+                  onChange={setFinalistId}
+                  teams={data.options.teams}
+                  disabled={!canEdit || saving}
+                  pointsAwarded={data.picks.finalist?.pointsAwarded}
+                />
+              ) : null}
+
               {data.enabled.topScorer ? (
                 <div className="space-y-2">
                   <div className="text-sm font-semibold text-slate-100">Capocannoniere (+{data.points.topScorer} punti)</div>
@@ -156,6 +205,29 @@ export default function CompetitionPredictionsPage() {
           ) : null}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+
+function TeamPickSelect({ title, value, onChange, teams, disabled, pointsAwarded }: { title: string; value: string; onChange: (v: string) => void; teams: Array<{ id: number; name: string }>; disabled: boolean; pointsAwarded?: number | null }) {
+  return (
+    <div className="space-y-2">
+      <div className="text-sm font-semibold text-slate-100">{title}</div>
+      <select
+        className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+        disabled={disabled}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        <option value="">Seleziona squadra…</option>
+        {teams.map((t) => (
+          <option key={t.id} value={String(t.id)}>
+            {t.name}
+          </option>
+        ))}
+      </select>
+      {pointsAwarded ? <div className="text-xs text-slate-600">Punti assegnati: {pointsAwarded}</div> : null}
     </div>
   );
 }

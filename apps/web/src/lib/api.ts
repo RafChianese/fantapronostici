@@ -58,6 +58,13 @@ export type LeagueRules = {
   pointsCompetitionWinner?: number;
   enableCompetitionTopScorer?: boolean;
   pointsCompetitionTopScorer?: number;
+  enableCompetitionQuarterFinalist?: boolean;
+  pointsCompetitionQuarterFinalist?: number;
+  enableCompetitionSemiFinalist?: boolean;
+  pointsCompetitionSemiFinalist?: number;
+  enableCompetitionFinalist?: boolean;
+  pointsCompetitionFinalist?: number;
+  competitionType?: "LEAGUE" | "KNOCKOUT_CUP";
   scoringMode: ScoringMode;
   allowOutcomeWithExact: boolean;
   allowSumGoalsWithExact: boolean;
@@ -86,13 +93,17 @@ export type MatchDetailResponse = {
 };
 
 export type CompetitionPredictionsResponse = {
-  enabled: { winner: boolean; topScorer: boolean };
-  points: { winner: number; topScorer: number };
+  competitionType?: "LEAGUE" | "KNOCKOUT_CUP";
+  enabled: { winner: boolean; topScorer: boolean; quarterFinalist?: boolean; semiFinalist?: boolean; finalist?: boolean };
+  points: { winner: number; topScorer: number; quarterFinalist?: number; semiFinalist?: number; finalist?: number };
   deadline: string | null;
   canEdit: boolean;
   picks: {
     winner: { teamExternalId: number | null; teamName: string | null; pointsAwarded: number } | null;
     topScorer: { playerExternalId: number | null; playerName: string | null; pointsAwarded: number } | null;
+    quarterFinalist?: { teamExternalId: number | null; teamName: string | null; pointsAwarded: number } | null;
+    semiFinalist?: { teamExternalId: number | null; teamName: string | null; pointsAwarded: number } | null;
+    finalist?: { teamExternalId: number | null; teamName: string | null; pointsAwarded: number } | null;
   };
   options: {
     teams: Array<{ id: number; name: string; crest?: string | null }>;
@@ -105,6 +116,12 @@ export type SaveCompetitionPredictionsBody = {
   winnerTeamName?: string | null;
   topScorerPlayerId: number | null;
   topScorerPlayerName?: string | null;
+  quarterFinalistTeamId?: number | null;
+  quarterFinalistTeamName?: string | null;
+  semiFinalistTeamId?: number | null;
+  semiFinalistTeamName?: string | null;
+  finalistTeamId?: number | null;
+  finalistTeamName?: string | null;
 };
 
 export type LeagueSettings = {

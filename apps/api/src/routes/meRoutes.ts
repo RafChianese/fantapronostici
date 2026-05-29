@@ -564,6 +564,12 @@ const PutCompetitionPredictionsSchema = z.object({
   winnerTeamName: z.string().trim().min(1).max(200).nullable().optional(),
   topScorerPlayerId: z.number().int().positive().nullable().optional(),
   topScorerPlayerName: z.string().trim().min(1).max(200).nullable().optional(),
+  quarterFinalistTeamId: z.number().int().positive().nullable().optional(),
+  quarterFinalistTeamName: z.string().trim().min(1).max(200).nullable().optional(),
+  semiFinalistTeamId: z.number().int().positive().nullable().optional(),
+  semiFinalistTeamName: z.string().trim().min(1).max(200).nullable().optional(),
+  finalistTeamId: z.number().int().positive().nullable().optional(),
+  finalistTeamName: z.string().trim().min(1).max(200).nullable().optional(),
 });
 
 meRouter.get("/competition-predictions", requireLeagueMember, async (req: AuthedRequest, res) => {
@@ -583,8 +589,13 @@ meRouter.get("/competition-predictions", requireLeagueMember, async (req: Authed
   const deadlineMs = deadline ? new Date(deadline).getTime() : NaN;
   const canEdit = !deadline || !Number.isFinite(deadlineMs) ? true : Date.now() < deadlineMs;
 
+  const competitionType = String((superSetting as any)?.competitionType || "LEAGUE");
+  const isKnockoutCup = competitionType === "KNOCKOUT_CUP";
   const enableWinner = !!(rules as any)?.enableCompetitionWinner;
   const enableTop = !!(rules as any)?.enableCompetitionTopScorer;
+  const enableQuarter = isKnockoutCup && !!(rules as any)?.enableCompetitionQuarterFinalist;
+  const enableSemi = isKnockoutCup && !!(rules as any)?.enableCompetitionSemiFinalist;
+  const enableFinalist = isKnockoutCup && !!(rules as any)?.enableCompetitionFinalist;
 
   const provider = String(superSetting?.provider || "FOOTBALL_DATA").toUpperCase();
   const competitionCode = String(superSetting?.footballDataCompetitionCode || "").trim();
@@ -644,14 +655,21 @@ meRouter.get("/competition-predictions", requireLeagueMember, async (req: Authed
     }
   }
 
-  const pickWinner = picks.find((p) => p.type === "WINNER") || null;
-  const pickTop = picks.find((p) => p.type === "TOP_SCORER") || null;
+  const pickWinner = picks.find((p: any) => p.type === "WINNER") || null;
+  const pickTop = picks.find((p: any) => p.type === "TOP_SCORER") || null;
+  const pickQuarter = picks.find((p: any) => p.type === "QUARTER_FINALIST") || null;
+  const pickSemi = picks.find((p: any) => p.type === "SEMI_FINALIST") || null;
+  const pickFinalist = picks.find((p: any) => p.type === "FINALIST") || null;
 
   res.json({
-    enabled: { winner: enableWinner, topScorer: enableTop },
+    competitionType,
+    enabled: { winner: enableWinner, topScorer: enableTop, quarterFinalist: enableQuarter, semiFinalist: enableSemi, finalist: enableFinalist },
     points: {
       winner: (rules as any)?.pointsCompetitionWinner ?? 15,
       topScorer: (rules as any)?.pointsCompetitionTopScorer ?? 12,
+      quarterFinalist: (rules as any)?.pointsCompetitionQuarterFinalist ?? 8,
+      semiFinalist: (rules as any)?.pointsCompetitionSemiFinalist ?? 10,
+      finalist: (rules as any)?.pointsCompetitionFinalist ?? 12,
     },
     deadline: deadline ? new Date(deadline).toISOString() : null,
     canEdit,
@@ -662,6 +680,9 @@ meRouter.get("/competition-predictions", requireLeagueMember, async (req: Authed
       topScorer: pickTop
         ? { playerExternalId: pickTop.playerExternalId, playerName: pickTop.playerName, pointsAwarded: pickTop.pointsAwarded }
         : null,
+      quarterFinalist: pickQuarter ? { teamExternalId: pickQuarter.teamExternalId, teamName: pickQuarter.teamName, pointsAwarded: pickQuarter.pointsAwarded } : null,
+      semiFinalist: pickSemi ? { teamExternalId: pickSemi.teamExternalId, teamName: pickSemi.teamName, pointsAwarded: pickSemi.pointsAwarded } : null,
+      finalist: pickFinalist ? { teamExternalId: pickFinalist.teamExternalId, teamName: pickFinalist.teamName, pointsAwarded: pickFinalist.pointsAwarded } : null,
     },
     options: {
       teams: teams
@@ -684,9 +705,10 @@ meRouter.put("/competition-predictions", requireLeagueMember, async (req: Authed
   const body = PutCompetitionPredictionsSchema.parse(req.body);
 
   await ensureLeagueConfig(leagueId);
-  const [rules, settings] = await Promise.all([
+  const [rules, settings, superSetting] = await Promise.all([
     prisma.rule.findUnique({ where: { leagueId } }),
     prisma.setting.findUnique({ where: { leagueId } }),
+    prisma.superSetting.findFirst({ orderBy: { createdAt: "asc" } }).catch(() => null as any),
   ]);
 
   const deadline = settings?.competitionPredictionsDeadline
@@ -700,8 +722,13 @@ meRouter.put("/competition-predictions", requireLeagueMember, async (req: Authed
     }
   }
 
+  const competitionType = String((superSetting as any)?.competitionType || "LEAGUE");
+  const isKnockoutCup = competitionType === "KNOCKOUT_CUP";
   const enableWinner = !!(rules as any)?.enableCompetitionWinner;
   const enableTop = !!(rules as any)?.enableCompetitionTopScorer;
+  const enableQuarter = isKnockoutCup && !!(rules as any)?.enableCompetitionQuarterFinalist;
+  const enableSemi = isKnockoutCup && !!(rules as any)?.enableCompetitionSemiFinalist;
+  const enableFinalist = isKnockoutCup && !!(rules as any)?.enableCompetitionFinalist;
 
   if (enableWinner) {
     if (body.winnerTeamId === null) {
@@ -738,6 +765,24 @@ meRouter.put("/competition-predictions", requireLeagueMember, async (req: Authed
       });
     }
   }
+
+
+  async function upsertTeamPick(enabled: boolean, type: any, teamId: number | null | undefined, teamName: string | null | undefined) {
+    if (!enabled) return;
+    if (teamId === null) {
+      await prisma.competitionPick.deleteMany({ where: { leagueId, userId: req.user!.id, type } });
+    } else if (typeof teamId === "number") {
+      await prisma.competitionPick.upsert({
+        where: { userId_leagueId_type: { userId: req.user!.id, leagueId, type } },
+        create: { userId: req.user!.id, leagueId, type, teamExternalId: teamId, teamName: teamName ?? null },
+        update: { teamExternalId: teamId, teamName: teamName ?? null },
+      });
+    }
+  }
+
+  await upsertTeamPick(enableQuarter, "QUARTER_FINALIST", body.quarterFinalistTeamId, body.quarterFinalistTeamName ?? null);
+  await upsertTeamPick(enableSemi, "SEMI_FINALIST", body.semiFinalistTeamId, body.semiFinalistTeamName ?? null);
+  await upsertTeamPick(enableFinalist, "FINALIST", body.finalistTeamId, body.finalistTeamName ?? null);
 
   const picks = await prisma.competitionPick.findMany({ where: { leagueId, userId: req.user!.id } });
   res.json({ picks });

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { useLoading } from "../lib/loading";
 import { FullScreenLoaderOverlay } from "../components/FullScreenLoaderOverlay";
-import { Alert, Button, Card, CardContent, CardHeader, Badge, Input } from "../components/ui";
+import { Alert, Button, Card, CardContent, CardHeader, Badge, Input, Spinner } from "../components/ui";
 import { SearchableSelect } from "../components/SearchableSelect";
 
 
@@ -66,6 +66,51 @@ function PredictionWindowPanel({ config, onSave }: { config: any; onSave: (patch
         <Button disabled={saving} onClick={() => saveWindow(false)}>{saving ? "Salvo…" : "Salva range"}</Button>
         <Button disabled={saving} variant="ghost" onClick={() => saveWindow(true)}>Rimuovi filtro</Button>
       </div>
+    </div>
+  );
+}
+
+
+function CompetitionTypePanel({ config, onSave }: { config: any; onSave: (patch: any) => Promise<void> }) {
+  const [type, setType] = useState(String(config?.competitionType || "LEAGUE"));
+  const [saving, setSaving] = useState(false);
+  const [ok, setOk] = useState("");
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    setType(String(config?.competitionType || "LEAGUE"));
+  }, [config?.competitionType]);
+
+  async function save() {
+    try {
+      setSaving(true);
+      setOk("");
+      setErr("");
+      await onSave({ competitionType: type });
+      setOk("Tipo competizione salvato.");
+    } catch (e: any) {
+      setErr(e?.message || "Errore");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      {err ? <Alert tone="danger">{err}</Alert> : null}
+      {ok ? <Alert tone="success">{ok}</Alert> : null}
+      <select
+        className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm"
+        value={type}
+        onChange={(e) => setType(e.target.value)}
+      >
+        <option value="LEAGUE">Campionato / girone senza fasi eliminatorie</option>
+        <option value="KNOCKOUT_CUP">Coppa con fasi a eliminazione</option>
+      </select>
+      <div className="text-xs text-slate-500">
+        Se scegli “Coppa con fasi a eliminazione”, gli admin delle leghe potranno abilitare i pronostici su quarti, semifinali e finale.
+      </div>
+      <Button disabled={saving} onClick={save}>{saving ? "Salvo…" : "Salva tipo competizione"}</Button>
     </div>
   );
 }
@@ -150,6 +195,22 @@ export default function SuperAdminPage() {
         </CardContent>
       </Card>
 
+
+
+      <Card className="md:col-span-2">
+        <CardHeader title="Tipo competizione" subtitle="Definisce se il torneo permette pronostici sulle fasi a eliminazione" />
+        <CardContent>
+          {!external ? null : (
+            <CompetitionTypePanel
+              config={external}
+              onSave={async (patch) => {
+                const r = await api.superSaveExternalConfig(patch);
+                setExternal(r.config);
+              }}
+            />
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="md:col-span-2">
         <CardHeader title="Range partite pronosticabili" subtitle="Filtro globale gestito da SuperAdmin" />

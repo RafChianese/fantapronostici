@@ -538,6 +538,55 @@ function RulesTab() {
                   />
                 </div>
 
+                {(rules as any)?.competitionType === "KNOCKOUT_CUP" ? (
+                  <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-3 space-y-3">
+                    <div className="text-sm font-extrabold text-amber-100">Pronostici fasi eliminatorie</div>
+                    <div className="text-xs text-slate-400">Disponibile solo per competizioni configurate dal SuperAdmin come coppa/fasi a eliminazione.</div>
+                    <SwitchRow
+                      label="Pronostico: squadra che arriva ai quarti"
+                      hint="L'utente sceglie una squadra tra quelle disponibili. Può essere la stessa scelta anche per semifinale/finale."
+                      checked={!!(rules as any)?.enableCompetitionQuarterFinalist}
+                      onChange={(v) => setRules({ ...(rules as any), enableCompetitionQuarterFinalist: v })}
+                    />
+                    <Input
+                      label="Punti qualificata ai quarti"
+                      type="number"
+                      disabled={!((rules as any)?.enableCompetitionQuarterFinalist)}
+                      value={String((rules as any)?.pointsCompetitionQuarterFinalist ?? 8)}
+                      onChange={(e) => setRules({ ...(rules as any), pointsCompetitionQuarterFinalist: Number(e.target.value) })}
+                    />
+                    <SwitchRow
+                      label="Pronostico: squadra che arriva in semifinale"
+                      checked={!!(rules as any)?.enableCompetitionSemiFinalist}
+                      onChange={(v) => setRules({ ...(rules as any), enableCompetitionSemiFinalist: v })}
+                    />
+                    <Input
+                      label="Punti qualificata in semifinale"
+                      type="number"
+                      disabled={!((rules as any)?.enableCompetitionSemiFinalist)}
+                      value={String((rules as any)?.pointsCompetitionSemiFinalist ?? 10)}
+                      onChange={(e) => setRules({ ...(rules as any), pointsCompetitionSemiFinalist: Number(e.target.value) })}
+                    />
+                    <SwitchRow
+                      label="Pronostico: squadra che arriva in finale"
+                      checked={!!(rules as any)?.enableCompetitionFinalist}
+                      onChange={(v) => setRules({ ...(rules as any), enableCompetitionFinalist: v })}
+                    />
+                    <Input
+                      label="Punti finalista"
+                      type="number"
+                      disabled={!((rules as any)?.enableCompetitionFinalist)}
+                      value={String((rules as any)?.pointsCompetitionFinalist ?? 12)}
+                      onChange={(e) => setRules({ ...(rules as any), pointsCompetitionFinalist: Number(e.target.value) })}
+                    />
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-slate-800 bg-slate-900/30 p-3 text-xs text-slate-400">
+                    I pronostici su quarti, semifinali e finale sono disponibili solo se il SuperAdmin imposta la competizione come coppa con fasi a eliminazione.
+                  </div>
+                )}
+
+
               </div>
             </Section>
 
@@ -639,6 +688,12 @@ function RulesTab() {
                       pointsCompetitionWinner: Number((rules as any).pointsCompetitionWinner ?? 15),
                       enableCompetitionTopScorer: !!(rules as any).enableCompetitionTopScorer,
                       pointsCompetitionTopScorer: Number((rules as any).pointsCompetitionTopScorer ?? 12),
+                      enableCompetitionQuarterFinalist: (rules as any)?.competitionType === "KNOCKOUT_CUP" && !!(rules as any).enableCompetitionQuarterFinalist,
+                      pointsCompetitionQuarterFinalist: Number((rules as any).pointsCompetitionQuarterFinalist ?? 8),
+                      enableCompetitionSemiFinalist: (rules as any)?.competitionType === "KNOCKOUT_CUP" && !!(rules as any).enableCompetitionSemiFinalist,
+                      pointsCompetitionSemiFinalist: Number((rules as any).pointsCompetitionSemiFinalist ?? 10),
+                      enableCompetitionFinalist: (rules as any)?.competitionType === "KNOCKOUT_CUP" && !!(rules as any).enableCompetitionFinalist,
+                      pointsCompetitionFinalist: Number((rules as any).pointsCompetitionFinalist ?? 12),
                       scoringMode: rules.scoringMode,
                       allowOutcomeWithExact: !!rules.allowOutcomeWithExact,
                       allowSumGoalsWithExact: !!rules.allowSumGoalsWithExact,
