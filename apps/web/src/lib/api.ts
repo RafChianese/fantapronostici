@@ -241,6 +241,37 @@ async function request(path: string, opts: RequestInit = {}) {
   return data;
 }
 
+async function download(path: string, opts: RequestInit = {}) {
+  const token = getToken();
+  const leagueId = getActiveLeagueId();
+  const headers: Record<string, string> = {
+    ...(opts.headers as any),
+  };
+
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  if (leagueId) headers["x-league-id"] = leagueId;
+
+  const res = await fetch(`${API_URL}${path}`, { ...opts, headers });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    const err: any = new Error(text || `HTTP ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
+  return res.blob();
+}
+
+export function saveBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export const api = {
   // auth
   login: (email: string, password: string) =>
@@ -324,6 +355,10 @@ export const api = {
   adminPatchMember: (memberId: string, patch: { status?: MembershipStatus; role?: LeagueRole }, leagueId?: string) => {
     const q = leagueId ? `?leagueId=${encodeURIComponent(leagueId)}` : "";
     return request(`/api/admin/members/${memberId}${q}`, { method: "PATCH", body: JSON.stringify(patch) });
+  },
+  adminExportPredictionsCsv: (leagueId?: string) => {
+    const q = leagueId ? `?leagueId=${encodeURIComponent(leagueId)}` : "";
+    return download(`/api/admin/exports/predictions.csv${q}`);
   },
   adminRules: (leagueId?: string) => {
     const q = leagueId ? `?leagueId=${encodeURIComponent(leagueId)}` : "";

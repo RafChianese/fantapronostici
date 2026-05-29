@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { api } from "../../lib/api";
+import { api, saveBlob } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { useLoading } from "../../lib/loading";
 import { Alert, Badge, Button, Card, CardContent, CardHeader, Input } from "../../components/ui";
@@ -215,8 +215,24 @@ function MembersTab() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [items, setItems] = useState<any[]>([]);
+  const [exporting, setExporting] = useState(false);
 
   const approvedAdminsCount = items.filter((m) => m.status === "APPROVED" && m.role === "ADMIN").length;
+
+  async function exportPredictions() {
+    setErr("");
+    setExporting(true);
+    show();
+    try {
+      const blob = await api.adminExportPredictionsCsv();
+      saveBlob(blob, `pronostici-lega-${new Date().toISOString().slice(0, 10)}.csv`);
+    } catch (e: any) {
+      setErr(e?.message || "Errore durante l'esportazione dei pronostici");
+    } finally {
+      setExporting(false);
+      hide();
+    }
+  }
 
   async function load() {
     show();
@@ -241,9 +257,18 @@ function MembersTab() {
 
   return (
     <Card>
-      <CardHeader title="Partecipanti della lega" subtitle="Approva richieste e assegna admin" />
+      <CardHeader title="Partecipanti della lega" subtitle="Approva richieste, assegna admin ed esporta i pronostici" />
       <CardContent>
         {err ? <Alert tone="danger">{err}</Alert> : null}
+        <div className="mb-4 flex flex-col gap-2 rounded-xl border border-slate-800 bg-slate-950/40 p-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <div className="font-semibold text-slate-100">Export pronostici</div>
+            <div className="text-sm text-slate-400">Scarica una griglia CSV apribile con Excel: utenti sulle righe, match e pronostici torneo sulle colonne.</div>
+          </div>
+          <Button variant="primary" onClick={exportPredictions} disabled={exporting}>
+            {exporting ? "Esporto..." : "Esporta CSV"}
+          </Button>
+        </div>
         <div className="space-y-2">
           {items.map((m) => (
             (() => {

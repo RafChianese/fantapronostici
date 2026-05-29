@@ -13,6 +13,36 @@ import { filterPredictableMatches } from "../lib/predictableMatches.js";
 
 export const adminRouter = Router();
 
+function csvCell(value: unknown): string {
+  const raw = value === null || typeof value === "undefined" ? "" : String(value);
+  return `"${raw.replace(/"/g, '""')}"`;
+}
+
+function csvRow(values: unknown[]): string {
+  return values.map(csvCell).join(";");
+}
+
+function formatPrediction(homeGoals: number | null | undefined, awayGoals: number | null | undefined): string {
+  if (typeof homeGoals !== "number" || typeof awayGoals !== "number") return "";
+  return `${homeGoals}-${awayGoals}`;
+}
+
+function formatMatchColumn(match: { matchday?: number | null; kickoffAt?: Date | string | null; homeTeam: string; awayTeam: string }): string {
+  const md = typeof match.matchday === "number" ? `G${match.matchday} - ` : "";
+  const date = match.kickoffAt ? new Date(match.kickoffAt).toLocaleDateString("it-IT", { timeZone: "Europe/Rome", day: "2-digit", month: "2-digit" }) : "";
+  const datePart = date ? `${date} - ` : "";
+  return `${md}${datePart}${match.homeTeam} - ${match.awayTeam}`;
+}
+
+function pickLabel(pick: { teamName?: string | null; playerName?: string | null; teamExternalId?: number | null; playerExternalId?: number | null } | undefined): string {
+  if (!pick) return "";
+  if (pick.teamName) return pick.teamName;
+  if (pick.playerName) return pick.playerName;
+  if (typeof pick.teamExternalId === "number") return String(pick.teamExternalId);
+  if (typeof pick.playerExternalId === "number") return String(pick.playerExternalId);
+  return "";
+}
+
 adminRouter.use(requireAuth, requireLeagueAdmin);
 
 function getLeagueOr400(req: any, res: any): string | null {
@@ -104,6 +134,81 @@ adminRouter.get("/members", async (req, res) => {
       };
     }),
   });
+});
+
+
+// --- Export pronostici lega: griglia utenti x match + pronostici torneo ---
+adminRouter.get("/exports/predictions.csv", async (req, res) => {
+  const leagueId = getLeagueOr400(req, res);
+  if (!leagueId) return;
+
+  const [members, rawMatches, predictions, competitionPicks] = await Promise.all([
+    prisma.leagueMember.findMany({
+      where: { leagueId, status: "APPROVED" },
+      include: { user: true },
+      orderBy: [{ createdAt: "asc" }],
+    }),
+    prisma.match.findMany({
+      orderBy: [{ matchday: "asc" }, { kickoffAt: "asc" }],
+      select: { id: true, matchday: true, kickoffAt: true, homeTeam: true, awayTeam: true, status: true },
+    }),
+    prisma.prediction.findMany({
+      where: { leagueId },
+      select: { userId: true, matchId: true, homeGoals: true, awayGoals: true },
+    }),
+    prisma.competitionPick.findMany({
+      where: { leagueId },
+      select: { userId: true, type: true, teamExternalId: true, teamName: true, playerExternalId: true, playerName: true },
+    }),
+  ]);
+
+  const membersSorted = (members as any[]).slice().sort((a, b) => String(a.user?.displayName || "").localeCompare(String(b.user?.displayName || ""), "it"));
+  const matches = await filterPredictableMatches(rawMatches);
+  const predictionByUserMatch = new Map<string, { homeGoals: number; awayGoals: number }>();
+  for (const p of predictions as any[]) {
+    predictionByUserMatch.set(`${p.userId}::${p.matchId}`, { homeGoals: p.homeGoals, awayGoals: p.awayGoals });
+  }
+
+  const pickByUserType = new Map<string, any>();
+  for (const p of competitionPicks as any[]) {
+    pickByUserType.set(`${p.userId}::${p.type}`, p);
+  }
+
+  const header = [
+    "Utente",
+    "Email",
+    ...matches.map((m: any) => formatMatchColumn(m)),
+    "Quarti",
+    "Semifinale",
+    "Finale",
+    "Vincente",
+    "Capocannoniere",
+  ];
+
+  const rows = [csvRow(header)];
+  for (const member of membersSorted) {
+    const userId = String(member.userId);
+    rows.push(
+      csvRow([
+        member.user?.displayName || "",
+        member.user?.email || "",
+        ...matches.map((m: any) => {
+          const pred = predictionByUserMatch.get(`${userId}::${m.id}`);
+          return formatPrediction(pred?.homeGoals, pred?.awayGoals);
+        }),
+        pickLabel(pickByUserType.get(`${userId}::QUARTER_FINALIST`)),
+        pickLabel(pickByUserType.get(`${userId}::SEMI_FINALIST`)),
+        pickLabel(pickByUserType.get(`${userId}::FINALIST`)),
+        pickLabel(pickByUserType.get(`${userId}::WINNER`)),
+        pickLabel(pickByUserType.get(`${userId}::TOP_SCORER`)),
+      ])
+    );
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="pronostici-lega-${today}.csv"`);
+  res.send(`\uFEFF${rows.join("\n")}`);
 });
 
 const PatchMemberSchema = z.object({
