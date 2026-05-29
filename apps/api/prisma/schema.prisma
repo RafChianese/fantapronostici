@@ -498,6 +498,13 @@ model SuperSetting {
   // Optional second top scorer in case of tied goals (Super Admin choice).
   competitionOutcomeSecondTopScorerPlayerExternalId Int?
   competitionOutcomeSecondTopScorerPlayerName       String?
+
+  // Global knockout phase outcomes. Stored as arrays of { id, name }.
+  // Used only when competitionType = KNOCKOUT_CUP.
+  competitionOutcomeQuarterFinalistTeamsJson Json?
+  competitionOutcomeSemiFinalistTeamsJson    Json?
+  competitionOutcomeFinalistTeamsJson        Json?
+
   competitionOutcomeResolvedAt DateTime?
 
   // Cached player options for global top-scorer selection.

@@ -22,17 +22,25 @@ const CompetitionOutcomeSchema = z.object({
   topScorerPlayerName: z.string().trim().min(1).max(200).nullable().optional(),
   secondTopScorerPlayerId: z.number().int().positive().nullable().optional(),
   secondTopScorerPlayerName: z.string().trim().min(1).max(200).nullable().optional(),
+  quarterFinalistTeams: z.array(z.object({ id: z.number().int().positive(), name: z.string().trim().min(1).max(200) })).optional(),
+  semiFinalistTeams: z.array(z.object({ id: z.number().int().positive(), name: z.string().trim().min(1).max(200) })).optional(),
+  finalistTeams: z.array(z.object({ id: z.number().int().positive(), name: z.string().trim().min(1).max(200) })).optional(),
 });
 
 async function applyGlobalCompetitionOutcomeToAllLeagues(args: {
   winnerTeamExternalId: number | null;
   topScorerPlayerExternalId: number | null;
   secondTopScorerPlayerExternalId: number | null;
+  quarterFinalistTeams?: Array<{ id: number; name: string }>;
+  semiFinalistTeams?: Array<{ id: number; name: string }>;
+  finalistTeams?: Array<{ id: number; name: string }>;
   resolvedAt: Date;
   winnerTeamName?: string | null;
   topScorerPlayerName?: string | null;
   secondTopScorerPlayerName?: string | null;
 }) {
+  const globalSetting = await prisma.superSetting.findFirst({ orderBy: { createdAt: "asc" } }).catch(() => null as any);
+  const isKnockoutCup = String((globalSetting as any)?.competitionType || "LEAGUE") === "KNOCKOUT_CUP";
   const leagues = await prisma.league.findMany({ select: { id: true } });
   for (const l of leagues) {
     await ensureLeagueConfig(l.id);
@@ -41,6 +49,9 @@ async function applyGlobalCompetitionOutcomeToAllLeagues(args: {
 
     const enableWinner = !!(rules as any).enableCompetitionWinner;
     const enableTop = !!(rules as any).enableCompetitionTopScorer;
+    const quarterIds = (args.quarterFinalistTeams || []).map((t) => t.id).filter((id) => Number.isFinite(id));
+    const semiIds = (args.semiFinalistTeams || []).map((t) => t.id).filter((id) => Number.isFinite(id));
+    const finalistIds = (args.finalistTeams || []).map((t) => t.id).filter((id) => Number.isFinite(id));
 
     // Upsert per-league CompetitionOutcome for transparency/consistency.
     await prisma.competitionOutcome.upsert({
@@ -89,9 +100,45 @@ async function applyGlobalCompetitionOutcomeToAllLeagues(args: {
       });
     }
 
+    const quarterPts = Number((rules as any).pointsCompetitionQuarterFinalist ?? 8);
+    const semiPts = Number((rules as any).pointsCompetitionSemiFinalist ?? 10);
+    const finalistPts = Number((rules as any).pointsCompetitionFinalist ?? 12);
+    const enableQuarter = isKnockoutCup && !!(rules as any).enableCompetitionQuarterFinalist;
+    const enableSemi = isKnockoutCup && !!(rules as any).enableCompetitionSemiFinalist;
+    const enableFinalist = isKnockoutCup && !!(rules as any).enableCompetitionFinalist;
+
+    await prisma.competitionPick.updateMany({ where: { leagueId: l.id, type: "QUARTER_FINALIST" }, data: { pointsAwarded: 0 } });
+    if (enableQuarter && quarterIds.length) {
+      await prisma.competitionPick.updateMany({ where: { leagueId: l.id, type: "QUARTER_FINALIST", teamExternalId: { in: quarterIds } }, data: { pointsAwarded: quarterPts } });
+    }
+
+    await prisma.competitionPick.updateMany({ where: { leagueId: l.id, type: "SEMI_FINALIST" }, data: { pointsAwarded: 0 } });
+    if (enableSemi && semiIds.length) {
+      await prisma.competitionPick.updateMany({ where: { leagueId: l.id, type: "SEMI_FINALIST", teamExternalId: { in: semiIds } }, data: { pointsAwarded: semiPts } });
+    }
+
+    await prisma.competitionPick.updateMany({ where: { leagueId: l.id, type: "FINALIST" }, data: { pointsAwarded: 0 } });
+    if (enableFinalist && finalistIds.length) {
+      await prisma.competitionPick.updateMany({ where: { leagueId: l.id, type: "FINALIST", teamExternalId: { in: finalistIds } }, data: { pointsAwarded: finalistPts } });
+    }
+
     // Optional: recompute matchday awards after competition points change is NOT needed.
     // Leaderboard totals include CompetitionPick.pointsAwarded via aggregation.
   }
+}
+
+function normalizeTeamList(value: unknown): Array<{ id: number; name: string }> {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<number>();
+  const out: Array<{ id: number; name: string }> = [];
+  for (const item of value as any[]) {
+    const id = Number(item?.id ?? item?.teamExternalId);
+    const name = String(item?.name ?? item?.teamName ?? "").trim();
+    if (!Number.isFinite(id) || !name || seen.has(id)) continue;
+    seen.add(id);
+    out.push({ id, name });
+  }
+  return out;
 }
 
 superRouter.get("/competition-outcome", async (_req, res) => {
@@ -142,6 +189,9 @@ superRouter.get("/competition-outcome", async (_req, res) => {
       secondTopScorer: row?.competitionOutcomeSecondTopScorerPlayerExternalId
         ? { playerExternalId: row.competitionOutcomeSecondTopScorerPlayerExternalId, playerName: row.competitionOutcomeSecondTopScorerPlayerName ?? null }
         : null,
+      quarterFinalists: normalizeTeamList((row as any)?.competitionOutcomeQuarterFinalistTeamsJson),
+      semiFinalists: normalizeTeamList((row as any)?.competitionOutcomeSemiFinalistTeamsJson),
+      finalists: normalizeTeamList((row as any)?.competitionOutcomeFinalistTeamsJson),
       resolvedAt: row?.competitionOutcomeResolvedAt ? new Date(row.competitionOutcomeResolvedAt).toISOString() : null,
     },
     options: {
@@ -176,6 +226,9 @@ superRouter.put("/competition-outcome", async (req, res) => {
       competitionOutcomeTopScorerPlayerName: body.topScorerPlayerName ?? null,
       competitionOutcomeSecondTopScorerPlayerExternalId: secondId,
       competitionOutcomeSecondTopScorerPlayerName: secondName,
+      competitionOutcomeQuarterFinalistTeamsJson: normalizeTeamList(body.quarterFinalistTeams) as any,
+      competitionOutcomeSemiFinalistTeamsJson: normalizeTeamList(body.semiFinalistTeams) as any,
+      competitionOutcomeFinalistTeamsJson: normalizeTeamList(body.finalistTeams) as any,
       competitionOutcomeResolvedAt: resolvedAt,
     },
   });
@@ -187,6 +240,9 @@ superRouter.put("/competition-outcome", async (req, res) => {
     topScorerPlayerName: updated.competitionOutcomeTopScorerPlayerName ?? null,
     secondTopScorerPlayerExternalId: updated.competitionOutcomeSecondTopScorerPlayerExternalId ?? null,
     secondTopScorerPlayerName: updated.competitionOutcomeSecondTopScorerPlayerName ?? null,
+    quarterFinalistTeams: normalizeTeamList((updated as any).competitionOutcomeQuarterFinalistTeamsJson),
+    semiFinalistTeams: normalizeTeamList((updated as any).competitionOutcomeSemiFinalistTeamsJson),
+    finalistTeams: normalizeTeamList((updated as any).competitionOutcomeFinalistTeamsJson),
     resolvedAt,
   });
 

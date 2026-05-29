@@ -56,6 +56,9 @@ enum RankingCriterion {
 enum CompetitionPickType {
   WINNER
   TOP_SCORER
+  QUARTER_FINALIST
+  SEMI_FINALIST
+  FINALIST
 }
 
 model User {
@@ -248,10 +251,6 @@ model Match {
   apiSeason            Int?
   apiRound             String?
 
-  // API-Football cached match detail (lineups + events) to save requests (free plan limit)
-  apiFootballDetailJson      Json?
-  apiFootballDetailFetchedAt DateTime?
-
   // football-data.org v4
   footballDataMatchId        Int?    @unique
   footballDataCompetitionCode String?
@@ -350,6 +349,12 @@ model Rule {
   pointsCompetitionWinner    Int     @default(15)
   enableCompetitionTopScorer Boolean @default(false)
   pointsCompetitionTopScorer Int     @default(12)
+  enableCompetitionQuarterFinalist Boolean @default(false)
+  pointsCompetitionQuarterFinalist Int @default(8)
+  enableCompetitionSemiFinalist Boolean @default(false)
+  pointsCompetitionSemiFinalist Int @default(10)
+  enableCompetitionFinalist Boolean @default(false)
+  pointsCompetitionFinalist Int @default(12)
 
   // Optional league monetization (all optional, non-destructive)
   // entryFeeCents: participation fee in cents (e.g., 1000 = 10.00€)
@@ -481,6 +486,8 @@ model SuperSetting {
   // Optional global window: only matches in this kickoff range are visible/predictable.
   predictionWindowStart DateTime?
   predictionWindowEnd   DateTime?
+  // LEAGUE = campionato, KNOCKOUT_CUP = coppa con fasi a eliminazione
+  competitionType String @default("LEAGUE")
 
   // --- Global competition outcome (winner + top scorers) ---
   // When set by Super Admin, this outcome is applied across ALL leagues.
@@ -491,6 +498,13 @@ model SuperSetting {
   // Optional second top scorer in case of tied goals (Super Admin choice).
   competitionOutcomeSecondTopScorerPlayerExternalId Int?
   competitionOutcomeSecondTopScorerPlayerName       String?
+
+  // Global knockout phase outcomes. Stored as arrays of { id, name }.
+  // Used only when competitionType = KNOCKOUT_CUP.
+  competitionOutcomeQuarterFinalistTeamsJson Json?
+  competitionOutcomeSemiFinalistTeamsJson    Json?
+  competitionOutcomeFinalistTeamsJson        Json?
+
   competitionOutcomeResolvedAt DateTime?
 
   // Cached player options for global top-scorer selection.

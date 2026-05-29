@@ -412,6 +412,9 @@ export const api = {
     topScorerPlayerName?: string | null;
     secondTopScorerPlayerId?: number | null;
     secondTopScorerPlayerName?: string | null;
+    quarterFinalistTeams?: Array<{ id: number; name: string }>;
+    semiFinalistTeams?: Array<{ id: number; name: string }>;
+    finalistTeams?: Array<{ id: number; name: string }>;
   }) => request(`/api/super/competition-outcome`, { method: "PUT", body: JSON.stringify(payload) }),
   superSearchExternalLeagues: (search: string, season?: number) => {
     const params = new URLSearchParams();
