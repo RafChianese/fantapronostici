@@ -210,7 +210,7 @@ publicRouter.get("/leaderboard", async (req, res) => {
 
   for (const p of preds) {
     const a = agg.get(p.userId) || { totalPoints: 0, competitionPoints: 0, exactHits: 0, outcomeHits: 0, sumGoalsHits: 0, underOverHits: 0 };
-    a.totalPoints += p.totalPoints ?? 0;
+    a.totalPoints += Number(p.totalPoints ?? 0);
     if (Number(p.pointsExact ?? 0) > 0) a.exactHits += 1;
     if (Number(p.pointsOutcome ?? 0) > 0) a.outcomeHits += 1;
     if (Number(p.pointsSumGoals ?? 0) > 0) a.sumGoalsHits += 1;

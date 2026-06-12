@@ -42,7 +42,7 @@ leagueRouter.get("/stats", requireAuth, requireLeagueMember, async (req: AuthedR
   >();
   for (const p of preds) {
     const a = userAgg.get(p.userId) || { total: 0, exact: 0, outcome: 0, sumGoals: 0, underOver: 0 };
-    a.total += p.totalPoints ?? 0;
+    a.total += Number(p.totalPoints ?? 0);
     if (Number(p.pointsExact ?? 0) > 0) a.exact += 1;
     if (Number(p.pointsOutcome ?? 0) > 0) a.outcome += 1;
     if (Number(p.pointsSumGoals ?? 0) > 0) a.sumGoals += 1;
