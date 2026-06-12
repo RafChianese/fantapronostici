@@ -104,7 +104,7 @@ export async function resolveAndApplyCompetitionOutcome(args: { competitionCode:
       });
       await prisma.competitionPick.updateMany({
         where: { leagueId: r.leagueId, type: "WINNER", teamExternalId: winner.teamExternalId },
-        data: { pointsAwarded: r.pointsCompetitionWinner ?? 15 },
+        data: { pointsAwarded: Number(r.pointsCompetitionWinner ?? 15) },
       });
     }
 
@@ -121,7 +121,7 @@ export async function resolveAndApplyCompetitionOutcome(args: { competitionCode:
       });
       await prisma.competitionPick.updateMany({
         where: { leagueId: r.leagueId, type: "TOP_SCORER", playerExternalId: topScorer.playerExternalId },
-        data: { pointsAwarded: r.pointsCompetitionTopScorer ?? 12 },
+        data: { pointsAwarded: Number(r.pointsCompetitionTopScorer ?? 12) },
       });
     }
   }

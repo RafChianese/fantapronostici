@@ -277,12 +277,12 @@ model Prediction {
   matchId        String
   homeGoals      Int
   awayGoals      Int
-  pointsExact    Int      @default(0)
-  pointsOutcome  Int      @default(0)
-  pointsSumGoals Int      @default(0)
-  pointsUnderOver Int     @default(0)
-  pointsScorer    Int     @default(0)
-  totalPoints    Int      @default(0)
+  pointsExact    Decimal  @default(0) @db.Decimal(8, 2)
+  pointsOutcome  Decimal  @default(0) @db.Decimal(8, 2)
+  pointsSumGoals Decimal  @default(0) @db.Decimal(8, 2)
+  pointsUnderOver Decimal @default(0) @db.Decimal(8, 2)
+  pointsScorer    Decimal @default(0) @db.Decimal(8, 2)
+  totalPoints    Decimal  @default(0) @db.Decimal(8, 2)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -319,11 +319,11 @@ model ScorerPick {
 model Rule {
   id                     String     @id @default(cuid())
   leagueId               String     @unique
-  pointsExact            Int        @default(4)
-  pointsOutcome          Int        @default(2)
-  pointsSumGoals         Int        @default(1)
+  pointsExact            Decimal    @default(4) @db.Decimal(8, 2)
+  pointsOutcome          Decimal    @default(2) @db.Decimal(8, 2)
+  pointsSumGoals         Decimal    @default(1) @db.Decimal(8, 2)
   enableUnderOver25      Boolean    @default(false)
-  pointsUnderOver25      Int        @default(1)
+  pointsUnderOver25      Decimal    @default(1) @db.Decimal(8, 2)
   enableMatchdayAwards   Boolean    @default(false)
   scoringMode            ScoringMode @default(CUMULATIVE)
   allowOutcomeWithExact  Boolean    @default(true)
@@ -342,19 +342,19 @@ model Rule {
 
   // Marcatore (se lineup disponibile)
   enableScorer          Boolean   @default(false)
-  pointsScorer          Int       @default(3)
+  pointsScorer          Decimal   @default(3) @db.Decimal(8, 2)
 
   // Pronostici competizione
   enableCompetitionWinner    Boolean @default(false)
-  pointsCompetitionWinner    Int     @default(15)
+  pointsCompetitionWinner    Decimal @default(15) @db.Decimal(8, 2)
   enableCompetitionTopScorer Boolean @default(false)
-  pointsCompetitionTopScorer Int     @default(12)
+  pointsCompetitionTopScorer Decimal @default(12) @db.Decimal(8, 2)
   enableCompetitionQuarterFinalist Boolean @default(false)
-  pointsCompetitionQuarterFinalist Int @default(8)
+  pointsCompetitionQuarterFinalist Decimal @default(8) @db.Decimal(8, 2)
   enableCompetitionSemiFinalist Boolean @default(false)
-  pointsCompetitionSemiFinalist Int @default(10)
+  pointsCompetitionSemiFinalist Decimal @default(10) @db.Decimal(8, 2)
   enableCompetitionFinalist Boolean @default(false)
-  pointsCompetitionFinalist Int @default(12)
+  pointsCompetitionFinalist Decimal @default(12) @db.Decimal(8, 2)
 
   // Optional league monetization (all optional, non-destructive)
   // entryFeeCents: participation fee in cents (e.g., 1000 = 10.00€)
@@ -412,7 +412,7 @@ model CompetitionPick {
   playerExternalId Int?
   playerName       String?
 
-  pointsAwarded Int      @default(0)
+  pointsAwarded Decimal  @default(0) @db.Decimal(8, 2)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

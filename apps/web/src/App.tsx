@@ -7,6 +7,7 @@ import { LockProvider } from "./lib/lock";
 import { AuthBootstrapOverlay } from "./components/AuthBootstrapOverlay";
 import { Layout } from "./components/Layout";
 import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
 import OAuthCallbackPage from "./pages/OAuthCallbackPage";
 import AccountPage from "./pages/AccountPage";
 import OnboardingPage from "./pages/OnboardingPage";
@@ -131,6 +132,7 @@ export default function App() {
             <HashTokenBootstrapper />
             <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
           <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
 
           <Route

@@ -1048,18 +1048,21 @@ function LeagueDetail({ league, onChanged }: { league: any; onChanged: () => voi
                   <Input
                     label="Punti Risultato Esatto"
                     type="number"
+                    step="0.5"
                     value={String(rules.pointsExact)}
                     onChange={(e) => setRules({ ...rules, pointsExact: Number(e.target.value) })}
                   />
                   <Input
                     label="Punti Pronostico (1X2)"
                     type="number"
+                    step="0.5"
                     value={String(rules.pointsOutcome)}
                     onChange={(e) => setRules({ ...rules, pointsOutcome: Number(e.target.value) })}
                   />
                   <Input
                     label="Punti Somma Gol"
                     type="number"
+                    step="0.5"
                     value={String(rules.pointsSumGoals)}
                     onChange={(e) => setRules({ ...rules, pointsSumGoals: Number(e.target.value) })}
                   />
@@ -1131,6 +1134,7 @@ function LeagueDetail({ league, onChanged }: { league: any; onChanged: () => voi
                       <Input
                         label="Punti Under/Over 2.5"
                         type="number"
+                        step="0.5"
                         value={String(rules.pointsUnderOver25 ?? 1)}
                         onChange={(e) => setRules({ ...rules, pointsUnderOver25: Number(e.target.value) })}
                       />

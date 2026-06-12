@@ -448,18 +448,21 @@ function RulesTab() {
                 <Input
                   label="Esatto"
                   type="number"
+                  step="0.5"
                   value={String(rules?.pointsExact ?? 0)}
                   onChange={(e) => setRules({ ...rules, pointsExact: Number(e.target.value) })}
                 />
                 <Input
                   label="Esito (1X2)"
                   type="number"
+                  step="0.5"
                   value={String(rules?.pointsOutcome ?? 0)}
                   onChange={(e) => setRules({ ...rules, pointsOutcome: Number(e.target.value) })}
                 />
                 <Input
                   label="Somma gol"
                   type="number"
+                  step="0.5"
                   value={String(rules?.pointsSumGoals ?? 0)}
                   onChange={(e) => setRules({ ...rules, pointsSumGoals: Number(e.target.value) })}
                 />
@@ -479,6 +482,7 @@ function RulesTab() {
                   <Input
                     label="Punti Under/Over 2.5"
                     type="number"
+                    step="0.5"
                     disabled={!rules?.enableUnderOver25}
                     value={String(rules?.pointsUnderOver25 ?? 1)}
                     onChange={(e) => setRules({ ...rules, pointsUnderOver25: Number(e.target.value) })}
@@ -521,6 +525,7 @@ function RulesTab() {
                   <Input
                     label="Punti Marcatore"
                     type="number"
+                    step="0.5"
                     disabled
                     value={String((rules as any)?.pointsScorer ?? 3)}
                     onChange={() => {
@@ -541,6 +546,7 @@ function RulesTab() {
                   <Input
                     label="Punti Vincitore competizione"
                     type="number"
+                    step="0.5"
                     disabled={!((rules as any)?.enableCompetitionWinner)}
                     value={String((rules as any)?.pointsCompetitionWinner ?? 15)}
                     onChange={(e) => setRules({ ...(rules as any), pointsCompetitionWinner: Number(e.target.value) })}
@@ -557,6 +563,7 @@ function RulesTab() {
                   <Input
                     label="Punti Capocannoniere competizione"
                     type="number"
+                    step="0.5"
                     disabled={!((rules as any)?.enableCompetitionTopScorer)}
                     value={String((rules as any)?.pointsCompetitionTopScorer ?? 12)}
                     onChange={(e) => setRules({ ...(rules as any), pointsCompetitionTopScorer: Number(e.target.value) })}
@@ -576,6 +583,7 @@ function RulesTab() {
                     <Input
                       label="Punti qualificata ai quarti"
                       type="number"
+                      step="0.5"
                       disabled={!((rules as any)?.enableCompetitionQuarterFinalist)}
                       value={String((rules as any)?.pointsCompetitionQuarterFinalist ?? 8)}
                       onChange={(e) => setRules({ ...(rules as any), pointsCompetitionQuarterFinalist: Number(e.target.value) })}
@@ -588,6 +596,7 @@ function RulesTab() {
                     <Input
                       label="Punti qualificata in semifinale"
                       type="number"
+                      step="0.5"
                       disabled={!((rules as any)?.enableCompetitionSemiFinalist)}
                       value={String((rules as any)?.pointsCompetitionSemiFinalist ?? 10)}
                       onChange={(e) => setRules({ ...(rules as any), pointsCompetitionSemiFinalist: Number(e.target.value) })}
@@ -600,6 +609,7 @@ function RulesTab() {
                     <Input
                       label="Punti finalista"
                       type="number"
+                      step="0.5"
                       disabled={!((rules as any)?.enableCompetitionFinalist)}
                       value={String((rules as any)?.pointsCompetitionFinalist ?? 12)}
                       onChange={(e) => setRules({ ...(rules as any), pointsCompetitionFinalist: Number(e.target.value) })}

@@ -9,6 +9,11 @@ function outcome(home: number, away: number): "H" | "D" | "A" {
   return "D";
 }
 
+function decimalToNumber(value: unknown, fallback = 0): number {
+  const n = Number(value ?? fallback);
+  return Number.isFinite(n) ? n : fallback;
+}
+
 function computeAdjustedPoints(params: {
   mode: ScoringMode;
   pointsExact: number;
@@ -131,14 +136,14 @@ export async function recalcAllScoresForLeague(leagueId: string) {
       pointsSumGoals = 0,
       pointsUnderOver = 0;
 
-    if (p.homeGoals === m.homeScore && p.awayGoals === m.awayScore) pointsExact = rules.pointsExact;
-    if (outcome(p.homeGoals, p.awayGoals) === outcome(m.homeScore, m.awayScore)) pointsOutcome = rules.pointsOutcome;
-    if (p.homeGoals + p.awayGoals === m.homeScore + m.awayScore) pointsSumGoals = rules.pointsSumGoals;
+    if (p.homeGoals === m.homeScore && p.awayGoals === m.awayScore) pointsExact = decimalToNumber(rules.pointsExact);
+    if (outcome(p.homeGoals, p.awayGoals) === outcome(m.homeScore, m.awayScore)) pointsOutcome = decimalToNumber(rules.pointsOutcome);
+    if (p.homeGoals + p.awayGoals === m.homeScore + m.awayScore) pointsSumGoals = decimalToNumber(rules.pointsSumGoals);
 
     if (rules.enableUnderOver25) {
       const predOver = p.homeGoals + p.awayGoals > 2;
       const realOver = m.homeScore + m.awayScore > 2;
-      if (predOver === realOver) pointsUnderOver = rules.pointsUnderOver25;
+      if (predOver === realOver) pointsUnderOver = decimalToNumber(rules.pointsUnderOver25);
     }
 
     const adjustedBase = computeAdjustedPoints({
@@ -156,7 +161,7 @@ export async function recalcAllScoresForLeague(leagueId: string) {
     });
 
     const sel = scorerByUserMatch.get(`${p.userId}:${p.matchId}`) || null;
-    const pointsScorer = rules.enableScorer && scorerHit(m, sel) ? rules.pointsScorer : 0;
+    const pointsScorer = rules.enableScorer && scorerHit(m, sel) ? decimalToNumber(rules.pointsScorer) : 0;
     const adjusted = { ...adjustedBase, pointsScorer, totalPoints: adjustedBase.totalPoints + pointsScorer };
 
     const withJolly = rules.enableJolly && jollyByMatchId.has(String(m.id)) ? applyJollyMultiplier(adjusted, rules.jollyMultiplier) : adjusted;
@@ -216,14 +221,14 @@ export async function recalcScoresForMatchForLeague(leagueId: string, matchId: s
       pointsSumGoals = 0,
       pointsUnderOver = 0;
 
-    if (p.homeGoals === match.homeScore && p.awayGoals === match.awayScore) pointsExact = rules.pointsExact;
-    if (outcome(p.homeGoals, p.awayGoals) === outcome(match.homeScore, match.awayScore)) pointsOutcome = rules.pointsOutcome;
-    if (p.homeGoals + p.awayGoals === match.homeScore + match.awayScore) pointsSumGoals = rules.pointsSumGoals;
+    if (p.homeGoals === match.homeScore && p.awayGoals === match.awayScore) pointsExact = decimalToNumber(rules.pointsExact);
+    if (outcome(p.homeGoals, p.awayGoals) === outcome(match.homeScore, match.awayScore)) pointsOutcome = decimalToNumber(rules.pointsOutcome);
+    if (p.homeGoals + p.awayGoals === match.homeScore + match.awayScore) pointsSumGoals = decimalToNumber(rules.pointsSumGoals);
 
     if (rules.enableUnderOver25) {
       const predOver = p.homeGoals + p.awayGoals > 2;
       const realOver = match.homeScore + match.awayScore > 2;
-      if (predOver === realOver) pointsUnderOver = rules.pointsUnderOver25;
+      if (predOver === realOver) pointsUnderOver = decimalToNumber(rules.pointsUnderOver25);
     }
 
     const adjustedBase = computeAdjustedPoints({
@@ -241,7 +246,7 @@ export async function recalcScoresForMatchForLeague(leagueId: string, matchId: s
     });
 
     const sel = scorerByUser.get(String(p.userId)) || null;
-    const pointsScorer = rules.enableScorer && scorerHit(match, sel) ? rules.pointsScorer : 0;
+    const pointsScorer = rules.enableScorer && scorerHit(match, sel) ? decimalToNumber(rules.pointsScorer) : 0;
     const adjusted = { ...adjustedBase, pointsScorer, totalPoints: adjustedBase.totalPoints + pointsScorer };
 
     const withJolly = rules.enableJolly && !!jollyRow ? applyJollyMultiplier(adjusted, rules.jollyMultiplier) : adjusted;

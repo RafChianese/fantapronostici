@@ -52,7 +52,7 @@ export async function recomputeMatchdayAwardsForLeague(leagueId: string, matchda
 
     // Only consider users who placed at least one prediction for the matchday.
     for (const p of preds) {
-      sums.set(p.userId, (sums.get(p.userId) ?? 0) + (p.totalPoints ?? 0));
+      sums.set(p.userId, (sums.get(p.userId) ?? 0) + Number(p.totalPoints ?? 0));
       counts.set(p.userId, (counts.get(p.userId) ?? 0) + 1);
     }
 

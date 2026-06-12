@@ -77,6 +77,12 @@ async function resolveFixtureIdForMatch(match: any): Promise<{ fixtureId: number
 
 export const meRouter = Router();
 
+function decimalNumber(value: unknown, fallback = 0): number {
+  const n = Number(value ?? fallback);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+
 meRouter.use(requireAuth);
 
 meRouter.get("/", async (req: AuthedRequest, res) => {
@@ -665,24 +671,24 @@ meRouter.get("/competition-predictions", requireLeagueMember, async (req: Authed
     competitionType,
     enabled: { winner: enableWinner, topScorer: enableTop, quarterFinalist: enableQuarter, semiFinalist: enableSemi, finalist: enableFinalist },
     points: {
-      winner: (rules as any)?.pointsCompetitionWinner ?? 15,
-      topScorer: (rules as any)?.pointsCompetitionTopScorer ?? 12,
-      quarterFinalist: (rules as any)?.pointsCompetitionQuarterFinalist ?? 8,
-      semiFinalist: (rules as any)?.pointsCompetitionSemiFinalist ?? 10,
-      finalist: (rules as any)?.pointsCompetitionFinalist ?? 12,
+      winner: decimalNumber((rules as any)?.pointsCompetitionWinner, 15),
+      topScorer: decimalNumber((rules as any)?.pointsCompetitionTopScorer, 12),
+      quarterFinalist: decimalNumber((rules as any)?.pointsCompetitionQuarterFinalist, 8),
+      semiFinalist: decimalNumber((rules as any)?.pointsCompetitionSemiFinalist, 10),
+      finalist: decimalNumber((rules as any)?.pointsCompetitionFinalist, 12),
     },
     deadline: deadline ? new Date(deadline).toISOString() : null,
     canEdit,
     picks: {
       winner: pickWinner
-        ? { teamExternalId: pickWinner.teamExternalId, teamName: pickWinner.teamName, pointsAwarded: pickWinner.pointsAwarded }
+        ? { teamExternalId: pickWinner.teamExternalId, teamName: pickWinner.teamName, pointsAwarded: decimalNumber(pickWinner.pointsAwarded) }
         : null,
       topScorer: pickTop
-        ? { playerExternalId: pickTop.playerExternalId, playerName: pickTop.playerName, pointsAwarded: pickTop.pointsAwarded }
+        ? { playerExternalId: pickTop.playerExternalId, playerName: pickTop.playerName, pointsAwarded: decimalNumber(pickTop.pointsAwarded) }
         : null,
-      quarterFinalist: pickQuarter ? { teamExternalId: pickQuarter.teamExternalId, teamName: pickQuarter.teamName, pointsAwarded: pickQuarter.pointsAwarded } : null,
-      semiFinalist: pickSemi ? { teamExternalId: pickSemi.teamExternalId, teamName: pickSemi.teamName, pointsAwarded: pickSemi.pointsAwarded } : null,
-      finalist: pickFinalist ? { teamExternalId: pickFinalist.teamExternalId, teamName: pickFinalist.teamName, pointsAwarded: pickFinalist.pointsAwarded } : null,
+      quarterFinalist: pickQuarter ? { teamExternalId: pickQuarter.teamExternalId, teamName: pickQuarter.teamName, pointsAwarded: decimalNumber(pickQuarter.pointsAwarded) } : null,
+      semiFinalist: pickSemi ? { teamExternalId: pickSemi.teamExternalId, teamName: pickSemi.teamName, pointsAwarded: decimalNumber(pickSemi.pointsAwarded) } : null,
+      finalist: pickFinalist ? { teamExternalId: pickFinalist.teamExternalId, teamName: pickFinalist.teamName, pointsAwarded: decimalNumber(pickFinalist.pointsAwarded) } : null,
     },
     options: {
       teams: teams

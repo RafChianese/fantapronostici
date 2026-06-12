@@ -13,6 +13,28 @@ import { filterPredictableMatches } from "../lib/predictableMatches.js";
 
 export const adminRouter = Router();
 
+function decimalNumber(value: unknown, fallback = 0): number {
+  const n = Number(value ?? fallback);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function ruleForJson(rule: any) {
+  if (!rule) return rule;
+  return {
+    ...rule,
+    pointsExact: decimalNumber(rule.pointsExact),
+    pointsOutcome: decimalNumber(rule.pointsOutcome),
+    pointsSumGoals: decimalNumber(rule.pointsSumGoals),
+    pointsUnderOver25: decimalNumber(rule.pointsUnderOver25),
+    pointsScorer: decimalNumber(rule.pointsScorer),
+    pointsCompetitionWinner: decimalNumber(rule.pointsCompetitionWinner),
+    pointsCompetitionTopScorer: decimalNumber(rule.pointsCompetitionTopScorer),
+    pointsCompetitionQuarterFinalist: decimalNumber(rule.pointsCompetitionQuarterFinalist),
+    pointsCompetitionSemiFinalist: decimalNumber(rule.pointsCompetitionSemiFinalist),
+    pointsCompetitionFinalist: decimalNumber(rule.pointsCompetitionFinalist),
+  };
+}
+
 function csvCell(value: unknown): string {
   const raw = value === null || typeof value === "undefined" ? "" : String(value);
   return `"${raw.replace(/"/g, '""')}"`;
@@ -263,7 +285,7 @@ adminRouter.get("/rules", async (req, res) => {
   // - New additive table is source of truth if present
   if (monetization && rules) {
     const shaped = {
-      ...rules,
+      ...ruleForJson(rules),
       competitionType,
       entryFeeCents: typeof monetization.entryFeeCents === "number" ? monetization.entryFeeCents : rules.entryFeeCents,
       prizesJson:
@@ -276,15 +298,15 @@ adminRouter.get("/rules", async (req, res) => {
     };
     return res.json({ rules: shaped });
   }
-  res.json({ rules: rules ? { ...rules, competitionType } : rules });
+  res.json({ rules: rules ? { ...ruleForJson(rules), competitionType } : rules });
 });
 
 const RulesSchema = z.object({
-  pointsExact: z.number().int().min(0).max(50),
-  pointsOutcome: z.number().int().min(0).max(50),
-  pointsSumGoals: z.number().int().min(0).max(50),
+  pointsExact: z.number().min(0).max(50),
+  pointsOutcome: z.number().min(0).max(50),
+  pointsSumGoals: z.number().min(0).max(50),
   enableUnderOver25: z.boolean().optional().default(false),
-  pointsUnderOver25: z.number().int().min(0).max(50).optional().default(1),
+  pointsUnderOver25: z.number().min(0).max(50).optional().default(1),
   enableMatchdayAwards: z.boolean().optional().default(false),
   // Partita Jolly
   enableJolly: z.boolean().optional().default(false),
@@ -292,19 +314,19 @@ const RulesSchema = z.object({
 
   // Marcatore
   enableScorer: z.boolean().optional().default(false),
-  pointsScorer: z.number().int().min(0).max(50).optional().default(3),
+  pointsScorer: z.number().min(0).max(50).optional().default(3),
 
   // Pronostici competizione
   enableCompetitionWinner: z.boolean().optional().default(false),
-  pointsCompetitionWinner: z.number().int().min(0).max(200).optional().default(15),
+  pointsCompetitionWinner: z.number().min(0).max(200).optional().default(15),
   enableCompetitionTopScorer: z.boolean().optional().default(false),
-  pointsCompetitionTopScorer: z.number().int().min(0).max(200).optional().default(12),
+  pointsCompetitionTopScorer: z.number().min(0).max(200).optional().default(12),
   enableCompetitionQuarterFinalist: z.boolean().optional().default(false),
-  pointsCompetitionQuarterFinalist: z.number().int().min(0).max(200).optional().default(8),
+  pointsCompetitionQuarterFinalist: z.number().min(0).max(200).optional().default(8),
   enableCompetitionSemiFinalist: z.boolean().optional().default(false),
-  pointsCompetitionSemiFinalist: z.number().int().min(0).max(200).optional().default(10),
+  pointsCompetitionSemiFinalist: z.number().min(0).max(200).optional().default(10),
   enableCompetitionFinalist: z.boolean().optional().default(false),
-  pointsCompetitionFinalist: z.number().int().min(0).max(200).optional().default(12),
+  pointsCompetitionFinalist: z.number().min(0).max(200).optional().default(12),
   scoringMode: z.enum(["CUMULATIVE", "BEST_ONLY", "MIXED"]),
   allowOutcomeWithExact: z.boolean(),
   allowSumGoalsWithExact: z.boolean(),
@@ -389,7 +411,7 @@ adminRouter.put("/rules", async (req, res) => {
   await recalcAllScoresForLeague(leagueId);
   const superSetting = await prisma.superSetting.findFirst({ orderBy: { createdAt: "asc" } }).catch(() => null as any);
   const competitionType = String((superSetting as any)?.competitionType || "LEAGUE");
-  res.json({ rules: rules ? { ...rules, competitionType } : rules });
+  res.json({ rules: rules ? { ...ruleForJson(rules), competitionType } : rules });
 });
 
 // --- Partita Jolly (matchday selection) ---
@@ -615,7 +637,7 @@ adminRouter.get("/leaderboard.csv", async (req, res) => {
   const mapEmail = new Map(members.map((m) => [m.userId, m.user.email]));
 
   const data = rows
-    .map((r) => ({ userId: r.userId, points: r._sum.totalPoints ?? 0 }))
+    .map((r) => ({ userId: r.userId, points: Number(r._sum.totalPoints ?? 0) }))
     .sort((a, b) => b.points - a.points);
 
   const csv = ["displayName,email,totalPoints"]

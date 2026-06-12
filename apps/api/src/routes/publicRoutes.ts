@@ -8,6 +8,12 @@ import { filterPredictableMatches } from "../lib/predictableMatches.js";
 
 export const publicRouter = Router();
 
+function decimalNumber(value: unknown, fallback = 0): number {
+  const n = Number(value ?? fallback);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+
 async function resolveLeague(req: any) {
   const leagueId = (req.query.leagueId as string | undefined) || (typeof req.headers["x-league-id"] === "string" ? req.headers["x-league-id"] : undefined);
   const leagueCode = (req.query.leagueCode as string | undefined) || undefined;
@@ -99,11 +105,11 @@ publicRouter.get("/lock", async (req, res) => {
       jolly: !!rules?.enableJolly,
       jollyMultiplier: rules?.jollyMultiplier ?? 2,
       scorer: !!(rules as any)?.enableScorer,
-      scorerPoints: (rules as any)?.pointsScorer ?? 3,
+      scorerPoints: decimalNumber((rules as any)?.pointsScorer, 3),
       competitionWinner: !!(rules as any)?.enableCompetitionWinner,
-      competitionWinnerPoints: (rules as any)?.pointsCompetitionWinner ?? 15,
+      competitionWinnerPoints: decimalNumber((rules as any)?.pointsCompetitionWinner, 15),
       competitionTopScorer: !!(rules as any)?.enableCompetitionTopScorer,
-      competitionTopScorerPoints: (rules as any)?.pointsCompetitionTopScorer ?? 12,
+      competitionTopScorerPoints: decimalNumber((rules as any)?.pointsCompetitionTopScorer, 12),
     },
   });
 });
@@ -135,16 +141,16 @@ publicRouter.get("/regolamento-config", async (req, res) => {
 
     league: { id: league.id, name: league.name, code: league.code },
     rules: {
-      pointsExact: rules.pointsExact,
-      pointsOutcome: rules.pointsOutcome,
-      pointsSumGoals: rules.pointsSumGoals,
+      pointsExact: decimalNumber(rules.pointsExact),
+      pointsOutcome: decimalNumber(rules.pointsOutcome),
+      pointsSumGoals: decimalNumber(rules.pointsSumGoals),
       enableUnderOver25: rules.enableUnderOver25,
-      pointsUnderOver25: rules.pointsUnderOver25,
+      pointsUnderOver25: decimalNumber(rules.pointsUnderOver25),
       enableMatchdayAwards: rules.enableMatchdayAwards,
       enableJolly: (rules as any).enableJolly ?? false,
       jollyMultiplier: (rules as any).jollyMultiplier ?? 2,
       enableScorer: (rules as any).enableScorer ?? false,
-      pointsScorer: (rules as any).pointsScorer ?? 3,
+      pointsScorer: decimalNumber((rules as any).pointsScorer, 3),
       scoringMode: rules.scoringMode,
       allowOutcomeWithExact: rules.allowOutcomeWithExact,
       allowSumGoalsWithExact: rules.allowSumGoalsWithExact,
@@ -205,10 +211,10 @@ publicRouter.get("/leaderboard", async (req, res) => {
   for (const p of preds) {
     const a = agg.get(p.userId) || { totalPoints: 0, competitionPoints: 0, exactHits: 0, outcomeHits: 0, sumGoalsHits: 0, underOverHits: 0 };
     a.totalPoints += p.totalPoints ?? 0;
-    if ((p.pointsExact ?? 0) > 0) a.exactHits += 1;
-    if ((p.pointsOutcome ?? 0) > 0) a.outcomeHits += 1;
-    if ((p.pointsSumGoals ?? 0) > 0) a.sumGoalsHits += 1;
-    if (rules.enableUnderOver25 && (p.pointsUnderOver ?? 0) > 0) a.underOverHits += 1;
+    if (Number(p.pointsExact ?? 0) > 0) a.exactHits += 1;
+    if (Number(p.pointsOutcome ?? 0) > 0) a.outcomeHits += 1;
+    if (Number(p.pointsSumGoals ?? 0) > 0) a.sumGoalsHits += 1;
+    if (rules.enableUnderOver25 && Number(p.pointsUnderOver ?? 0) > 0) a.underOverHits += 1;
     agg.set(p.userId, a);
   }
 
@@ -378,7 +384,7 @@ publicRouter.get("/users/:id/summary", async (req, res) => {
       prediction: p ? { homeGoals: p.homeGoals, awayGoals: p.awayGoals } : null,
       real,
       points: p
-        ? { exact: p.pointsExact, outcome: p.pointsOutcome, sumGoals: p.pointsSumGoals, underOver: p.pointsUnderOver, total: p.totalPoints }
+        ? { exact: Number(p.pointsExact ?? 0), outcome: Number(p.pointsOutcome ?? 0), sumGoals: Number(p.pointsSumGoals ?? 0), underOver: Number(p.pointsUnderOver ?? 0), total: Number(p.totalPoints ?? 0) }
         : { exact: 0, outcome: 0, sumGoals: 0, underOver: 0, total: 0 },
     };
   });

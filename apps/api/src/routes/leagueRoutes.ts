@@ -43,10 +43,10 @@ leagueRouter.get("/stats", requireAuth, requireLeagueMember, async (req: AuthedR
   for (const p of preds) {
     const a = userAgg.get(p.userId) || { total: 0, exact: 0, outcome: 0, sumGoals: 0, underOver: 0 };
     a.total += p.totalPoints ?? 0;
-    if ((p.pointsExact ?? 0) > 0) a.exact += 1;
-    if ((p.pointsOutcome ?? 0) > 0) a.outcome += 1;
-    if ((p.pointsSumGoals ?? 0) > 0) a.sumGoals += 1;
-    if ((rules as any)?.enableUnderOver25 && (p.pointsUnderOver ?? 0) > 0) a.underOver += 1;
+    if (Number(p.pointsExact ?? 0) > 0) a.exact += 1;
+    if (Number(p.pointsOutcome ?? 0) > 0) a.outcome += 1;
+    if (Number(p.pointsSumGoals ?? 0) > 0) a.sumGoals += 1;
+    if ((rules as any)?.enableUnderOver25 && Number(p.pointsUnderOver ?? 0) > 0) a.underOver += 1;
     userAgg.set(p.userId, a);
   }
 
@@ -72,10 +72,10 @@ leagueRouter.get("/stats", requireAuth, requireLeagueMember, async (req: AuthedR
   const bestDefense = topExactHits;
 
   // Hit totals (league)
-  const exactTotal = preds.reduce((s, p) => s + ((p.pointsExact ?? 0) > 0 ? 1 : 0), 0);
-  const outcomeTotal = preds.reduce((s, p) => s + ((p.pointsOutcome ?? 0) > 0 ? 1 : 0), 0);
-  const sumGoalsTotal = preds.reduce((s, p) => s + ((p.pointsSumGoals ?? 0) > 0 ? 1 : 0), 0);
-  const underOverTotal = (rules as any)?.enableUnderOver25 ? preds.reduce((s, p) => s + ((p.pointsUnderOver ?? 0) > 0 ? 1 : 0), 0) : 0;
+  const exactTotal = preds.reduce((s, p) => s + (Number(p.pointsExact ?? 0) > 0 ? 1 : 0), 0);
+  const outcomeTotal = preds.reduce((s, p) => s + (Number(p.pointsOutcome ?? 0) > 0 ? 1 : 0), 0);
+  const sumGoalsTotal = preds.reduce((s, p) => s + (Number(p.pointsSumGoals ?? 0) > 0 ? 1 : 0), 0);
+  const underOverTotal = (rules as any)?.enableUnderOver25 ? preds.reduce((s, p) => s + (Number(p.pointsUnderOver ?? 0) > 0 ? 1 : 0), 0) : 0;
 
   // Matchday aggregates: per user per matchday points, then compute avg per matchday
   const matchdayUserTotals = new Map<string, number>(); // key: `${md}:${userId}`
@@ -86,7 +86,7 @@ leagueRouter.get("/stats", requireAuth, requireLeagueMember, async (req: AuthedR
     if (!md) continue;
 
     const key = `${md}:${p.userId}`;
-    matchdayUserTotals.set(key, (matchdayUserTotals.get(key) || 0) + (p.totalPoints ?? 0));
+    matchdayUserTotals.set(key, (matchdayUserTotals.get(key) || 0) + Number(p.totalPoints ?? 0));
 
     // Track matchday status (if any match in progress -> IN_PROGRESS, else if any not started -> NOT_STARTED, else FINISHED)
     const st = (p.match?.status as any) || "NOT_STARTED";

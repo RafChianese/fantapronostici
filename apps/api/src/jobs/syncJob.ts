@@ -350,7 +350,7 @@ export async function runSyncOnce() {
           for (const p of picks as any[]) {
             let pts = 0;
             if (p.type === "WINNER" && rules.enableCompetitionWinner && winner.teamExternalId && p.teamExternalId === winner.teamExternalId) {
-              pts = rules.pointsCompetitionWinner ?? 15;
+              pts = Number(rules.pointsCompetitionWinner ?? 15);
             }
             if (
               p.type === "TOP_SCORER" &&
@@ -358,9 +358,9 @@ export async function runSyncOnce() {
               topScorer.playerExternalId &&
               p.playerExternalId === topScorer.playerExternalId
             ) {
-              pts = rules.pointsCompetitionTopScorer ?? 12;
+              pts = Number(rules.pointsCompetitionTopScorer ?? 12);
             }
-            if ((p.pointsAwarded ?? 0) !== pts) {
+            if (Number(p.pointsAwarded ?? 0) !== pts) {
               await prisma.competitionPick.update({ where: { id: p.id }, data: { pointsAwarded: pts } });
             }
           }
