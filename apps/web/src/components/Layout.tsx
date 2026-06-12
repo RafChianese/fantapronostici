@@ -13,10 +13,10 @@ function Icon({
   name,
   active,
 }: {
-  name: "dashboard" | "leaderboard" | "predictions" | "leagues" | "menu";
+  name: "dashboard" | "leaderboard" | "predictions" | "leagues" | "menu" | "live";
   active?: boolean;
 }) {
-  const stroke = active ? (name === "menu" ? "#ffffff" : "#fb7185") : "#64748b"; // rose-400 / slate-500
+  const stroke = active ? (name === "menu" ? "#ffffff" : name === "live" ? "#34d399" : "#fb7185") : "#64748b"; // rose-400 / slate-500
   const common = {
     width: 22,
     height: 22,
@@ -34,6 +34,18 @@ function Icon({
       <svg {...common} aria-hidden="true">
         <path d="M3 10.5L12 3l9 7.5" />
         <path d="M5 10v10h5v-6h4v6h5V10" />
+      </svg>
+    );
+  }
+
+
+  if (name === "live") {
+    return (
+      <svg {...common} aria-hidden="true">
+        <path d="M12 8v4l3 2" />
+        <circle cx="12" cy="12" r="9" />
+        <path d="M4.9 4.9l2.1 2.1" />
+        <path d="M19.1 4.9l-2.1 2.1" />
       </svg>
     );
   }
@@ -172,7 +184,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         id: "tabs",
         target: '[data-tour="bottom-tabs"]',
         title: "Navigazione principale",
-        body: "Qui trovi le sezioni principali: Home, Classifica, Pronostici, Leghe e Menu.",
+        body: "Qui trovi le sezioni principali: Home, Classifica, Pronostici, Leghe e Live.",
       },
       {
         id: "predictions",
@@ -579,7 +591,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             className="mx-auto flex max-w-6xl items-stretch gap-2 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3"
           >
             
-            {/* Order: Classifica · Pronostici · Home (center) · Leghe · Menu */}
+            {/* Order: Classifica · Pronostici · Home (center) · Leghe · Live */}
             <NavLink
               to="/leaderboard"
               data-tour="tab-leaderboard"
@@ -646,16 +658,22 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 </>
               )}
             </NavLink>
-            <button
-              type="button"
-              data-tour="tab-menu"
-              onClick={() => setDrawerOpen(true)}
-              className="flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-3 py-2 text-[11px] font-semibold text-slate-300 hover:bg-slate-900/50"
-              aria-label="Apri menu"
+            <NavLink
+              to="/live"
+              data-tour="tab-live"
+              className={({ isActive }) =>
+                `flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-3 py-2 text-[11px] font-semibold ${
+                  isActive ? "bg-emerald-500/15 text-emerald-200" : "text-slate-300 hover:bg-slate-900/50"
+                }`
+              }
             >
-              <Icon name="menu" />
-              <span>Menu</span>
-            </button>
+              {({ isActive }) => (
+                <>
+                  <Icon name="live" active={isActive} />
+                  <span>Live</span>
+                </>
+              )}
+            </NavLink>
           </div>
         </nav>
       ) : null}

@@ -77,9 +77,204 @@ async function resolveFixtureIdForMatch(match: any): Promise<{ fixtureId: number
 
 export const meRouter = Router();
 
+
+meRouter.get("/live", requireAuth, requireLeagueMember, async (req: AuthedRequest, res) => {
+  const leagueId = resolveLeagueId(req);
+  if (!leagueId) return res.status(400).json({ message: "Missing leagueId" });
+
+  await ensureLeagueConfig(leagueId);
+
+  const [rules, liveMatches, members, jollyRows] = await Promise.all([
+    prisma.rule.findUnique({ where: { leagueId } }),
+    prisma.match.findMany({
+      where: { status: "IN_PROGRESS" },
+      orderBy: [{ kickoffAt: "asc" }],
+      select: {
+        id: true,
+        matchday: true,
+        group: true,
+        homeTeam: true,
+        awayTeam: true,
+        homeLogo: true,
+        awayLogo: true,
+        kickoffAt: true,
+        status: true,
+        homeScore: true,
+        awayScore: true,
+      },
+    }),
+    prisma.leagueMember.findMany({
+      where: { leagueId, status: "APPROVED" },
+      include: { user: true },
+      orderBy: { createdAt: "asc" },
+    }),
+    prisma.matchdayJolly.findMany({ where: { leagueId }, select: { matchId: true } }),
+  ]);
+
+  if (!rules) return res.status(500).json({ message: "Missing rules for league" });
+
+  const matchIds = liveMatches.map((m) => m.id);
+  const predictions = matchIds.length
+    ? await prisma.prediction.findMany({ where: { leagueId, matchId: { in: matchIds } } })
+    : [];
+
+  const predByUserMatch = new Map<string, any>();
+  for (const p of predictions) predByUserMatch.set(`${p.userId}:${p.matchId}`, p);
+
+  const jollySet = new Set(jollyRows.map((r) => String(r.matchId)));
+
+  const matches = liveMatches.map((match) => {
+    const isJolly = jollySet.has(String(match.id));
+    const participants = members.map((m) => {
+      const prediction = predByUserMatch.get(`${m.userId}:${match.id}`) || null;
+      const live = computeLivePointsForPrediction(prediction, match, rules, isJolly);
+      return {
+        userId: m.user.id,
+        displayName: m.user.displayName,
+        avatarId: (m.user as any).avatarId ?? null,
+        avatarJson: (m.user as any).avatarJson ?? null,
+        prediction: prediction ? { homeGoals: prediction.homeGoals, awayGoals: prediction.awayGoals } : null,
+        livePoints: live.totalPoints,
+        liveBreakdown: {
+          exact: live.pointsExact,
+          outcome: live.pointsOutcome,
+          sumGoals: live.pointsSumGoals,
+          underOver: live.pointsUnderOver,
+        },
+        isExactLive: live.isExact,
+      };
+    });
+
+    participants.sort((a, b) => {
+      if (a.isExactLive !== b.isExactLive) return a.isExactLive ? -1 : 1;
+      if (Number(b.livePoints) !== Number(a.livePoints)) return Number(b.livePoints) - Number(a.livePoints);
+      return String(a.displayName).localeCompare(String(b.displayName));
+    });
+
+    return {
+      ...match,
+      isJolly,
+      participants,
+      exactLiveCount: participants.filter((p) => p.isExactLive).length,
+    };
+  });
+
+  res.json({ matches });
+});
+
 function decimalNumber(value: unknown, fallback = 0): number {
   const n = Number(value ?? fallback);
   return Number.isFinite(n) ? n : fallback;
+}
+
+
+function outcomeLive(home: number, away: number): "H" | "D" | "A" {
+  if (home > away) return "H";
+  if (home < away) return "A";
+  return "D";
+}
+
+function computeAdjustedLivePoints(params: {
+  mode: any;
+  pointsExact: number;
+  pointsOutcome: number;
+  pointsSumGoals: number;
+  pointsUnderOver: number;
+  allowOutcomeWithExact: boolean;
+  allowSumGoalsWithExact: boolean;
+  allowSumGoalsWithOutcome: boolean;
+  allowUnderOverWithExact?: boolean;
+  allowUnderOverWithOutcome?: boolean;
+  allowUnderOverWithSumGoals?: boolean;
+}) {
+  let ex = params.pointsExact;
+  let out = params.pointsOutcome;
+  let sum = params.pointsSumGoals;
+  let uo = params.pointsUnderOver;
+
+  if (params.mode === "CUMULATIVE") {
+    return { pointsExact: ex, pointsOutcome: out, pointsSumGoals: sum, pointsUnderOver: uo, totalPoints: ex + out + sum + uo };
+  }
+
+  if (params.mode === "BEST_ONLY") {
+    const max = Math.max(ex, out, sum, uo);
+    if (max <= 0) return { pointsExact: 0, pointsOutcome: 0, pointsSumGoals: 0, pointsUnderOver: 0, totalPoints: 0 };
+    if (ex === max) return { pointsExact: ex, pointsOutcome: 0, pointsSumGoals: 0, pointsUnderOver: 0, totalPoints: ex };
+    if (out === max) return { pointsExact: 0, pointsOutcome: out, pointsSumGoals: 0, pointsUnderOver: 0, totalPoints: out };
+    if (sum === max) return { pointsExact: 0, pointsOutcome: 0, pointsSumGoals: sum, pointsUnderOver: 0, totalPoints: sum };
+    return { pointsExact: 0, pointsOutcome: 0, pointsSumGoals: 0, pointsUnderOver: uo, totalPoints: uo };
+  }
+
+  const uoWithExact = params.allowUnderOverWithExact ?? true;
+  const uoWithOutcome = params.allowUnderOverWithOutcome ?? true;
+  const uoWithSum = params.allowUnderOverWithSumGoals ?? true;
+
+  if (ex > 0) {
+    out = out > 0 && params.allowOutcomeWithExact ? out : 0;
+    sum = sum > 0 && params.allowSumGoalsWithExact ? sum : 0;
+    uo = uo > 0 && uoWithExact ? uo : 0;
+    return { pointsExact: ex, pointsOutcome: out, pointsSumGoals: sum, pointsUnderOver: uo, totalPoints: ex + out + sum + uo };
+  }
+  if (out > 0) {
+    sum = sum > 0 && params.allowSumGoalsWithOutcome ? sum : 0;
+    uo = uo > 0 && uoWithOutcome ? uo : 0;
+    return { pointsExact: 0, pointsOutcome: out, pointsSumGoals: sum, pointsUnderOver: uo, totalPoints: out + sum + uo };
+  }
+  if (sum > 0) {
+    uo = uo > 0 && uoWithSum ? uo : 0;
+    return { pointsExact: 0, pointsOutcome: 0, pointsSumGoals: sum, pointsUnderOver: uo, totalPoints: sum + uo };
+  }
+  if (uo > 0) return { pointsExact: 0, pointsOutcome: 0, pointsSumGoals: 0, pointsUnderOver: uo, totalPoints: uo };
+  return { pointsExact: 0, pointsOutcome: 0, pointsSumGoals: 0, pointsUnderOver: 0, totalPoints: 0 };
+}
+
+function computeLivePointsForPrediction(prediction: { homeGoals: number; awayGoals: number } | null, match: any, rules: any, isJolly: boolean) {
+  if (!prediction || match.homeScore === null || match.homeScore === undefined || match.awayScore === null || match.awayScore === undefined) {
+    return { pointsExact: 0, pointsOutcome: 0, pointsSumGoals: 0, pointsUnderOver: 0, totalPoints: 0, isExact: false };
+  }
+
+  const ph = Number(prediction.homeGoals);
+  const pa = Number(prediction.awayGoals);
+  const rh = Number(match.homeScore);
+  const ra = Number(match.awayScore);
+
+  let pointsExact = ph === rh && pa === ra ? decimalNumber(rules.pointsExact) : 0;
+  let pointsOutcome = outcomeLive(ph, pa) === outcomeLive(rh, ra) ? decimalNumber(rules.pointsOutcome) : 0;
+  let pointsSumGoals = ph + pa === rh + ra ? decimalNumber(rules.pointsSumGoals) : 0;
+  let pointsUnderOver = 0;
+
+  if (rules.enableUnderOver25) {
+    const predOver = ph + pa > 2;
+    const realOver = rh + ra > 2;
+    if (predOver === realOver) pointsUnderOver = decimalNumber(rules.pointsUnderOver25);
+  }
+
+  const adjusted = computeAdjustedLivePoints({
+    mode: rules.scoringMode,
+    pointsExact,
+    pointsOutcome,
+    pointsSumGoals,
+    pointsUnderOver,
+    allowOutcomeWithExact: rules.allowOutcomeWithExact,
+    allowSumGoalsWithExact: rules.allowSumGoalsWithExact,
+    allowSumGoalsWithOutcome: rules.allowSumGoalsWithOutcome,
+    allowUnderOverWithExact: rules.allowUnderOverWithExact,
+    allowUnderOverWithOutcome: rules.allowUnderOverWithOutcome,
+    allowUnderOverWithSumGoals: rules.allowUnderOverWithSumGoals,
+  });
+
+  const multiplier = isJolly ? Math.max(1, Math.floor(Number(rules.jollyMultiplier || 1))) : 1;
+  const withJolly = multiplier > 1
+    ? {
+        pointsExact: adjusted.pointsExact * multiplier,
+        pointsOutcome: adjusted.pointsOutcome * multiplier,
+        pointsSumGoals: adjusted.pointsSumGoals * multiplier,
+        pointsUnderOver: adjusted.pointsUnderOver * multiplier,
+        totalPoints: adjusted.totalPoints * multiplier,
+      }
+    : adjusted;
+
+  return { ...withJolly, isExact: ph === rh && pa === ra };
 }
 
 

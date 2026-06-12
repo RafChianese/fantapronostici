@@ -31,6 +31,37 @@ export type AvatarConfig = {
 };
 
 export type UserWithAvatar = User & { avatarJson?: AvatarConfig | null };
+
+export type LiveParticipant = {
+  userId: string;
+  displayName: string;
+  avatarId?: string | null;
+  avatarJson?: AvatarConfig | null;
+  prediction: { homeGoals: number; awayGoals: number } | null;
+  livePoints: number;
+  liveBreakdown?: { exact: number; outcome: number; sumGoals: number; underOver: number };
+  isExactLive: boolean;
+};
+
+export type LiveMatch = {
+  id: string;
+  matchday: number;
+  group?: string | null;
+  homeTeam: string;
+  awayTeam: string;
+  homeLogo?: string | null;
+  awayLogo?: string | null;
+  kickoffAt: string;
+  status: "IN_PROGRESS";
+  homeScore: number | null;
+  awayScore: number | null;
+  isJolly?: boolean;
+  exactLiveCount: number;
+  participants: LiveParticipant[];
+};
+
+export type LiveResponse = { matches: LiveMatch[] };
+
 export type LeagueBranding = { logoUrl?: string | null; logoDataUrl?: string | null };
 export type League = { id: string; name: string; code: string; branding?: LeagueBranding | null };
 export type Membership = {
@@ -303,6 +334,7 @@ export const api = {
   matchDetail: (matchId: string) => request(`/api/me/matches/${encodeURIComponent(matchId)}/detail`) as Promise<MatchDetailResponse>,
   setScorer: (matchId: string, payload: { playerId: number | null; playerName?: string | null }) =>
     request(`/api/me/matches/${encodeURIComponent(matchId)}/scorer`, { method: "PUT", body: JSON.stringify(payload) }),
+  live: () => request(`/api/me/live`) as Promise<LiveResponse>,
   competitionPredictions: () => request(`/api/me/competition-predictions`) as Promise<CompetitionPredictionsResponse>,
   saveCompetitionPredictions: (body: SaveCompetitionPredictionsBody) =>
     request(`/api/me/competition-predictions`, { method: "PUT", body: JSON.stringify(body) }) as Promise<CompetitionPredictionsResponse>,

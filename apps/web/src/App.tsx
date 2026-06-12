@@ -19,6 +19,7 @@ import UserSummaryPage from "./pages/UserSummaryPage";
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
 import SuperAdminPage from "./pages/SuperAdminPage";
 import RegolamentoPage from "./pages/RegolamentoPage";
+import LivePage from "./pages/LivePage";
 import { setToken } from "./lib/api";
 
 function HashTokenBootstrapper() {
@@ -163,6 +164,16 @@ export default function App() {
           />
 
           
+
+
+          <Route
+            path="/live"
+            element={
+              <RequireLeague>
+                <LivePage />
+              </RequireLeague>
+            }
+          />
 
           <Route
             path="/predictions"
