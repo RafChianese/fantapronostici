@@ -20,7 +20,7 @@ export function LeagueAvatar({ leagueId, leagueName, logoSrc, size = 40 }: { lea
         src={url.startsWith("data:") ? url : `${url}?v=${encodeURIComponent(String(Date.now()))}`}
         alt={leagueName}
         style={baseStyle}
-        className="shrink-0 rounded-full object-cover border border-slate-800"
+        className="shrink-0 rounded-full object-cover border border-white/10"
         onError={() => setBroken(true)}
       />
     );
@@ -29,7 +29,7 @@ export function LeagueAvatar({ leagueId, leagueName, logoSrc, size = 40 }: { lea
   return (
     <div
       style={baseStyle}
-      className="shrink-0 rounded-full border border-slate-800 bg-slate-950 flex items-center justify-center text-slate-200 font-semibold"
+      className="shrink-0 rounded-full border border-white/10 bg-slate-950 flex items-center justify-center text-slate-200 font-semibold"
       aria-label={leagueName}
       title={leagueName}
     >

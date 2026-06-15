@@ -89,7 +89,7 @@ export default function CompetitionPredictionsPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="tm-page-stack">
       <Card>
         <CardHeader title="Pronostici del torneo" subtitle="Vincitore, fasi a eliminazione e capocannoniere" right={<Button variant="secondary" onClick={load}>Aggiorna</Button>} />
         <CardContent className="space-y-4">
@@ -108,7 +108,7 @@ export default function CompetitionPredictionsPage() {
 
           {!loading && data && enabledAny ? (
             <>
-              <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4 text-sm text-slate-300 space-y-1">
+              <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4 text-sm text-slate-300 space-y-1">
                 <div>
                   <b>Deadline:</b> {deadlineLabel || "(automatica)"}
                 </div>
@@ -121,7 +121,7 @@ export default function CompetitionPredictionsPage() {
                 <div className="space-y-2">
                   <div className="text-sm font-semibold text-slate-100">Vincitore competizione (+{data.points.winner} punti)</div>
                   <select
-                    className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+                    className="w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100"
                     disabled={!canEdit || saving}
                     value={winnerId}
                     onChange={(e) => setWinnerId(e.target.value)}
@@ -134,7 +134,7 @@ export default function CompetitionPredictionsPage() {
                     ))}
                   </select>
                   {data.picks.winner?.pointsAwarded ? (
-                    <div className="text-xs text-slate-600">Punti assegnati: {data.picks.winner.pointsAwarded}</div>
+                    <div className="text-xs text-slate-400">Punti assegnati: {data.picks.winner.pointsAwarded}</div>
                   ) : null}
                 </div>
               ) : null}
@@ -177,7 +177,7 @@ export default function CompetitionPredictionsPage() {
                 <div className="space-y-2">
                   <div className="text-sm font-semibold text-slate-100">Capocannoniere (+{data.points.topScorer} punti)</div>
                   <select
-                    className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+                    className="w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100"
                     disabled={!canEdit || saving}
                     value={scorerId}
                     onChange={(e) => setScorerId(e.target.value)}
@@ -190,7 +190,7 @@ export default function CompetitionPredictionsPage() {
                     ))}
                   </select>
                   {data.picks.topScorer?.pointsAwarded ? (
-                    <div className="text-xs text-slate-600">Punti assegnati: {data.picks.topScorer.pointsAwarded}</div>
+                    <div className="text-xs text-slate-400">Punti assegnati: {data.picks.topScorer.pointsAwarded}</div>
                   ) : null}
                 </div>
               ) : null}
@@ -199,7 +199,7 @@ export default function CompetitionPredictionsPage() {
                 <Button onClick={save} disabled={!canEdit || saving}>
                   {saving ? "Salvo…" : "Salva"}
                 </Button>
-                {!canEdit ? <span className="text-xs text-slate-500 self-center">Scelte bloccate dopo la deadline.</span> : null}
+                {!canEdit ? <span className="text-xs text-slate-400 self-center">Scelte bloccate dopo la deadline.</span> : null}
               </div>
             </>
           ) : null}
@@ -215,7 +215,7 @@ function TeamPickSelect({ title, value, onChange, teams, disabled, pointsAwarded
     <div className="space-y-2">
       <div className="text-sm font-semibold text-slate-100">{title}</div>
       <select
-        className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+        className="w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100"
         disabled={disabled}
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -227,7 +227,7 @@ function TeamPickSelect({ title, value, onChange, teams, disabled, pointsAwarded
           </option>
         ))}
       </select>
-      {pointsAwarded ? <div className="text-xs text-slate-600">Punti assegnati: {pointsAwarded}</div> : null}
+      {pointsAwarded ? <div className="text-xs text-slate-400">Punti assegnati: {pointsAwarded}</div> : null}
     </div>
   );
 }

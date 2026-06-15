@@ -56,7 +56,7 @@ export default function LoginPage() {
             </Button>
           </div>
 
-          <div className="flex items-center gap-3 text-xs text-slate-500">
+          <div className="flex items-center gap-3 text-xs text-slate-400">
             <div className="h-px flex-1 bg-white/10" />
             <span>oppure</span>
             <div className="h-px flex-1 bg-white/10" />

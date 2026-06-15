@@ -397,7 +397,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               aria-expanded={desktopMenuOpen ? "true" : "false"}
             >
               Menu
-              <span className="text-slate-500">▾</span>
+              <span className="text-slate-400">▾</span>
             </button>
 
             {desktopMenuOpen ? (
@@ -520,7 +520,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
             <div className="p-3">
               <div className="flex flex-col gap-2">
-                <div className="px-3 pt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Principale</div>
+                <div className="px-3 pt-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Principale</div>
 
                 {/* Main sections (same as bottom tabs) */}
                 <NavItem to="/" icon={<Home size={18} />} onClick={() => setDrawerOpen(false)}>
@@ -540,7 +540,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   </>
                 ) : null}
 
-                <div className="mt-1 px-3 pt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Altro</div>
+                <div className="mt-1 px-3 pt-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Altro</div>
                 {isLeagueAdmin || isSuperAdmin ? (
                   <NavItem to="/admin" icon={<Shield size={18} />} onClick={() => setDrawerOpen(false)}>
                     Area admin
@@ -590,7 +590,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <main className={`relative mx-auto max-w-6xl px-4 py-6 ${mobileMainTabsVisible ? "pb-24 md:pb-6" : ""}`}>
         {switchingLeague ? (
           <div className="absolute inset-0 z-20 flex items-start justify-center bg-slate-950/60 pt-6 backdrop-blur-sm">
-            <div className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 shadow-sm">
+            <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 shadow-sm">
               <Spinner />
               <div className="text-sm font-medium text-slate-100">Aggiorno la lega…</div>
             </div>
@@ -614,7 +614,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               data-tour="tab-leaderboard"
               className={({ isActive }) =>
                 `flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-semibold ${
-                  isActive ? "bg-rose-500/15 text-rose-200" : "text-slate-300 hover:bg-slate-900/50"
+                  isActive ? "bg-rose-500/15 text-rose-200" : "text-slate-300 hover:bg-white/5"
                 }`
               }
             >
@@ -630,7 +630,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               data-tour="tab-predictions"
               className={({ isActive }) =>
                 `flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-semibold ${
-                  isActive ? "bg-rose-500/15 text-rose-200" : "text-slate-300 hover:bg-slate-900/50"
+                  isActive ? "bg-rose-500/15 text-rose-200" : "text-slate-300 hover:bg-white/5"
                 }`
               }
             >
@@ -647,7 +647,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               data-tour="tab-dashboard"
               className={({ isActive }) =>
                 `flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-semibold ${
-                  isActive ? "bg-rose-500/15 text-rose-200" : "text-slate-300 hover:bg-slate-900/50"
+                  isActive ? "bg-rose-500/15 text-rose-200" : "text-slate-300 hover:bg-white/5"
                 }`
               }
             >
@@ -664,7 +664,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               data-tour="tab-leagues"
               className={({ isActive }) =>
                 `flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-semibold ${
-                  isActive ? "bg-rose-500/15 text-rose-200" : "text-slate-300 hover:bg-slate-900/50"
+                  isActive ? "bg-rose-500/15 text-rose-200" : "text-slate-300 hover:bg-white/5"
                 }`
               }
             >
@@ -680,7 +680,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               data-tour="tab-calendar"
               className={({ isActive }) =>
                 `flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-semibold ${
-                  isActive ? "bg-sky-500/15 text-sky-200" : "text-slate-300 hover:bg-slate-900/50"
+                  isActive ? "bg-sky-500/15 text-sky-200" : "text-slate-300 hover:bg-white/5"
                 }`
               }
             >
@@ -696,7 +696,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               data-tour="tab-live"
               className={({ isActive }) =>
                 `flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-semibold ${
-                  isActive ? "bg-emerald-500/15 text-emerald-200" : "text-slate-300 hover:bg-slate-900/50"
+                  isActive ? "bg-emerald-500/15 text-emerald-200" : "text-slate-300 hover:bg-white/5"
                 }`
               }
             >

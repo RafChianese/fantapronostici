@@ -121,8 +121,8 @@ export default function LeaderboardPage() {
   }, [sortKey, sortDir, activeLeagueId]);
 
   return (
-    <div className="space-y-4">
-      <div className="overflow-hidden rounded-3xl border border-slate-800 shadow-sm">
+    <div className="tm-page-stack">
+      <div className="overflow-hidden rounded-3xl border border-white/10 shadow-sm">
         <div
           className="text-white"
           style={{
@@ -167,7 +167,7 @@ export default function LeaderboardPage() {
               <Button variant="ghost" onClick={() => setSortOpen(false)} aria-label="Chiudi">✕</Button>
             </div>
 
-            <div className="divide-y divide-slate-800">
+            <div className="divide-y divide-white/10">
               {sortOptions.map((opt) => {
                 const active = opt.key === sortKey && opt.dir === sortDir;
                 return (
@@ -182,7 +182,7 @@ export default function LeaderboardPage() {
                   >
                     <span className="text-sm text-slate-100">{opt.label}</span>
                     <span
-                      className={`h-5 w-5 rounded-full border ${active ? "border-rose-500 bg-rose-500" : "border-slate-700"}`}
+                      className={`h-5 w-5 rounded-full border ${active ? "border-rose-500 bg-rose-500" : "border-white/20"}`}
                       aria-hidden="true"
                     />
                   </button>
@@ -197,7 +197,7 @@ export default function LeaderboardPage() {
           <div className="hidden sm:block">
             <label className="text-xs text-slate-400">Ordina</label>
             <select
-              className="mt-1 w-[260px] rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+              className="mt-1 w-[260px] rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100"
               value={sortParam}
               onChange={(e) => {
                 const v = e.target.value;
@@ -313,7 +313,7 @@ export default function LeaderboardPage() {
               <div key={r.userId} className={`py-3 ${top3Row} ${isMe ? "brightness-110" : ""} ${flashCls}`}>
                 <Link
                   to={`/users/${r.userId}`}
-                  className="group block rounded-2xl px-2 py-2 transition hover:bg-slate-900/40 focus:outline-none focus:ring-2 focus:ring-rose-400/40"
+                  className="group block rounded-2xl px-2 py-2 transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-rose-400/40"
                   aria-label={`Apri il dettaglio di ${r.displayName}`}
                 >
                 {/* Mobile: 2 righe senza scroll orizzontale. Desktop: layout a colonne */}
@@ -321,7 +321,7 @@ export default function LeaderboardPage() {
                   <div className="flex items-center justify-between sm:col-span-6 sm:justify-start sm:gap-3">
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-2">
-                        <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-extrabold ${isPrizePosition ? "border-rose-500/25 bg-slate-950" : "border-slate-800 bg-slate-900/50"} ${medalGlow}`}>
+                        <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-extrabold ${isPrizePosition ? "border-rose-400/35 bg-rose-500/10" : "border-white/10 bg-white/5"} ${medalGlow}`}>
                           <span className="tabular-nums">#{idx + 1}</span>
                           {medal ? <span aria-hidden="true">{medal}</span> : null}
                         </span>

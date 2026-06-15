@@ -112,12 +112,12 @@ function CustomizeTab({ goToRules }: { goToRules: () => void }) {
         <div className="flex flex-col items-center gap-3">
           <div className="relative">
             <div
-              className={`h-32 w-32 rounded-full border border-slate-800 bg-slate-100 overflow-hidden flex items-center justify-center ${logoBusy ? "opacity-70" : ""}`}
+              className={`h-32 w-32 rounded-full border border-white/10 bg-white/10 overflow-hidden flex items-center justify-center ${logoBusy ? "opacity-70" : ""}`}
             >
               {logoSrc ? (
                 <img src={logoSrc} alt="Logo lega" className="h-full w-full object-cover" />
               ) : (
-                <div className="text-slate-500 font-semibold text-2xl">{(league.name || "L").slice(0, 2).toUpperCase()}</div>
+                <div className="text-slate-400 font-semibold text-2xl">{(league.name || "L").slice(0, 2).toUpperCase()}</div>
               )}
             </div>
 
@@ -139,7 +139,7 @@ function CustomizeTab({ goToRules }: { goToRules: () => void }) {
             <label
               htmlFor="league-logo-input"
               title={logoSrc ? "Modifica logo" : "Carica logo"}
-              className={`absolute -right-2 bottom-3 h-10 w-10 rounded-full border border-slate-800 bg-slate-950 shadow-sm flex items-center justify-center cursor-pointer hover:shadow transition ${logoBusy ? "pointer-events-none opacity-60" : ""}`}
+              className={`absolute -right-2 bottom-3 h-10 w-10 rounded-full border border-white/10 bg-slate-950/70 shadow-sm flex items-center justify-center cursor-pointer hover:shadow transition ${logoBusy ? "pointer-events-none opacity-60" : ""}`}
             >
               {logoSrc ? (
                 // pencil
@@ -162,7 +162,7 @@ function CustomizeTab({ goToRules }: { goToRules: () => void }) {
                 type="button"
                 title="Rimuovi logo"
                 onClick={removeLogo}
-                className={`absolute -left-2 bottom-3 h-10 w-10 rounded-full border border-slate-800 bg-slate-950 shadow-sm flex items-center justify-center hover:shadow transition ${logoBusy ? "pointer-events-none opacity-60" : ""}`}
+                className={`absolute -left-2 bottom-3 h-10 w-10 rounded-full border border-white/10 bg-slate-950/70 shadow-sm flex items-center justify-center hover:shadow transition ${logoBusy ? "pointer-events-none opacity-60" : ""}`}
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
@@ -260,7 +260,7 @@ function MembersTab() {
       <CardHeader title="Partecipanti della lega" subtitle="Approva richieste, assegna admin ed esporta i pronostici" />
       <CardContent>
         {err ? <Alert tone="danger">{err}</Alert> : null}
-        <div className="mb-4 flex flex-col gap-2 rounded-xl border border-slate-800 bg-slate-950/40 p-4 md:flex-row md:items-center md:justify-between">
+        <div className="mb-4 flex flex-col gap-2 rounded-xl border border-white/10 bg-white/5 p-4 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="font-semibold text-slate-100">Export pronostici</div>
             <div className="text-sm text-slate-400">Scarica una griglia CSV apribile con Excel: utenti sulle righe, match e pronostici torneo sulle colonne.</div>
@@ -277,7 +277,7 @@ function MembersTab() {
               return (
             <div
               key={m.id}
-              className="flex flex-col gap-2 rounded-xl border border-slate-800 p-4 md:flex-row md:items-center md:justify-between"
+              className="flex flex-col gap-2 rounded-xl border border-white/10 p-4 md:flex-row md:items-center md:justify-between"
             >
               <div>
                 <div className="flex items-center gap-2">
@@ -285,16 +285,16 @@ function MembersTab() {
                   {m.status === "APPROVED" ? (
                     m.predictionCheck?.required ? (
                       m.predictionCheck.complete ? (
-                        <span className="inline-flex items-center justify-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-extrabold text-emerald-700" title="Ha inserito tutti i pronostici delle giornate pronosticabili">
+                        <span className="inline-flex items-center justify-center rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-extrabold text-emerald-200" title="Ha inserito tutti i pronostici delle giornate pronosticabili">
                           ✔
                         </span>
                       ) : (
-                        <span className="inline-flex items-center justify-center rounded-full bg-rose-100 px-2 py-0.5 text-xs font-extrabold text-rose-700" title={`Pronostici mancanti: ${m.predictionCheck.missing}`}>
+                        <span className="inline-flex items-center justify-center rounded-full bg-rose-500/15 px-2 py-0.5 text-xs font-extrabold text-rose-200" title={`Pronostici mancanti: ${m.predictionCheck.missing}`}>
                           ⚠
                         </span>
                       )
                     ) : (
-                      <span className="inline-flex items-center justify-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-extrabold text-slate-400" title="Nessuna giornata pronosticabile al momento">
+                      <span className="inline-flex items-center justify-center rounded-full bg-white/10 px-2 py-0.5 text-xs font-extrabold text-slate-400" title="Nessuna giornata pronosticabile al momento">
                         —
                       </span>
                     )
@@ -308,11 +308,11 @@ function MembersTab() {
                 {m.status === "APPROVED" ? (
                   m.predictionCheck?.required ? (
                     !m.predictionCheck.complete ? (
-                      <div className="mt-1 text-xs font-semibold text-rose-700">
+                      <div className="mt-1 text-xs font-semibold text-rose-200">
                         Mancano {m.predictionCheck.missing} pronostici (su {m.predictionCheck.required})
                       </div>
                     ) : (
-                      <div className="mt-1 text-xs font-semibold text-emerald-700">
+                      <div className="mt-1 text-xs font-semibold text-emerald-200">
                         Pronostici completi ({m.predictionCheck.done}/{m.predictionCheck.required})
                       </div>
                     )
@@ -616,7 +616,7 @@ function RulesTab() {
                     />
                   </div>
                 ) : (
-                  <div className="rounded-2xl border border-slate-800 bg-slate-900/30 p-3 text-xs text-slate-400">
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-slate-400">
                     I pronostici su quarti, semifinali e finale sono disponibili solo se il SuperAdmin imposta la competizione come coppa con fasi a eliminazione.
                   </div>
                 )}
@@ -629,7 +629,7 @@ function RulesTab() {
             <Section title="Modalità punteggio" hint="Scegli come combinare i punteggi (cumulativo, solo il migliore, oppure misto configurabile).">
               <div className="space-y-3">
                 <select
-                  className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm"
+                  className="w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm"
                   value={rules?.scoringMode || "CUMULATIVE"}
                   onChange={(e) => setRules({ ...rules, scoringMode: e.target.value })}
                 >
@@ -638,7 +638,7 @@ function RulesTab() {
                   <option value="MIXED">Misto (configurabile)</option>
                 </select>
 
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/30 p-3 text-xs text-slate-400">
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-slate-400">
                   {rules?.scoringMode === "CUMULATIVE" ? (
                     <span>In modalità <b className="text-slate-200">Cumulativo</b> ogni categoria corretta si somma. Se Under/Over 2.5 è attivo, si somma sempre anche lui.</span>
                   ) : rules?.scoringMode === "BEST_ONLY" ? (
@@ -649,7 +649,7 @@ function RulesTab() {
                 </div>
 
                 {rules?.scoringMode === "MIXED" ? (
-                  <div className="rounded-2xl border border-slate-800 p-4 space-y-3">
+                  <div className="rounded-2xl border border-white/10 p-4 space-y-3">
                     <div className="text-sm font-semibold text-slate-100 flex items-center gap-2">
                       Regole modalità mista <HelpHint text="Definisci quali punti si sommano quando prendi un risultato esatto o un esito (1X2). Under/Over 2.5 resta configurabile con i tre flag dedicati qui sotto." />
                     </div>
@@ -670,7 +670,7 @@ function RulesTab() {
                     />
 
                     {rules?.enableUnderOver25 ? (
-                      <div className="mt-2 rounded-xl border border-slate-800 bg-slate-900/40 p-3 space-y-2">
+                      <div className="mt-2 rounded-xl border border-white/10 bg-white/5 p-3 space-y-2">
                         <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                           Under/Over 2.5 in modalità mista
                         </div>
@@ -694,7 +694,7 @@ function RulesTab() {
                         />
                       </div>
                     ) : (
-                      <div className="text-xs text-slate-500">(Attiva Under/Over 2.5 per configurare queste opzioni.)</div>
+                      <div className="text-xs text-slate-400">(Attiva Under/Over 2.5 per configurare queste opzioni.)</div>
                     )}
                   </div>
                 ) : null}
@@ -779,10 +779,10 @@ function RulesTab() {
                     setRules({ ...rules, entryFeeCents: Number.isFinite(cents) ? cents : null });
                   }}
                 />
-                <div className="rounded-xl border border-slate-800 p-3">
-                  <div className="text-xs text-slate-500">Posizioni a premio</div>
+                <div className="rounded-xl border border-white/10 p-3">
+                  <div className="text-xs text-slate-400">Posizioni a premio</div>
                   <div className="text-sm font-semibold">{prizes.length}</div>
-                  <div className="text-xs text-slate-500 mt-1">Aggiungi/rimuovi sotto</div>
+                  <div className="text-xs text-slate-400 mt-1">Aggiungi/rimuovi sotto</div>
                 </div>
               </div>
 
@@ -807,7 +807,7 @@ function RulesTab() {
 
                     <button
                       type="button"
-                      className="mb-[6px] h-10 w-10 rounded-xl border border-slate-800 bg-slate-950 hover:shadow-sm transition flex items-center justify-center"
+                      className="mb-[6px] h-10 w-10 rounded-xl border border-white/10 bg-slate-950/70 hover:shadow-sm transition flex items-center justify-center"
                       title="Rimuovi premio"
                       onClick={() => {
                         const next = prizes.filter((_, i) => i !== idx).map((x, i) => ({ ...x, position: i + 1 }));
@@ -869,7 +869,7 @@ function RulesTab() {
                 (jolly?.selections || []).forEach((s: any) => selMap.set(Number(s.matchday), String(s.matchId)));
 
                 if (matchdays.length === 0) {
-                  return <div className="text-xs text-slate-500">Nessuna partita disponibile.</div>;
+                  return <div className="text-xs text-slate-400">Nessuna partita disponibile.</div>;
                 }
 
                 return (
@@ -878,14 +878,14 @@ function RulesTab() {
                       const list = (byMd.get(md) || []).slice().sort((a: any, b: any) => new Date(a.kickoffAt).getTime() - new Date(b.kickoffAt).getTime());
                       const current = selMap.get(md) || "";
                       return (
-                        <div key={md} className="rounded-2xl border border-slate-800 p-3">
+                        <div key={md} className="rounded-2xl border border-white/10 p-3">
                           <div className="mb-2 flex items-center justify-between">
                             <div className="text-sm font-semibold text-slate-100">Giornata {md}</div>
-                            {current ? <span className="text-xs font-semibold text-amber-700">⭐ Selezionata</span> : <span className="text-xs text-slate-500">—</span>}
+                            {current ? <span className="text-xs font-semibold text-amber-200">⭐ Selezionata</span> : <span className="text-xs text-slate-400">—</span>}
                           </div>
 
                           <select
-                            className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm"
+                            className="w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm"
                             value={current}
                             onChange={async (e) => {
                               const v = e.target.value || "";
@@ -929,7 +929,7 @@ function RulesTab() {
                 );
               })()}
 
-              <div className="text-xs text-slate-500">
+              <div className="text-xs text-slate-400">
                 Nota: se la feature è disattivata, la selezione non ha effetti sul punteggio (ma viene comunque salvata).
               </div>
             </CardContent>
@@ -939,7 +939,7 @@ function RulesTab() {
           <Card>
             <CardHeader title="Lock pronostici" subtitle="Blocco automatico gestito dal calendario" />
             <CardContent className="space-y-4">
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                 <div className="text-sm font-semibold flex items-center gap-2">
                   Come funziona <HelpHint text="Il lock è automatico: parte X minuti prima del match rilevante. In modalità 'giornata per giornata' il lock è per-matchday (solo la giornata interessata), così i rinvii non bloccano le giornate successive." />
                 </div>
@@ -971,7 +971,7 @@ function RulesTab() {
 
               <Section title="Anticipo lock" hint="Quanto tempo prima del primo match rilevante bloccare i pronostici.">
                 <select
-                  className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm"
+                  className="w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm"
                   value={String(settings?.lockOffsetMinutes ?? 30)}
                   onChange={(e) => setSettings({ ...settings, lockOffsetMinutes: Number(e.target.value) })}
                 >
@@ -1165,7 +1165,7 @@ function TieBreakerRow({
   return (
     <label className="flex items-center justify-between gap-3 text-sm">
       <span className="text-slate-300">{label}</span>
-      <select className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm" value={value} onChange={(e) => onChange(e.target.value as any)}>
+      <select className="rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm" value={value} onChange={(e) => onChange(e.target.value as any)}>
         <option value="EXACT">Risultati esatti</option>
         <option value="OUTCOME">Pronostici (1X2)</option>
         <option value="SUM_GOALS">Somma gol</option>
@@ -1193,7 +1193,7 @@ function HelpHint({ text }: { text: string }) {
       <button
         type="button"
         aria-label="Aiuto"
-        className="h-5 w-5 rounded-full border border-slate-800 bg-slate-950 text-slate-400 hover:shadow-sm transition inline-flex items-center justify-center"
+        className="h-5 w-5 rounded-full border border-white/10 bg-slate-950/70 text-slate-400 hover:shadow-sm transition inline-flex items-center justify-center"
         onClick={() => setOpen((v) => !v)}
       >
         ?
@@ -1207,7 +1207,7 @@ function HelpHint({ text }: { text: string }) {
               aria-label="Chiudi aiuto"
               onClick={() => setOpen(false)}
             />
-            <div className="absolute bottom-0 left-0 right-0 rounded-t-2xl bg-slate-950 p-4 shadow-2xl">
+            <div className="absolute bottom-0 left-0 right-0 rounded-t-2xl bg-slate-950/70 p-4 shadow-2xl">
               <div className="mb-2 flex items-center justify-between">
                 <div className="text-base font-semibold text-slate-100">Info</div>
                 <button type="button" className="text-sm font-semibold text-slate-400" onClick={() => setOpen(false)}>
@@ -1221,10 +1221,10 @@ function HelpHint({ text }: { text: string }) {
             </div>
           </div>
         ) : (
-          <div className="absolute z-30 top-7 right-0 w-72 rounded-xl border border-slate-800 bg-slate-950 p-3 text-xs text-slate-300 shadow-lg">
+          <div className="absolute z-30 top-7 right-0 w-72 rounded-xl border border-white/10 bg-slate-950/70 p-3 text-xs text-slate-300 shadow-lg">
             <div className="whitespace-pre-wrap">{text}</div>
             <div className="mt-2 flex justify-end">
-              <button type="button" className="text-xs text-slate-500 hover:text-slate-300" onClick={() => setOpen(false)}>
+              <button type="button" className="text-xs text-slate-400 hover:text-slate-300" onClick={() => setOpen(false)}>
                 Chiudi
               </button>
             </div>
@@ -1237,7 +1237,7 @@ function HelpHint({ text }: { text: string }) {
 
 function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-slate-800 p-4">
+    <div className="rounded-2xl border border-white/10 p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="text-sm font-semibold text-slate-100">{title}</div>
@@ -1283,10 +1283,10 @@ function SwitchRow({
         }}
         className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition ${
           disabled
-            ? "cursor-not-allowed opacity-60 bg-slate-950/40 border-slate-800"
+            ? "cursor-not-allowed opacity-60 bg-white/5 border-white/10"
             : checked
               ? "bg-emerald-500 border-emerald-400"
-              : "bg-slate-200 border-slate-800"
+              : "bg-slate-200 border-white/10"
         }`}
       >
         <span
@@ -1315,7 +1315,7 @@ function RadioCard({
       type="button"
       onClick={onSelect}
       className={`text-left rounded-2xl border p-4 transition ${
-        checked ? "border-rose-400/45 bg-rose-500/10 shadow-[0_12px_30px_rgba(0,0,0,0.22)]" : "border-slate-700 bg-slate-950/60 hover:border-slate-500 hover:bg-slate-950"
+        checked ? "border-rose-400/45 bg-rose-500/10 shadow-[0_12px_30px_rgba(0,0,0,0.22)]" : "border-white/20 bg-slate-950/60 hover:border-slate-500 hover:bg-slate-950"
       }`}
     >
       <div className="flex items-start gap-3">

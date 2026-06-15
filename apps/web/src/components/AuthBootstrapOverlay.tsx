@@ -25,7 +25,7 @@ export function AuthBootstrapOverlay({
       aria-modal="true"
       aria-label={label}
     >
-      <div className="w-[min(92vw,460px)] rounded-2xl bg-slate-950 p-6 shadow-xl border border-slate-800">
+      <div className="w-[min(92vw,460px)] rounded-2xl bg-slate-950/70 p-6 shadow-xl border border-white/10">
         <div className="flex items-center gap-3">
           {!isError ? <Spinner /> : null}
           <div className="text-base font-semibold text-slate-100">{label}</div>

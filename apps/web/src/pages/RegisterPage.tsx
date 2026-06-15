@@ -40,16 +40,16 @@ export default function RegisterPage() {
                 }}
                 placeholder="Es. Mario Rossi"
               />
-              {nameErr ? <div className="text-xs text-rose-700">{nameErr}</div> : null}
+              {nameErr ? <div className="text-xs text-rose-200">{nameErr}</div> : null}
             </div>
             <Input label="Email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@esempio.com" />
             <Input label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min 8 caratteri" />
             <Input label="Conferma password" type="password" value={password2} onChange={(e) => setPassword2(e.target.value)} placeholder="Ripeti la password" />
 
-            <div className="text-xs text-slate-600">
-              La password deve avere almeno <span className={pwdOk ? "font-semibold text-emerald-700" : "font-semibold text-slate-700"}>8 caratteri</span>.
+            <div className="text-xs text-slate-400">
+              La password deve avere almeno <span className={pwdOk ? "font-semibold text-emerald-200" : "font-semibold text-slate-700"}>8 caratteri</span>.
               {password2 ? (
-                <span className={pwdMatch ? "ml-2 text-emerald-700" : "ml-2 text-rose-700"}>
+                <span className={pwdMatch ? "ml-2 text-emerald-200" : "ml-2 text-rose-200"}>
                   {pwdMatch ? "✓ Le password coincidono" : "Le password non coincidono"}
                 </span>
               ) : null}
@@ -87,7 +87,7 @@ export default function RegisterPage() {
               {busy ? "Creazione account…" : "Registrati"}
             </Button>
 
-            <div className="text-center text-sm text-slate-600">
+            <div className="text-center text-sm text-slate-400">
               Hai già un account? <Link className="text-rose-300 underline" to="/login">Accedi</Link>
             </div>
           </div>

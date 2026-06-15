@@ -114,7 +114,7 @@ export default function LivePage() {
   }, [activeLeagueId]);
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-3">
+    <div className="tm-page-narrow">
       <div className="flex items-center justify-between gap-3">
         <LiveTabs tab={tab} setTab={setTab} />
         <Button variant="secondary" onClick={() => load(false)} disabled={refreshing} className="shrink-0 !px-3">
@@ -210,11 +210,7 @@ export default function LivePage() {
                   key={match.id}
                   type="button"
                   onClick={() => setSelectedMatchId(match.id)}
-                  className={`rounded-3xl border p-4 text-left transition ${
-                    selected
-                      ? "border-rose-300/40 bg-rose-500/10 shadow-[0_20px_50px_rgba(244,63,94,0.12)]"
-                      : "border-white/10 bg-white/5 hover:bg-white/10"
-                  }`}
+                  className={`tm-match-card ${selected ? "tm-match-card-selected" : "tm-match-card-live"}`}
                 >
                   <div className="mb-3 flex items-center justify-between gap-2">
                     <Badge>Giornata {match.matchday}</Badge>
@@ -299,7 +295,7 @@ export default function LivePage() {
         </>
       )}
 
-      <div className="pb-2 text-center text-xs text-slate-500">
+      <div className="pb-2 text-center text-xs text-slate-400">
         I punteggi live sono simulati sul risultato attuale e possono cambiare fino al termine della partita.
       </div>
     </div>

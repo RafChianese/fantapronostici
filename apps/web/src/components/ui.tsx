@@ -10,11 +10,11 @@ export function Button(
     "inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:translate-y-[1px]";
   const v =
     variant === "primary"
-      ? "bg-gradient-to-r from-rose-600 to-rose-700 text-white shadow-sm hover:shadow-md hover:brightness-110"
+      ? "bg-gradient-to-r from-rose-600 to-rose-700 text-white shadow-[0_10px_30px_rgba(225,29,72,0.22)] hover:shadow-[0_14px_34px_rgba(225,29,72,0.30)] hover:brightness-110"
       : variant === "danger"
       ? "bg-rose-600 text-white hover:brightness-110"
       : variant === "ghost"
-      ? "bg-transparent text-slate-200 hover:bg-slate-800/70"
+      ? "bg-transparent text-slate-200 hover:bg-white/10"
       : "tm-glass text-slate-100 border border-white/10 shadow-sm hover:shadow-md hover:bg-white/10";
   return <button className={`${base} ${v} ${className}`} {...rest} />;
 }
@@ -26,7 +26,7 @@ export function Input(
   const inputEl = (
     <input
       id={id}
-      className={`w-full rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-rose-500/35 ${className}`}
+      className={`tm-field ${className}`}
       {...rest}
     />
   );
@@ -48,7 +48,7 @@ export function Card({ children, className = "" }: { children: React.ReactNode; 
   // making them appear anchored in the middle of the page.
   return (
     <div
-      className={`tm-glass shadow-sm transition-shadow duration-200 hover:shadow-lg ${className}`}
+      className={`tm-glass shadow-[0_14px_40px_rgba(0,0,0,0.24)] transition-shadow duration-200 hover:shadow-[0_18px_48px_rgba(0,0,0,0.32)] ${className}`}
     >
       {children}
     </div>
@@ -85,7 +85,7 @@ export function CardHeader(
         <>
           <div>
             <div className="text-lg font-semibold text-slate-100">{anyProps.title}</div>
-            {anyProps.subtitle ? <div className="mt-1 text-sm text-slate-400">{anyProps.subtitle}</div> : null}
+            {anyProps.subtitle ? <div className="mt-1 text-sm text-slate-300">{anyProps.subtitle}</div> : null}
           </div>
           {anyProps.right}
         </>

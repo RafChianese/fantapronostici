@@ -24,7 +24,7 @@ export default function OnboardingPage() {
     <div className="space-y-6">
       <div className="max-w-2xl">
         <h1 className="text-2xl font-semibold">Entra in una lega o creane una</h1>
-        <p className="mt-1 text-sm text-slate-600">
+        <p className="mt-1 text-sm text-slate-400">
           Per inserire pronostici devi appartenere ad almeno una lega.
         </p>
       </div>
@@ -38,7 +38,7 @@ export default function OnboardingPage() {
           <CardContent>
             <div className="space-y-2">
               {approved.map((m) => (
-                <div key={m.id} className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3">
+                <div key={m.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3">
                   <div className="flex items-center gap-3">
                     <LeagueAvatar
                       leagueId={m.league.id}
@@ -48,7 +48,7 @@ export default function OnboardingPage() {
                     />
                     <div>
                       <div className="font-medium">{m.league.name}</div>
-                      <div className="text-xs text-slate-600">Codice: {m.league.code} • Ruolo: {m.role}</div>
+                      <div className="text-xs text-slate-400">Codice: {m.league.code} • Ruolo: {m.role}</div>
                     </div>
                   </div>
                   <Button
@@ -72,9 +72,9 @@ export default function OnboardingPage() {
           <CardContent>
             <div className="space-y-2">
               {pending.map((m) => (
-                <div key={m.id} className="rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3">
+                <div key={m.id} className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
                   <div className="font-medium">{m.league.name}</div>
-                  <div className="text-xs text-slate-600">Codice: {m.league.code} • Stato: {m.status}</div>
+                  <div className="text-xs text-slate-400">Codice: {m.league.code} • Stato: {m.status}</div>
                 </div>
               ))}
             </div>

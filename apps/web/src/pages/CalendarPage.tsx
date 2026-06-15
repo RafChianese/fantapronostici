@@ -118,7 +118,7 @@ export default function CalendarPage() {
   );
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-3">
+    <div className="tm-page-narrow">
       <div className="flex items-center justify-between gap-3">
         <FilterTabs filter={filter} setFilter={setFilter} />
         <Button variant="secondary" onClick={() => load(false)} disabled={refreshing} className="shrink-0 !px-3">
@@ -155,9 +155,7 @@ export default function CalendarPage() {
                   key={match.id}
                   type="button"
                   onClick={() => setSelectedMatchId(match.id)}
-                  className={`rounded-3xl border p-4 text-left transition ${
-                    selected ? "border-sky-300/40 bg-sky-500/10 shadow-[0_20px_50px_rgba(56,189,248,0.12)]" : "border-white/10 bg-white/5 hover:bg-white/10"
-                  }`}
+                  className={`tm-match-card ${selected ? "tm-match-card-selected" : match.status === "IN_PROGRESS" ? "tm-match-card-live" : match.status === "FINISHED" ? "tm-match-card-finished" : "tm-match-card-next"}`}
                 >
                   <div className="mb-3 flex items-center justify-between gap-2">
                     <Badge>Giornata {match.matchday}</Badge>

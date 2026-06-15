@@ -7,7 +7,7 @@ import { Trophy, Target, CheckCircle2, Sigma, TrendingUp, BarChart3 } from "luci
 
 function StatTile({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+    <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
       <div className="text-xs text-slate-400">{label}</div>
       <div className="mt-1 text-2xl font-semibold text-slate-100">{value}</div>
     </div>
@@ -16,14 +16,14 @@ function StatTile({ label, value }: { label: string; value: React.ReactNode }) {
 
 function LeaderTile({ icon, title, name, value }: { icon: React.ReactNode; title: string; name: string; value: number }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+    <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
       <div className="flex items-center gap-2 text-xs font-semibold text-slate-300">
         {icon}
         {title}
       </div>
       <div className="mt-2 flex items-baseline justify-between gap-3">
         <div className="min-w-0 truncate text-base font-extrabold text-slate-100">{name}</div>
-        <div className="shrink-0 rounded-xl bg-slate-900/50 px-2 py-1 text-sm font-extrabold text-slate-100 ring-1 ring-slate-800">{value}</div>
+        <div className="shrink-0 rounded-xl bg-white/5 px-2 py-1 text-sm font-extrabold text-slate-100 ring-1 ring-slate-800">{value}</div>
       </div>
     </div>
   );
@@ -102,7 +102,7 @@ export default function StatsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="overflow-hidden rounded-3xl border border-slate-800 shadow-sm">
+      <div className="overflow-hidden rounded-3xl border border-white/10 shadow-sm">
         <div
           className="text-white"
           style={{
@@ -197,13 +197,13 @@ export default function StatsPage() {
         <CardHeader
           title="Distribuzione"
           subtitle="Quanti utenti rientrano in ciascuna fascia punti (per giornata)"
-          right={<BarChart3 size={18} className="text-slate-500" aria-hidden="true" />}
+          right={<BarChart3 size={18} className="text-slate-400" aria-hidden="true" />}
         />
         <CardContent>
           {data.distribution?.length ? (
             <div className="space-y-2">
               {data.distribution.map((b) => (
-                <div key={b.label} className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2">
+                <div key={b.label} className="flex items-center justify-between rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2">
                   <div className="text-sm font-semibold text-slate-100">{b.label}</div>
                   <Badge>{b.count}</Badge>
                 </div>
