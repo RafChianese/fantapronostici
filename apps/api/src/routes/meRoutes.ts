@@ -84,7 +84,7 @@ meRouter.get("/live", requireAuth, requireLeagueMember, async (req: AuthedReques
 
   await ensureLeagueConfig(leagueId);
 
-  const [rules, liveMatches, members, jollyRows] = await Promise.all([
+  const [rules, liveMatches, members, jollyRows, allLeaguePredictions, competitionPoints] = await Promise.all([
     prisma.rule.findUnique({ where: { leagueId } }),
     prisma.match.findMany({
       where: { status: "IN_PROGRESS" },
@@ -109,6 +109,12 @@ meRouter.get("/live", requireAuth, requireLeagueMember, async (req: AuthedReques
       orderBy: { createdAt: "asc" },
     }),
     prisma.matchdayJolly.findMany({ where: { leagueId }, select: { matchId: true } }),
+    prisma.prediction.findMany({ where: { leagueId }, select: { userId: true, totalPoints: true } }),
+    prisma.competitionPick.groupBy({
+      by: ["userId"],
+      where: { leagueId },
+      _sum: { pointsAwarded: true },
+    }),
   ]);
 
   if (!rules) return res.status(500).json({ message: "Missing rules for league" });
@@ -122,12 +128,16 @@ meRouter.get("/live", requireAuth, requireLeagueMember, async (req: AuthedReques
   for (const p of predictions) predByUserMatch.set(`${p.userId}:${p.matchId}`, p);
 
   const jollySet = new Set(jollyRows.map((r) => String(r.matchId)));
+  const livePointsByUser = new Map<string, number>();
+  const storedLivePointsByUser = new Map<string, number>();
 
   const matches = liveMatches.map((match) => {
     const isJolly = jollySet.has(String(match.id));
     const participants = members.map((m) => {
       const prediction = predByUserMatch.get(`${m.userId}:${match.id}`) || null;
       const live = computeLivePointsForPrediction(prediction, match, rules, isJolly);
+      livePointsByUser.set(m.user.id, (livePointsByUser.get(m.user.id) || 0) + Number(live.totalPoints || 0));
+      storedLivePointsByUser.set(m.user.id, (storedLivePointsByUser.get(m.user.id) || 0) + Number(prediction?.totalPoints ?? 0));
       return {
         userId: m.user.id,
         displayName: m.user.displayName,
@@ -159,7 +169,49 @@ meRouter.get("/live", requireAuth, requireLeagueMember, async (req: AuthedReques
     };
   });
 
-  res.json({ matches });
+  const officialTotalsByUser = new Map<string, number>();
+  for (const p of allLeaguePredictions as any[]) {
+    officialTotalsByUser.set(String(p.userId), (officialTotalsByUser.get(String(p.userId)) || 0) + Number(p.totalPoints ?? 0));
+  }
+  for (const row of competitionPoints as any[]) {
+    const userId = String(row.userId);
+    officialTotalsByUser.set(userId, (officialTotalsByUser.get(userId) || 0) + Number(row._sum?.pointsAwarded ?? 0));
+  }
+
+  const officialRows = members
+    .map((m) => ({ userId: m.user.id, totalPoints: officialTotalsByUser.get(m.user.id) || 0, displayName: m.user.displayName }))
+    .sort((a, b) => b.totalPoints - a.totalPoints || String(a.displayName).localeCompare(String(b.displayName)));
+  const officialRankByUser = new Map<string, number>();
+  officialRows.forEach((row, index) => officialRankByUser.set(row.userId, index + 1));
+
+  const liveLeaderboard = members
+    .map((m) => {
+      const officialPoints = officialTotalsByUser.get(m.user.id) || 0;
+      const livePoints = livePointsByUser.get(m.user.id) || 0;
+      const storedLivePoints = storedLivePointsByUser.get(m.user.id) || 0;
+      const liveDelta = livePoints - storedLivePoints;
+      return {
+        userId: m.user.id,
+        displayName: m.user.displayName,
+        avatarId: (m.user as any).avatarId ?? null,
+        avatarJson: (m.user as any).avatarJson ?? null,
+        officialPoints,
+        liveDelta,
+        liveTotalPoints: officialPoints + liveDelta,
+        officialRank: officialRankByUser.get(m.user.id) ?? null,
+      };
+    })
+    .sort((a, b) => {
+      if (b.liveTotalPoints !== a.liveTotalPoints) return b.liveTotalPoints - a.liveTotalPoints;
+      return String(a.displayName).localeCompare(String(b.displayName));
+    })
+    .map((row, index) => ({
+      ...row,
+      liveRank: index + 1,
+      rankDelta: row.officialRank ? row.officialRank - (index + 1) : 0,
+    }));
+
+  res.json({ matches, liveLeaderboard });
 });
 
 function decimalNumber(value: unknown, fallback = 0): number {

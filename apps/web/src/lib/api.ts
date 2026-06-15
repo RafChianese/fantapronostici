@@ -60,7 +60,20 @@ export type LiveMatch = {
   participants: LiveParticipant[];
 };
 
-export type LiveResponse = { matches: LiveMatch[] };
+export type LiveLeaderboardRow = {
+  userId: string;
+  displayName: string;
+  avatarId?: string | null;
+  avatarJson?: AvatarConfig | null;
+  officialPoints: number;
+  liveDelta: number;
+  liveTotalPoints: number;
+  officialRank?: number | null;
+  liveRank: number;
+  rankDelta: number;
+};
+
+export type LiveResponse = { matches: LiveMatch[]; liveLeaderboard?: LiveLeaderboardRow[] };
 
 export type LeagueBranding = { logoUrl?: string | null; logoDataUrl?: string | null };
 export type League = { id: string; name: string; code: string; branding?: LeagueBranding | null };

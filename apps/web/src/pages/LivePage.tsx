@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { Activity, ChevronDown, ChevronUp, RotateCw, Trophy } from "lucide-react";
-import { api, LiveMatch } from "../lib/api";
+import { Activity, ChevronDown, ChevronUp, RotateCw, Trophy, TrendingDown, TrendingUp } from "lucide-react";
+import { api, LiveLeaderboardRow, LiveMatch } from "../lib/api";
 import { UserAvatar } from "../components/Avatar";
 import { Badge, Button, Card, CardContent, CardHeader, Skeleton } from "../components/ui";
 import { useAuth } from "../lib/auth";
@@ -27,10 +26,51 @@ function TeamLogo({ src, name }: { src?: string | null; name: string }) {
   return <img src={src} alt="" className="h-9 w-9 rounded-full object-contain" />;
 }
 
+function LiveTabs({ tab, setTab }: { tab: "MATCHES" | "LEADERBOARD"; setTab: (tab: "MATCHES" | "LEADERBOARD") => void }) {
+  return (
+    <div className="grid w-full grid-cols-2 overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-1 shadow-[0_10px_30px_rgba(0,0,0,0.25)] backdrop-blur-xl">
+      <button
+        type="button"
+        onClick={() => setTab("MATCHES")}
+        className={`rounded-xl px-4 py-2.5 text-sm font-extrabold transition ${tab === "MATCHES" ? "bg-rose-600 text-white shadow-lg" : "text-slate-300 hover:bg-white/5"}`}
+      >
+        Match live
+      </button>
+      <button
+        type="button"
+        onClick={() => setTab("LEADERBOARD")}
+        className={`rounded-xl px-4 py-2.5 text-sm font-extrabold transition ${tab === "LEADERBOARD" ? "bg-rose-600 text-white shadow-lg" : "text-slate-300 hover:bg-white/5"}`}
+      >
+        Classifica live
+      </button>
+    </div>
+  );
+}
+
+function RankDelta({ value }: { value: number }) {
+  if (value > 0) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300/20 bg-emerald-400/10 px-2 py-0.5 text-xs font-black text-emerald-200">
+        <TrendingUp size={13} /> +{value}
+      </span>
+    );
+  }
+  if (value < 0) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-rose-300/20 bg-rose-400/10 px-2 py-0.5 text-xs font-black text-rose-200">
+        <TrendingDown size={13} /> {value}
+      </span>
+    );
+  }
+  return <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs font-bold text-slate-400">=</span>;
+}
+
 export default function LivePage() {
   const { activeLeagueId } = useAuth();
   const [matches, setMatches] = useState<LiveMatch[]>([]);
+  const [leaderboard, setLeaderboard] = useState<LiveLeaderboardRow[]>([]);
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
+  const [tab, setTab] = useState<"MATCHES" | "LEADERBOARD">("MATCHES");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,6 +89,7 @@ export default function LivePage() {
       .then((data) => {
         const live = Array.isArray(data?.matches) ? data.matches : [];
         setMatches(live);
+        setLeaderboard(Array.isArray(data?.liveLeaderboard) ? data.liveLeaderboard : []);
         setSelectedMatchId((prev) => {
           if (prev && live.some((m) => m.id === prev)) return prev;
           return live[0]?.id ?? null;
@@ -56,6 +97,7 @@ export default function LivePage() {
       })
       .catch((e: any) => {
         setMatches([]);
+        setLeaderboard([]);
         setSelectedMatchId(null);
         setError(e?.message || "Errore nel caricamento del live");
       })
@@ -80,9 +122,9 @@ export default function LivePage() {
               <div className="inline-flex items-center gap-2 rounded-full border border-rose-400/20 bg-rose-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-rose-100">
                 <Activity size={14} /> Live
               </div>
-              <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-slate-100">Partite in corso</h1>
+              <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-slate-100">Partite e classifica live</h1>
               <p className="mt-1 text-sm text-slate-300">
-                Apri un match per vedere i pronostici dei partecipanti e chi sta prendendo il risultato esatto live.
+                Segui i match in corso e guarda come cambierebbe la classifica con il risultato attuale.
               </p>
             </div>
             <Button variant="secondary" onClick={() => load(false)} disabled={refreshing}>
@@ -94,6 +136,8 @@ export default function LivePage() {
         </div>
       </div>
 
+      <LiveTabs tab={tab} setTab={setTab} />
+
       {loading ? (
         <div className="space-y-3">
           <Skeleton className="h-28" />
@@ -104,6 +148,60 @@ export default function LivePage() {
           <CardHeader title="Live non disponibile" subtitle={error} />
           <CardContent>
             <Button onClick={() => load(false)}>Riprova</Button>
+          </CardContent>
+        </Card>
+      ) : tab === "LEADERBOARD" ? (
+        <Card>
+          <CardHeader
+            title="Classifica live"
+            subtitle="Somma della classifica ufficiale più i punti provvisori dei match in corso. Può cambiare fino al fischio finale."
+          />
+          <CardContent>
+            {leaderboard.length === 0 ? (
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300">
+                Classifica live non disponibile. Appena ci saranno dati live, comparirà qui.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {leaderboard.map((row) => {
+                  const isMoving = Number(row.rankDelta || 0) !== 0;
+                  return (
+                    <div
+                      key={row.userId}
+                      className={`rounded-3xl border p-3 transition ${
+                        row.liveRank <= 3
+                          ? "border-yellow-200/30 bg-yellow-300/10 shadow-[0_0_35px_rgba(250,204,21,0.10)]"
+                          : isMoving
+                          ? "border-sky-300/20 bg-sky-400/10"
+                          : "border-white/10 bg-white/5"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-2xl border border-white/10 bg-slate-950/60 text-sm font-black text-white">
+                            {row.liveRank}
+                          </div>
+                          <UserAvatar avatarId={row.avatarId || null} mode="full" size={42} />
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-extrabold text-slate-100">{row.displayName}</div>
+                            <div className="mt-0.5 text-xs text-slate-400">
+                              Ufficiale: <b className="text-slate-200">{fmtPoints(row.officialPoints)}</b>
+                              {" · "}
+                              Live: <b className={Number(row.liveDelta) >= 0 ? "text-emerald-200" : "text-rose-200"}>{Number(row.liveDelta) >= 0 ? "+" : ""}{fmtPoints(row.liveDelta)}</b>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="shrink-0 text-right">
+                          <div className="text-xl font-black text-white">{fmtPoints(row.liveTotalPoints)}</div>
+                          <div className="mt-1 flex justify-end"><RankDelta value={Number(row.rankDelta || 0)} /></div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
       ) : matches.length === 0 ? (

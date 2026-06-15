@@ -869,19 +869,36 @@ export default function PredictionsPage() {
     });
   }, [searchParams, byMatchday]);
 
-  const firstNotFinishedMatchday = useMemo(() => {
-    const target = byMatchday.find(([, ms]) => !(ms.length > 0 && ms.every((x) => x.status === "FINISHED")));
-    return (target?.[0] ?? byMatchday[0]?.[0] ?? 1) as number;
-  }, [byMatchday]);
+  const orderedMatches = useMemo(() => byMatchday.flatMap(([, ms]) => ms), [byMatchday]);
+
+  const focusMatch = useMemo(() => {
+    if (!orderedMatches.length) return null;
+    const now = Date.now();
+    const byKickoff = [...orderedMatches].sort((a, b) => new Date(a.kickoffAt).getTime() - new Date(b.kickoffAt).getTime());
+
+    // Preferred UX: first match that still has to start. If everything has already started,
+    // jump to the first live match. If the tournament/day is over, jump to the last finished match.
+    const firstUpcoming = byKickoff.find((m) => m.status === "NOT_STARTED" && new Date(m.kickoffAt).getTime() > now);
+    if (firstUpcoming) return firstUpcoming;
+
+    const firstLive = byKickoff.find((m) => m.status === "IN_PROGRESS");
+    if (firstLive) return firstLive;
+
+    const lastFinished = [...byKickoff].reverse().find((m) => m.status === "FINISHED");
+    return lastFinished || byKickoff[0] || null;
+  }, [orderedMatches]);
+
+  const focusMatchday = (focusMatch?.matchday ?? byMatchday[0]?.[0] ?? 1) as number;
+  const firstNotFinishedMatchday = focusMatchday;
 
   // Selected matchday used by the "match-by-match" UI.
   useEffect(() => {
     const raw = searchParams.get("md");
     const md = raw ? Number(raw) : null;
     const mdValid = typeof md === "number" && Number.isFinite(md) && md > 0;
-    const next = mdValid ? md : firstNotFinishedMatchday;
+    const next = mdValid ? md : focusMatchday;
     setSelectedMatchday((prev) => (prev === next ? prev : next));
-  }, [searchParams, firstNotFinishedMatchday]);
+  }, [searchParams, focusMatchday]);
 
   const currentMatches = useMemo(() => {
     const entry = byMatchday.find(([md]) => md === selectedMatchday);
@@ -890,11 +907,16 @@ export default function PredictionsPage() {
 
   useEffect(() => {
     // Keep index in range when changing matchday or when matches reload.
+    // On first load/default navigation, land directly on the first useful match.
     setCurrentIndex((i) => {
+      if (focusMatch && Number(focusMatch.matchday) === Number(selectedMatchday)) {
+        const focusIndex = currentMatches.findIndex((m) => m.id === focusMatch.id);
+        if (focusIndex >= 0) return focusIndex;
+      }
       const max = Math.max(0, currentMatches.length - 1);
       return Math.min(i, max);
     });
-  }, [currentMatches.length, selectedMatchday]);
+  }, [currentMatches, selectedMatchday, focusMatch?.id]);
 
   // Compute current match BEFORE any hook dependency tries to read it.
   // Dependency arrays are evaluated during render, so referencing a const
@@ -970,34 +992,34 @@ export default function PredictionsPage() {
 
 
   useEffect(() => {
-    // UX: open ONLY the first matchday that is not finished. Everything else starts collapsed.
+    // UX: open ONLY the matchday that contains the first useful match.
     // (User can still expand/collapse manually after.)
     if (!byMatchday.length) return;
     if (initialCollapseSetRef.current) return;
     initialCollapseSetRef.current = true;
     setCollapsed(() => {
       const next: Record<number, boolean> = {};
-      for (const [md] of byMatchday) next[md] = md !== firstNotFinishedMatchday;
+      for (const [md] of byMatchday) next[md] = md !== focusMatchday;
       return next;
     });
-  }, [byMatchday, firstNotFinishedMatchday]);
+  }, [byMatchday, focusMatchday]);
 
   useEffect(() => {
     if (loading) return;
     if (hasAutoScrolledRef.current) return;
     if (!byMatchday.length) return;
 
-    const target = byMatchday.find(([, ms]) => !(ms.length > 0 && ms.every((x) => x.status === "FINISHED"))) || byMatchday[0];
-    const matchday = target?.[0];
+    const matchday = focusMatchday;
     if (!matchday) return;
 
     hasAutoScrolledRef.current = true;
     // Allow the DOM to paint before attempting to scroll.
     setTimeout(() => {
-      const el = document.getElementById(`matchday-${matchday}`);
-      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 0);
-  }, [loading, byMatchday]);
+      const matchEl = focusMatch ? document.getElementById(`match-${focusMatch.id}`) : null;
+      const dayEl = document.getElementById(`matchday-${matchday}`);
+      (matchEl || dayEl)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 80);
+  }, [loading, byMatchday, focusMatch?.id, focusMatchday]);
 
   const runAutosave = async () => {
     if (autosaveInitializedRef.current === false) autosaveInitializedRef.current = true;
@@ -1669,7 +1691,7 @@ export default function PredictionsPage() {
                   const activeQuick = (a: number, b: number) => p?.homeGoals === a && p?.awayGoals === b;
 
                   return (
-                    <div key={m.id} className="relative rounded-2xl border border-slate-800 bg-slate-950/60 p-3 transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-md">
+                    <div key={m.id} id={`match-${m.id}`} className="relative rounded-2xl border border-slate-800 bg-slate-950/60 p-3 transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-md scroll-mt-24">
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                           <StatusDot status={m.status} />
