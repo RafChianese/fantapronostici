@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { Home, Trophy, ListChecks, BookOpenText, UserCircle, Shield, Crown, BarChart3 } from "lucide-react";
+import { Home, Trophy, ListChecks, BookOpenText, UserCircle, Shield, Crown, BarChart3, CalendarDays } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { useLoading } from "../lib/loading";
 import { FullScreenLoaderOverlay } from "./FullScreenLoaderOverlay";
@@ -13,7 +13,7 @@ function Icon({
   name,
   active,
 }: {
-  name: "dashboard" | "leaderboard" | "predictions" | "leagues" | "menu" | "live";
+  name: "dashboard" | "leaderboard" | "predictions" | "leagues" | "menu" | "live" | "calendar";
   active?: boolean;
 }) {
   const stroke = active ? (name === "menu" ? "#ffffff" : name === "live" ? "#34d399" : "#fb7185") : "#64748b"; // rose-400 / slate-500
@@ -46,6 +46,17 @@ function Icon({
         <circle cx="12" cy="12" r="9" />
         <path d="M4.9 4.9l2.1 2.1" />
         <path d="M19.1 4.9l-2.1 2.1" />
+      </svg>
+    );
+  }
+
+  if (name === "calendar") {
+    return (
+      <svg {...common} aria-hidden="true">
+        <rect x="3" y="4" width="18" height="17" rx="2" />
+        <path d="M16 2v4" />
+        <path d="M8 2v4" />
+        <path d="M3 10h18" />
       </svg>
     );
   }
@@ -401,6 +412,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   <NavItem to="/predictions" onClick={() => setDesktopMenuOpen(false)}>
                     Pronostici
                   </NavItem>
+                  <NavItem to="/calendar" onClick={() => setDesktopMenuOpen(false)}>
+                    Calendario
+                  </NavItem>
                   <NavItem to="/onboarding" onClick={() => setDesktopMenuOpen(false)}>
                     Leghe
                   </NavItem>
@@ -520,6 +534,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     <NavItem to="/predictions" icon={<ListChecks size={18} />} onClick={() => setDrawerOpen(false)}>
                       I miei pronostici
                     </NavItem>
+                    <NavItem to="/calendar" icon={<CalendarDays size={18} />} onClick={() => setDrawerOpen(false)}>
+                      Calendario
+                    </NavItem>
                   </>
                 ) : null}
 
@@ -588,7 +605,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <nav className="fixed bottom-0 left-0 right-0 z-20 border-t border-white/10 tm-glass-sheet md:hidden">
           <div
             data-tour="bottom-tabs"
-            className="mx-auto flex max-w-6xl items-stretch gap-2 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3"
+            className="mx-auto flex max-w-6xl items-stretch gap-1 px-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3"
           >
             
             {/* Order: Classifica · Pronostici · Home (center) · Leghe · Live */}
@@ -596,7 +613,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               to="/leaderboard"
               data-tour="tab-leaderboard"
               className={({ isActive }) =>
-                `flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-3 py-2 text-[11px] font-semibold ${
+                `flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-semibold ${
                   isActive ? "bg-rose-500/15 text-rose-200" : "text-slate-300 hover:bg-slate-900/50"
                 }`
               }
@@ -612,7 +629,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               to="/predictions"
               data-tour="tab-predictions"
               className={({ isActive }) =>
-                `flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-3 py-2 text-[11px] font-semibold ${
+                `flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-semibold ${
                   isActive ? "bg-rose-500/15 text-rose-200" : "text-slate-300 hover:bg-slate-900/50"
                 }`
               }
@@ -629,7 +646,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               to="/"
               data-tour="tab-dashboard"
               className={({ isActive }) =>
-                `flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-3 py-2 text-[11px] font-semibold ${
+                `flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-semibold ${
                   isActive ? "bg-rose-500/15 text-rose-200" : "text-slate-300 hover:bg-slate-900/50"
                 }`
               }
@@ -646,7 +663,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               to="/onboarding"
               data-tour="tab-leagues"
               className={({ isActive }) =>
-                `flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-3 py-2 text-[11px] font-semibold ${
+                `flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-semibold ${
                   isActive ? "bg-rose-500/15 text-rose-200" : "text-slate-300 hover:bg-slate-900/50"
                 }`
               }
@@ -659,10 +676,26 @@ export function Layout({ children }: { children: React.ReactNode }) {
               )}
             </NavLink>
             <NavLink
+              to="/calendar"
+              data-tour="tab-calendar"
+              className={({ isActive }) =>
+                `flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-semibold ${
+                  isActive ? "bg-sky-500/15 text-sky-200" : "text-slate-300 hover:bg-slate-900/50"
+                }`
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <Icon name="calendar" active={isActive} />
+                  <span>Calendario</span>
+                </>
+              )}
+            </NavLink>
+            <NavLink
               to="/live"
               data-tour="tab-live"
               className={({ isActive }) =>
-                `flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-3 py-2 text-[11px] font-semibold ${
+                `flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-semibold ${
                   isActive ? "bg-emerald-500/15 text-emerald-200" : "text-slate-300 hover:bg-slate-900/50"
                 }`
               }

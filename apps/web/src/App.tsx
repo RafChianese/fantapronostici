@@ -20,6 +20,7 @@ import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
 import SuperAdminPage from "./pages/SuperAdminPage";
 import RegolamentoPage from "./pages/RegolamentoPage";
 import LivePage from "./pages/LivePage";
+import CalendarPage from "./pages/CalendarPage";
 import { setToken } from "./lib/api";
 
 function HashTokenBootstrapper() {
@@ -165,6 +166,17 @@ export default function App() {
 
           
 
+
+
+
+          <Route
+            path="/calendar"
+            element={
+              <RequireLeague>
+                <CalendarPage />
+              </RequireLeague>
+            }
+          />
 
           <Route
             path="/live"

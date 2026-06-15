@@ -74,6 +74,36 @@ export type LiveLeaderboardRow = {
 };
 
 export type LiveResponse = { matches: LiveMatch[]; liveLeaderboard?: LiveLeaderboardRow[] };
+export type CalendarParticipant = {
+  userId: string;
+  displayName: string;
+  avatarId?: string | null;
+  avatarJson?: AvatarConfig | null;
+  prediction: { homeGoals: number; awayGoals: number } | null;
+  points: number;
+  breakdown?: { exact: number; outcome: number; sumGoals: number; underOver: number };
+  isExactLive: boolean;
+};
+
+export type CalendarMatch = {
+  id: string;
+  matchday: number;
+  group?: string | null;
+  homeTeam: string;
+  awayTeam: string;
+  homeLogo?: string | null;
+  awayLogo?: string | null;
+  kickoffAt: string;
+  status: "NOT_STARTED" | "IN_PROGRESS" | "FINISHED";
+  homeScore: number | null;
+  awayScore: number | null;
+  isJolly?: boolean;
+  exactLiveCount: number;
+  participants: CalendarParticipant[];
+};
+
+export type CalendarResponse = { matches: CalendarMatch[] };
+
 
 export type LeagueBranding = { logoUrl?: string | null; logoDataUrl?: string | null };
 export type League = { id: string; name: string; code: string; branding?: LeagueBranding | null };
@@ -348,6 +378,7 @@ export const api = {
   setScorer: (matchId: string, payload: { playerId: number | null; playerName?: string | null }) =>
     request(`/api/me/matches/${encodeURIComponent(matchId)}/scorer`, { method: "PUT", body: JSON.stringify(payload) }),
   live: () => request(`/api/me/live`) as Promise<LiveResponse>,
+  calendar: () => request(`/api/me/calendar`) as Promise<CalendarResponse>,
   competitionPredictions: () => request(`/api/me/competition-predictions`) as Promise<CompetitionPredictionsResponse>,
   saveCompetitionPredictions: (body: SaveCompetitionPredictionsBody) =>
     request(`/api/me/competition-predictions`, { method: "PUT", body: JSON.stringify(body) }) as Promise<CompetitionPredictionsResponse>,

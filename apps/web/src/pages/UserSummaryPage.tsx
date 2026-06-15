@@ -142,6 +142,26 @@ export default function UserSummaryPage() {
   const safeItems: SummaryItem[] = Array.isArray(data?.detail) ? data.detail : [];
   const features = data?.features ?? { underOver25: false, matchdayAwards: false };
   const safeSummary = data?.totals ?? { total: 0, exact: 0, outcome: 0, sumGoals: 0, underOver: 0 };
+  const tournamentPicks = Array.isArray(data?.tournamentPicks) ? data.tournamentPicks : [];
+
+  const fmtPoints = (value: unknown) => {
+    const n = Number(value ?? 0);
+    if (!Number.isFinite(n)) return "0";
+    return Number.isInteger(n) ? String(n) : n.toFixed(1).replace(/\.0$/, "");
+  };
+
+  const tournamentPickMeta = (type: string) => {
+    if (type === "QUARTER_FINALIST") return { label: "Quarti di finale", valueKey: "teamName" };
+    if (type === "SEMI_FINALIST") return { label: "Semifinale", valueKey: "teamName" };
+    if (type === "FINALIST") return { label: "Finale", valueKey: "teamName" };
+    if (type === "WINNER") return { label: "Vincente torneo", valueKey: "teamName" };
+    if (type === "TOP_SCORER") return { label: "Capocannoniere", valueKey: "playerName" };
+    return { label: type, valueKey: "teamName" };
+  };
+
+  const orderedTournamentPicks = ["QUARTER_FINALIST", "SEMI_FINALIST", "FINALIST", "WINNER", "TOP_SCORER"]
+    .map((type) => tournamentPicks.find((pick: any) => pick?.type === type))
+    .filter(Boolean);
 
   const buildBreakdown = (pts: any) => {
     const parts: string[] = [];
@@ -399,7 +419,7 @@ export default function UserSummaryPage() {
       <Card>
         <CardHeader
           title={`Dettaglio: ${safeUser.displayName}`}
-          subtitle={`${safeLeague.name} · Totale punti: ${safeSummary.total} (Esatto ${safeSummary.exact} · 1X2 ${safeSummary.outcome} · Somma ${safeSummary.sumGoals}${features.underOver25 ? ` · U/O 2.5 ${safeSummary.underOver ?? 0}` : ""})`}
+          subtitle={`${safeLeague.name} · Totale punti: ${fmtPoints(safeSummary.total)} (Esatto ${safeSummary.exact} · 1X2 ${safeSummary.outcome} · Somma ${safeSummary.sumGoals}${features.underOver25 ? ` · U/O 2.5 ${safeSummary.underOver ?? 0}` : ""})`}
           right={<Link className="text-sm text-slate-600 hover:underline" to="/leaderboard">← Torna alla classifica</Link>}
         />
         <CardContent className="space-y-4">
@@ -431,6 +451,33 @@ export default function UserSummaryPage() {
           </div>
         </CardContent>
       </Card>
+
+      {orderedTournamentPicks.length ? (
+        <Card>
+          <CardHeader
+            title="Pronostici torneo"
+            subtitle="Pronostici globali inseriti dal partecipante: quarti, semifinale, finale, vincente e capocannoniere se disponibili."
+          />
+          <CardContent>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {orderedTournamentPicks.map((pick: any) => {
+                const meta = tournamentPickMeta(String(pick.type));
+                const value = meta.valueKey === "playerName" ? pick.playerName : pick.teamName;
+                const points = Number(pick.pointsAwarded ?? 0);
+                return (
+                  <div key={pick.type} className={`rounded-2xl border p-4 ${points > 0 ? "border-emerald-500/30 bg-emerald-500/10" : "border-slate-800 bg-slate-950/60"}`}>
+                    <div className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{meta.label}</div>
+                    <div className="mt-2 text-base font-extrabold text-slate-100">{value || "—"}</div>
+                    <div className="mt-2 inline-flex rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-xs font-bold text-slate-200">
+                      {fmtPoints(points)} pt
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader

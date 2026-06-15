@@ -373,7 +373,14 @@ publicRouter.get("/users/:id/summary", async (req, res) => {
 
   const allSummaryMatches = await prisma.match.findMany({ orderBy: { kickoffAt: "asc" } });
   const matches = await filterPredictableMatches(allSummaryMatches);
-  const preds = await prisma.prediction.findMany({ where: { leagueId: league.id, userId } });
+  const [preds, competitionPicks] = await Promise.all([
+    prisma.prediction.findMany({ where: { leagueId: league.id, userId } }),
+    prisma.competitionPick.findMany({
+      where: { leagueId: league.id, userId },
+      orderBy: { createdAt: "asc" },
+      select: { type: true, teamExternalId: true, teamName: true, playerExternalId: true, playerName: true, pointsAwarded: true },
+    }),
+  ]);
   const predByMatch = new Map(preds.map((p) => [p.matchId, p]));
 
   const detail = matches.map((m) => {
@@ -389,6 +396,17 @@ publicRouter.get("/users/:id/summary", async (req, res) => {
     };
   });
 
+  const tournamentPicks = (competitionPicks as any[]).map((pick) => ({
+    type: pick.type,
+    teamExternalId: pick.teamExternalId ?? null,
+    teamName: pick.teamName ?? null,
+    playerExternalId: pick.playerExternalId ?? null,
+    playerName: pick.playerName ?? null,
+    pointsAwarded: Number(pick.pointsAwarded ?? 0),
+  }));
+
+  const tournamentTotal = tournamentPicks.reduce((sum, pick) => sum + Number(pick.pointsAwarded || 0), 0);
+
   const totals = detail.reduce(
     (acc, d) => {
       acc.exact += d.points.exact;
@@ -400,6 +418,7 @@ publicRouter.get("/users/:id/summary", async (req, res) => {
     },
     { exact: 0, outcome: 0, sumGoals: 0, underOver: 0, total: 0 }
   );
+  totals.total += tournamentTotal;
 
   res.json({
     league: { id: league.id, code: league.code, name: league.name },
@@ -412,6 +431,7 @@ publicRouter.get("/users/:id/summary", async (req, res) => {
       avatarJson: (member.user as any).avatarJson ?? null,
     },
     detail,
+    tournamentPicks,
     totals,
   });
 });

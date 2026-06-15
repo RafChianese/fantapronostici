@@ -15,7 +15,7 @@ import {
 } from "../services/footballDataService.js";
 import { fetchFixtureEvents, fetchFixtureLineups, fetchFixturesRange } from "../services/apiFootball.js";
 import { AvatarPresetIdSchema } from "../lib/avatarPresets.js";
-import { assertPredictableMatches, getPredictionWindow, isPredictableMatch } from "../lib/predictableMatches.js";
+import { assertPredictableMatches, getPredictionWindow, isPredictableMatch, isPlaceholderMatch } from "../lib/predictableMatches.js";
 
 function normTeamName(s: string) {
   return String(s || "")
@@ -77,6 +77,118 @@ async function resolveFixtureIdForMatch(match: any): Promise<{ fixtureId: number
 
 export const meRouter = Router();
 
+
+
+
+meRouter.get("/calendar", requireAuth, requireLeagueMember, async (req: AuthedRequest, res) => {
+  const leagueId = resolveLeagueId(req);
+  if (!leagueId) return res.status(400).json({ message: "Missing leagueId" });
+
+  await ensureLeagueConfig(leagueId);
+
+  const [rules, rawMatches, members, jollyRows] = await Promise.all([
+    prisma.rule.findUnique({ where: { leagueId } }),
+    prisma.match.findMany({
+      orderBy: [{ kickoffAt: "asc" }],
+      select: {
+        id: true,
+        matchday: true,
+        group: true,
+        homeTeam: true,
+        awayTeam: true,
+        homeLogo: true,
+        awayLogo: true,
+        kickoffAt: true,
+        status: true,
+        homeScore: true,
+        awayScore: true,
+      },
+    }),
+    prisma.leagueMember.findMany({
+      where: { leagueId, status: "APPROVED" },
+      include: { user: true },
+      orderBy: { createdAt: "asc" },
+    }),
+    prisma.matchdayJolly.findMany({ where: { leagueId }, select: { matchId: true } }),
+  ]);
+
+  if (!rules) return res.status(500).json({ message: "Missing rules for league" });
+
+  const matchesBase = rawMatches.filter((match) => !isPlaceholderMatch(match as any));
+  const matchIds = matchesBase.map((m) => m.id);
+  const predictions = matchIds.length
+    ? await prisma.prediction.findMany({ where: { leagueId, matchId: { in: matchIds } } })
+    : [];
+
+  const predByUserMatch = new Map<string, any>();
+  for (const p of predictions) predByUserMatch.set(`${p.userId}:${p.matchId}`, p);
+
+  const jollySet = new Set(jollyRows.map((r) => String(r.matchId)));
+  const now = Date.now();
+  const matches = matchesBase.map((match) => {
+    const status = String(match.status || "NOT_STARTED") as "NOT_STARTED" | "IN_PROGRESS" | "FINISHED";
+    const kickoffTs = new Date(match.kickoffAt).getTime();
+    const derivedStatus = status === "FINISHED" || status === "IN_PROGRESS" || status === "NOT_STARTED"
+      ? status
+      : Number.isFinite(kickoffTs) && kickoffTs <= now
+      ? "IN_PROGRESS"
+      : "NOT_STARTED";
+    const isJolly = jollySet.has(String(match.id));
+    const participants = members.map((m) => {
+      const prediction = predByUserMatch.get(`${m.userId}:${match.id}`) || null;
+      let points = 0;
+      let breakdown = { exact: 0, outcome: 0, sumGoals: 0, underOver: 0 };
+      let isExactLive = false;
+
+      if (prediction && derivedStatus === "IN_PROGRESS" && match.homeScore !== null && match.awayScore !== null) {
+        const live = computeLivePointsForPrediction(prediction, match, rules, isJolly);
+        points = Number(live.totalPoints || 0);
+        breakdown = {
+          exact: Number(live.pointsExact || 0),
+          outcome: Number(live.pointsOutcome || 0),
+          sumGoals: Number(live.pointsSumGoals || 0),
+          underOver: Number(live.pointsUnderOver || 0),
+        };
+        isExactLive = !!live.isExact;
+      } else if (prediction && derivedStatus === "FINISHED") {
+        points = Number(prediction.totalPoints ?? 0);
+        breakdown = {
+          exact: Number(prediction.pointsExact ?? 0),
+          outcome: Number(prediction.pointsOutcome ?? 0),
+          sumGoals: Number(prediction.pointsSumGoals ?? 0),
+          underOver: Number(prediction.pointsUnderOver ?? 0),
+        };
+      }
+
+      return {
+        userId: m.user.id,
+        displayName: m.user.displayName,
+        avatarId: (m.user as any).avatarId ?? null,
+        avatarJson: (m.user as any).avatarJson ?? null,
+        prediction: prediction ? { homeGoals: prediction.homeGoals, awayGoals: prediction.awayGoals } : null,
+        points,
+        breakdown,
+        isExactLive,
+      };
+    });
+
+    participants.sort((a, b) => {
+      if (a.isExactLive !== b.isExactLive) return a.isExactLive ? -1 : 1;
+      if (Number(b.points) !== Number(a.points)) return Number(b.points) - Number(a.points);
+      return String(a.displayName).localeCompare(String(b.displayName));
+    });
+
+    return {
+      ...match,
+      status: derivedStatus,
+      isJolly,
+      participants,
+      exactLiveCount: participants.filter((p) => p.isExactLive).length,
+    };
+  });
+
+  res.json({ matches });
+});
 
 meRouter.get("/live", requireAuth, requireLeagueMember, async (req: AuthedRequest, res) => {
   const leagueId = resolveLeagueId(req);
