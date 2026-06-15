@@ -1241,11 +1241,16 @@ export default function PredictionsPage() {
                   {currentMatch ? (() => {
                     const exactHitCurrent = Number(currentPred?.pointsExact ?? 0) > 0;
                     const hasMatchPointsCurrent = Number(currentPred?.totalPoints ?? 0) > 0;
+                    const statusCardClass = currentMatch.status === "FINISHED"
+                      ? "border border-slate-400/25 bg-[linear-gradient(180deg,rgba(148,163,184,0.18),rgba(15,23,42,0.48))] shadow-[0_18px_40px_rgba(15,23,42,0.25)]"
+                      : currentMatch.status === "IN_PROGRESS"
+                      ? "border border-emerald-300/30 bg-[linear-gradient(180deg,rgba(16,185,129,0.20),rgba(15,23,42,0.45))] shadow-[0_18px_40px_rgba(6,95,70,0.22)]"
+                      : "border border-sky-300/25 bg-[linear-gradient(180deg,rgba(56,189,248,0.18),rgba(15,23,42,0.45))] shadow-[0_18px_40px_rgba(14,116,144,0.16)]";
                     const currentCardClass = exactHitCurrent
-                      ? "border border-emerald-300/35 bg-[linear-gradient(180deg,rgba(16,185,129,0.18),rgba(255,255,255,0.05))] shadow-[0_0_0_1px_rgba(16,185,129,0.14),0_18px_40px_rgba(6,95,70,0.30)]"
+                      ? "border border-emerald-300/35 bg-[linear-gradient(180deg,rgba(16,185,129,0.24),rgba(15,23,42,0.42))] shadow-[0_0_0_1px_rgba(16,185,129,0.14),0_18px_40px_rgba(6,95,70,0.30)]"
                       : currentMatch.isJolly
-                      ? "border border-amber-300/30 bg-[linear-gradient(180deg,rgba(251,191,36,0.18),rgba(255,255,255,0.05))] shadow-[0_0_0_1px_rgba(251,191,36,0.15),0_18px_40px_rgba(120,53,15,0.35)]"
-                      : "border border-white/10 bg-white/5";
+                      ? "border border-amber-300/30 bg-[linear-gradient(180deg,rgba(251,191,36,0.20),rgba(15,23,42,0.45))] shadow-[0_0_0_1px_rgba(251,191,36,0.15),0_18px_40px_rgba(120,53,15,0.35)]"
+                      : statusCardClass;
                     return <div
                       className={`mt-4 rounded-2xl p-4 sm:p-5 transition-all duration-200 ${currentCardClass} ${matchEnter ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1"}`}
                       onTouchStart={(e) => {
@@ -1570,14 +1575,14 @@ export default function PredictionsPage() {
 
         const statusPill =
           matchdayStatus === "FINISHED" ? (
-            <span className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-100 px-3 py-2 text-sm font-semibold text-emerald-800">
+            <span className="inline-flex items-center gap-2 rounded-xl border border-slate-300/25 bg-slate-400/10 px-3 py-2 text-sm font-semibold text-slate-100">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M20 6L9 17l-5-5" />
               </svg>
               Terminata
             </span>
           ) : matchdayStatus === "IN_PROGRESS" ? (
-            <span className="inline-flex items-center gap-2 rounded-xl border border-sky-200 bg-sky-100 px-3 py-2 text-sm font-semibold text-sky-800">
+            <span className="inline-flex items-center gap-2 rounded-xl border border-emerald-300/25 bg-emerald-400/10 px-3 py-2 text-sm font-semibold text-emerald-100">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <circle cx="12" cy="12" r="10" />
                 <path d="M10 8l6 4-6 4V8z" />
@@ -1585,7 +1590,7 @@ export default function PredictionsPage() {
               In corso
             </span>
           ) : (
-            <span className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-100 px-3 py-2 text-sm font-semibold text-amber-800">
+            <span className="inline-flex items-center gap-2 rounded-xl border border-sky-300/25 bg-sky-400/10 px-3 py-2 text-sm font-semibold text-sky-100">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <circle cx="12" cy="12" r="10" />
                 <path d="M12 6v6l4 2" />
@@ -1596,10 +1601,10 @@ export default function PredictionsPage() {
 
         const cardClass =
           matchdayStatus === "FINISHED"
-            ? "bg-emerald-50 border-emerald-200"
+            ? "border-slate-500/25 bg-slate-500/10"
             : matchdayStatus === "IN_PROGRESS"
-            ? "bg-sky-50 border-sky-200"
-            : "bg-amber-50 border-amber-200";
+            ? "border-emerald-400/25 bg-emerald-400/10"
+            : "border-sky-400/25 bg-sky-400/10";
 
         return (
           <div key={matchday} id={`matchday-${matchday}`}>
@@ -1624,11 +1629,11 @@ export default function PredictionsPage() {
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     {matchdayStatus === "FINISHED" ? (
-                      <span className="text-emerald-800 font-semibold text-base">Tutte le partite sono terminate.</span>
+                      <span className="text-slate-100 font-semibold text-base">Tutte le partite sono terminate.</span>
                     ) : matchdayStatus === "IN_PROGRESS" ? (
-                      <span className="text-sky-800 font-semibold text-base">Partite in corso.</span>
+                      <span className="text-emerald-100 font-semibold text-base">Partite in corso.</span>
                     ) : (
-                      <span className="text-amber-800 font-semibold text-base">Partite non ancora iniziate.</span>
+                      <span className="text-sky-100 font-semibold text-base">Partite non ancora iniziate.</span>
                     )}
                   </div>
                 </div>
@@ -1691,7 +1696,13 @@ export default function PredictionsPage() {
                   const activeQuick = (a: number, b: number) => p?.homeGoals === a && p?.awayGoals === b;
 
                   return (
-                    <div key={m.id} id={`match-${m.id}`} className="relative rounded-2xl border border-slate-800 bg-slate-950/60 p-3 transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-md scroll-mt-24">
+                    <div key={m.id} id={`match-${m.id}`} className={`relative rounded-2xl border p-3 transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-md scroll-mt-24 ${
+                      m.status === "FINISHED"
+                        ? "border-slate-400/25 bg-slate-400/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
+                        : m.status === "IN_PROGRESS"
+                        ? "border-emerald-300/30 bg-emerald-400/12 shadow-[0_0_28px_rgba(16,185,129,0.08)]"
+                        : "border-sky-300/25 bg-sky-400/12 shadow-[0_0_28px_rgba(56,189,248,0.06)]"
+                    }`}>
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                           <StatusDot status={m.status} />
@@ -1717,16 +1728,14 @@ export default function PredictionsPage() {
                             <Info className="h-3.5 w-3.5" aria-hidden="true" />
                             <span className="hidden sm:inline">Dettaglio</span>
                           </button>
-                          <div className="text-xs text-slate-500 sm:hidden">Reale: <span className="font-medium text-slate-300">{real}</span></div>
+                          <div className="text-xs text-white/75 sm:hidden">Reale: <span className="font-semibold text-white">{real}</span></div>
                         </div>
                       </div>
 
-                      {!canEdit ? <div className="pointer-events-none absolute inset-0 bg-black/35" /> : null}
-
                       <div className="mt-2 grid grid-cols-[54px_1fr_auto] items-center gap-2">
-                        <div className="text-xs text-slate-600">
-                          <div className="font-semibold">{date}</div>
-                          <div className="text-slate-500">{time}</div>
+                        <div className="text-xs text-white/80">
+                          <div className="font-semibold text-white">{date}</div>
+                          <div className="text-white/70">{time}</div>
                         </div>
 
                         <div className="min-w-0">
@@ -1741,7 +1750,7 @@ export default function PredictionsPage() {
                               <div className="min-w-0 truncate text-sm font-semibold text-slate-100">{m.awayTeam}</div>
                             </div>
                           </div>
-                          <div className="mt-1 hidden text-xs text-slate-500 sm:block">{d.toLocaleString()}</div>
+                          <div className="mt-1 hidden text-xs text-white/65 sm:block">{d.toLocaleString()}</div>
                         </div>
 
                         <div className="flex items-center gap-1">
@@ -1783,12 +1792,12 @@ export default function PredictionsPage() {
                         </div>
                       </div>
 
-                      <div className="mt-2 text-xs text-slate-600 sm:text-sm">
-                        <span className="text-slate-500">Risultato reale:</span> <span className="font-medium">{real}</span>
+                      <div className="mt-2 text-xs text-white/85 sm:text-sm">
+                        <span className="text-white/70">Risultato reale:</span> <span className="font-semibold text-white">{real}</span>
                         {m.status === "FINISHED" && p ? (
-                          <span className="ml-3 text-slate-500">
-                            Punti: <span className="font-semibold text-slate-800"><AnimatedNumber value={Number(p.totalPoints ?? 0)} /></span>{" "}
-                            <span className="text-xs">({buildBreakdown(p, !!config?.features?.underOver25)})</span>
+                          <span className="ml-3 text-white/75">
+                            Punti: <span className="font-semibold text-white"><AnimatedNumber value={Number(p.totalPoints ?? 0)} /></span>{" "}
+                            <span className="text-xs text-white/70">({buildBreakdown(p, !!config?.features?.underOver25)})</span>
                           </span>
                         ) : null}
                       </div>
@@ -1805,9 +1814,9 @@ export default function PredictionsPage() {
                       ) : null}
 
                       {config?.features?.scorer && scorerPickByMatchId.get(m.id)?.playerName ? (
-                        <div className="mt-1 text-xs text-slate-600">
-                          <span className="text-slate-500">Marcatore scelto:</span>{" "}
-                          <span className="font-semibold text-slate-800">{scorerPickByMatchId.get(m.id)!.playerName}</span>
+                        <div className="mt-1 text-xs text-white/75">
+                          <span className="text-white/65">Marcatore scelto:</span>{" "}
+                          <span className="font-semibold text-white">{scorerPickByMatchId.get(m.id)!.playerName}</span>
                         </div>
                       ) : null}
 
@@ -1817,7 +1826,7 @@ export default function PredictionsPage() {
                             <button
                               key={`${a}-${b}`}
                               type="button"
-                              className={`rounded-lg border px-2 py-1 text-xs ${activeQuick(a, b) ? "border-rose-500/60 bg-rose-500/10 text-rose-100" : "border-slate-800 bg-slate-950 text-slate-200 hover:bg-slate-900/60"}`}
+                              className={`rounded-lg border px-2 py-1 text-xs ${activeQuick(a, b) ? "border-rose-500/60 bg-rose-500/10 text-rose-100" : "border-white/10 bg-slate-950/55 text-slate-100 hover:bg-white/10"}`}
                               onClick={() => setScore(a, b)}
                             >
                               {a}-{b}

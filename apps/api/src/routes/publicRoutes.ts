@@ -188,9 +188,10 @@ publicRouter.get("/leaderboard", async (req, res) => {
 
   // Ensure league settings + rules exist (tie-breakers + scoring mode)
   await ensureLeagueConfig(league.id);
-  const [settings, rules] = await Promise.all([
+  const [settings, rules, monetization] = await Promise.all([
     prisma.setting.findUnique({ where: { leagueId: league.id } }),
     prisma.rule.findUnique({ where: { leagueId: league.id } }),
+    prisma.leagueMonetization.findUnique({ where: { leagueId: league.id }, include: { prizes: true } }),
   ]);
   if (!rules) return res.status(500).json({ message: "Missing rules for league" });
 
@@ -323,6 +324,10 @@ publicRouter.get("/leaderboard", async (req, res) => {
   res.json({
     league: { id: league.id, name: league.name, code: league.code },
     features: { underOver25: !!rules.enableUnderOver25, matchdayAwards: !!rules.enableMatchdayAwards },
+    monetization: {
+      entryFeeCents: monetization?.entryFeeCents ?? 0,
+      prizes: (monetization?.prizes || []).map((p: any) => ({ position: p.position, amountCents: p.amountCents })),
+    },
     tieBreakers: { tieBreak1: settings?.tieBreak1 ?? "EXACT", tieBreak2: settings?.tieBreak2 ?? "OUTCOME", tieBreak3: settings?.tieBreak3 ?? "SUM_GOALS" },
     leaderboard: rows,
   });

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Activity, ChevronDown, ChevronUp, RotateCw, Trophy, TrendingDown, TrendingUp } from "lucide-react";
+import { ChevronDown, ChevronUp, RotateCw, Trophy, TrendingDown, TrendingUp } from "lucide-react";
 import { api, LiveLeaderboardRow, LiveMatch } from "../lib/api";
 import { UserAvatar } from "../components/Avatar";
 import { Badge, Button, Card, CardContent, CardHeader, Skeleton } from "../components/ui";
@@ -114,29 +114,16 @@ export default function LivePage() {
   }, [activeLeagueId]);
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-4">
-      <div className="tm-glass overflow-hidden">
-        <div className="p-4 sm:p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-rose-400/20 bg-rose-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-rose-100">
-                <Activity size={14} /> Live
-              </div>
-              <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-slate-100">Partite e classifica live</h1>
-              <p className="mt-1 text-sm text-slate-300">
-                Segui i match in corso e guarda come cambierebbe la classifica con il risultato attuale.
-              </p>
-            </div>
-            <Button variant="secondary" onClick={() => load(false)} disabled={refreshing}>
-              <span className="inline-flex items-center gap-2">
-                <RotateCw size={16} className={refreshing ? "animate-spin" : ""} /> Aggiorna
-              </span>
-            </Button>
-          </div>
-        </div>
+    <div className="mx-auto w-full max-w-3xl space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <LiveTabs tab={tab} setTab={setTab} />
+        <Button variant="secondary" onClick={() => load(false)} disabled={refreshing} className="shrink-0 !px-3">
+          <span className="inline-flex items-center gap-2">
+            <RotateCw size={16} className={refreshing ? "animate-spin" : ""} />
+            <span className="hidden sm:inline">Aggiorna</span>
+          </span>
+        </Button>
       </div>
-
-      <LiveTabs tab={tab} setTab={setTab} />
 
       {loading ? (
         <div className="space-y-3">

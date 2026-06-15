@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { CalendarDays, ChevronDown, ChevronUp, RotateCw, Trophy } from "lucide-react";
+import { ChevronDown, ChevronUp, RotateCw, Trophy } from "lucide-react";
 import { api, CalendarMatch } from "../lib/api";
 import { UserAvatar } from "../components/Avatar";
 import { Badge, Button, Card, CardContent, CardHeader, Skeleton } from "../components/ui";
@@ -118,29 +118,16 @@ export default function CalendarPage() {
   );
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-4">
-      <div className="tm-glass overflow-hidden">
-        <div className="p-4 sm:p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-sky-400/20 bg-sky-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-sky-100">
-                <CalendarDays size={14} /> Calendario
-              </div>
-              <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-slate-100">Calendario partite</h1>
-              <p className="mt-1 text-sm text-slate-300">
-                Di default mostro le prossime 5 partite non terminate, così non si sovrappone troppo al Live. Puoi comunque vedere live, terminate o tutte.
-              </p>
-            </div>
-            <Button variant="secondary" onClick={() => load(false)} disabled={refreshing}>
-              <span className="inline-flex items-center gap-2">
-                <RotateCw size={16} className={refreshing ? "animate-spin" : ""} /> Aggiorna
-              </span>
-            </Button>
-          </div>
-        </div>
+    <div className="mx-auto w-full max-w-3xl space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <FilterTabs filter={filter} setFilter={setFilter} />
+        <Button variant="secondary" onClick={() => load(false)} disabled={refreshing} className="shrink-0 !px-3">
+          <span className="inline-flex items-center gap-2">
+            <RotateCw size={16} className={refreshing ? "animate-spin" : ""} />
+            <span className="hidden sm:inline">Aggiorna</span>
+          </span>
+        </Button>
       </div>
-
-      <FilterTabs filter={filter} setFilter={setFilter} />
 
       {loading ? (
         <div className="space-y-3">
