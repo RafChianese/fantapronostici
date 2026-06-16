@@ -25,14 +25,14 @@ export function AuthBootstrapOverlay({
       aria-modal="true"
       aria-label={label}
     >
-      <div className="w-[min(92vw,460px)] rounded-2xl bg-slate-950/70 p-6 shadow-xl border border-white/10">
+      <div className="w-[min(92vw,460px)] rounded-2xl bg-cyan-950/45 p-6 shadow-xl border border-cyan-100/15">
         <div className="flex items-center gap-3">
           {!isError ? <Spinner /> : null}
-          <div className="text-base font-semibold text-slate-100">{label}</div>
+          <div className="text-base font-semibold text-white">{label}</div>
         </div>
 
         {!isError ? (
-          <div className="mt-2 text-sm text-slate-400">
+          <div className="mt-2 text-sm text-cyan-100/60">
             Stiamo verificando la sessione. Se la tua connessione è lenta potrebbe richiedere qualche secondo.
           </div>
         ) : (
@@ -51,7 +51,7 @@ export function AuthBootstrapOverlay({
               Riprova
             </button>
             <button
-              className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-100 hover:bg-slate-900"
+              className="rounded-xl border border-cyan-200/20 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-900"
               onClick={onBackToLogin}
               type="button"
             >

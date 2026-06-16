@@ -72,7 +72,7 @@ export default function RegolamentoPage() {
         />
         <CardContent className="space-y-5">
           {loading ? (
-            <div className="flex items-center gap-3 text-sm text-slate-300">
+            <div className="flex items-center gap-3 text-sm text-cyan-50/70">
               <Spinner />
               Caricamento regolamento…
             </div>
@@ -83,9 +83,9 @@ export default function RegolamentoPage() {
           {!loading && !error && doc ? (
             <div className="space-y-6">
               <div className="space-y-2">
-                <div className="text-xl font-semibold text-slate-100">{doc.title}</div>
+                <div className="text-xl font-semibold text-white">{doc.title}</div>
                 {doc.intro.map((p, idx) => (
-                  <p key={idx} className="text-sm text-slate-300">
+                  <p key={idx} className="text-sm text-cyan-50/70">
                     {p}
                   </p>
                 ))}
@@ -93,16 +93,16 @@ export default function RegolamentoPage() {
 
               {/* Quota & Premi */}
               {data?.monetization && (Number(data.monetization.entryFeeCents || 0) > 0 || (data.monetization.prizes || []).length > 0) ? (
-                <section className="space-y-3 rounded-2xl border border-white/10 bg-slate-950/70 p-4">
-                  <h3 className="text-base font-semibold text-slate-100">Quota & Premi</h3>
+                <section className="space-y-3 rounded-2xl border border-cyan-100/15 bg-cyan-950/45 p-4">
+                  <h3 className="text-base font-semibold text-white">Quota & Premi</h3>
 
                   {Number(data.monetization.entryFeeCents || 0) > 0 ? (
-                    <div className="flex items-center justify-between rounded-xl bg-white/5 px-3 py-2 ring-1 ring-slate-800/70">
+                    <div className="flex items-center justify-between rounded-xl bg-cyan-100/5 px-3 py-2 ring-1 ring-slate-800/70">
                       <div>
-                        <div className="text-xs font-semibold text-slate-400">Quota di partecipazione</div>
-                        <div className="text-sm font-semibold text-slate-100">Importo per partecipante</div>
+                        <div className="text-xs font-semibold text-cyan-100/60">Quota di partecipazione</div>
+                        <div className="text-sm font-semibold text-white">Importo per partecipante</div>
                       </div>
-                      <div className="text-lg font-extrabold text-slate-100">
+                      <div className="text-lg font-extrabold text-white">
                         €{(Number(data.monetization.entryFeeCents) / 100).toFixed(0)}
                       </div>
                     </div>
@@ -110,14 +110,14 @@ export default function RegolamentoPage() {
 
                   {(data.monetization.prizes || []).length > 0 ? (
                     <div className="space-y-2">
-                      <div className="text-xs font-semibold text-slate-400">Premi</div>
+                      <div className="text-xs font-semibold text-cyan-100/60">Premi</div>
                       <div className="space-y-2">
                         {[...data.monetization.prizes]
                           .sort((a, b) => a.position - b.position)
                           .map((p) => (
-                            <div key={p.position} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-                              <div className="text-sm font-semibold text-slate-100">Posizione {p.position}</div>
-                              <div className="text-sm font-extrabold text-slate-100">€{(Number(p.amountCents) / 100).toFixed(0)}</div>
+                            <div key={p.position} className="flex items-center justify-between rounded-xl border border-cyan-100/15 bg-cyan-100/5 px-3 py-2">
+                              <div className="text-sm font-semibold text-white">Posizione {p.position}</div>
+                              <div className="text-sm font-extrabold text-white">€{(Number(p.amountCents) / 100).toFixed(0)}</div>
                             </div>
                           ))}
                       </div>
@@ -128,14 +128,14 @@ export default function RegolamentoPage() {
 
               {doc.sections.map((s) => (
                 <section key={s.title} className="space-y-2">
-                  <h3 className="text-base font-semibold text-slate-100">{s.title}</h3>
+                  <h3 className="text-base font-semibold text-white">{s.title}</h3>
                   {s.paragraphs?.map((p, idx) => (
-                    <p key={idx} className="text-sm text-slate-300">
+                    <p key={idx} className="text-sm text-cyan-50/70">
                       {p}
                     </p>
                   ))}
                   {s.bullets?.length ? (
-                    <ul className="list-disc space-y-1 pl-5 text-sm text-slate-300">
+                    <ul className="list-disc space-y-1 pl-5 text-sm text-cyan-50/70">
                       {s.bullets.map((b, idx) => (
                         <li key={idx}>{b}</li>
                       ))}

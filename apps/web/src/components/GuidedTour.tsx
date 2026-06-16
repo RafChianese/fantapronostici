@@ -127,17 +127,17 @@ export function GuidedTour({
       ) : null}
 
       <div
-        className="absolute rounded-2xl bg-slate-950/70 p-5 shadow-2xl max-h-[70vh] overflow-auto border border-white/10"
+        className="absolute rounded-2xl bg-cyan-950/45 p-5 shadow-2xl max-h-[70vh] overflow-auto border border-cyan-100/15"
         style={cardStyle}
       >
-        <div className="text-xs font-semibold text-slate-400">Passo {idx + 1} / {steps.length}</div>
-        <div className="mt-1 text-lg font-semibold text-slate-100">{step.title}</div>
-        <div className="mt-2 text-sm text-slate-300 whitespace-pre-line">{step.body}</div>
+        <div className="text-xs font-semibold text-cyan-100/60">Passo {idx + 1} / {steps.length}</div>
+        <div className="mt-1 text-lg font-semibold text-white">{step.title}</div>
+        <div className="mt-2 text-sm text-cyan-50/70 whitespace-pre-line">{step.body}</div>
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
           <button
             type="button"
-            className="rounded-xl px-3 py-2 text-sm font-medium text-slate-300 hover:bg-slate-900"
+            className="rounded-xl px-3 py-2 text-sm font-medium text-cyan-50/70 hover:bg-slate-900"
             onClick={finish}
           >
             Salta
@@ -146,7 +146,7 @@ export function GuidedTour({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              className="rounded-xl border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm font-semibold text-slate-100 hover:bg-slate-900 disabled:opacity-50"
+              className="rounded-xl border border-cyan-200/20 bg-cyan-950/45 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-900 disabled:opacity-50"
               onClick={() => setIdx((i) => Math.max(0, i - 1))}
               disabled={idx === 0}
             >

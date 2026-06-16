@@ -46,7 +46,7 @@ export default function RegisterPage() {
             <Input label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min 8 caratteri" />
             <Input label="Conferma password" type="password" value={password2} onChange={(e) => setPassword2(e.target.value)} placeholder="Ripeti la password" />
 
-            <div className="text-xs text-slate-400">
+            <div className="text-xs text-cyan-100/60">
               La password deve avere almeno <span className={pwdOk ? "font-semibold text-emerald-200" : "font-semibold text-slate-700"}>8 caratteri</span>.
               {password2 ? (
                 <span className={pwdMatch ? "ml-2 text-emerald-200" : "ml-2 text-rose-200"}>
@@ -87,7 +87,7 @@ export default function RegisterPage() {
               {busy ? "Creazione account…" : "Registrati"}
             </Button>
 
-            <div className="text-center text-sm text-slate-400">
+            <div className="text-center text-sm text-cyan-100/60">
               Hai già un account? <Link className="text-rose-300 underline" to="/login">Accedi</Link>
             </div>
           </div>

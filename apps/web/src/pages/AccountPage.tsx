@@ -40,8 +40,8 @@ export default function AccountPage() {
           <CardContent className="flex items-center gap-3">
             <LeagueAvatar league={activeLeague as any} size={44} />
             <div className="min-w-0">
-              <div className="font-semibold text-slate-100 truncate">{activeLeague.name}</div>
-              <div className="text-xs text-slate-400">Codice: {activeLeague.code}</div>
+              <div className="font-semibold text-white truncate">{activeLeague.name}</div>
+              <div className="text-xs text-cyan-100/60">Codice: {activeLeague.code}</div>
             </div>
           </CardContent>
         </Card>
@@ -91,11 +91,11 @@ export default function AccountPage() {
           {avatarError ? <Alert tone="danger">{avatarError}</Alert> : null}
           {avatarOk ? <Alert tone="success">Avatar aggiornato</Alert> : null}
 
-          <div className="flex items-center gap-4 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+          <div className="flex items-center gap-4 rounded-2xl border border-cyan-100/15 bg-cyan-950/35 p-4">
             <UserAvatar avatarId={avatarId} size={96} mode="full" className="shadow" />
             <div className="min-w-0">
-              <div className="text-sm font-semibold text-slate-100">Anteprima</div>
-              <div className="text-xs text-slate-400">Seleziona un avatar qui sotto e salva.</div>
+              <div className="text-sm font-semibold text-white">Anteprima</div>
+              <div className="text-xs text-cyan-100/60">Seleziona un avatar qui sotto e salva.</div>
             </div>
           </div>
 
@@ -109,7 +109,7 @@ export default function AccountPage() {
                   onClick={() => setAvatarId(a.id)}
                   className={`rounded-2xl p-2 ring-2 transition ${active ? "ring-sky-500" : "ring-transparent hover:ring-slate-200"}`}
                 >
-                  <div className="h-20 w-full overflow-hidden rounded-xl bg-white/5 ring-1 ring-slate-800">
+                  <div className="h-20 w-full overflow-hidden rounded-xl bg-cyan-100/5 ring-1 ring-slate-800">
                     <img src={a.src} alt={a.label} className="h-full w-full object-contain" loading="lazy" />
                   </div>
                 </button>

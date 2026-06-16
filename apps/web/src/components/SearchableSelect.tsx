@@ -98,8 +98,8 @@ export function SearchableSelect({
         type="button"
         disabled={disabled}
         onClick={() => setOpen((v) => !v)}
-        className={`w-full rounded-xl border bg-slate-950/70 px-3 py-2 text-left text-sm transition ${
-          disabled ? "border-white/10 text-slate-400" : "border-white/10 text-slate-100 hover:bg-slate-900"
+        className={`w-full rounded-xl border bg-cyan-950/45 px-3 py-2 text-left text-sm transition ${
+          disabled ? "border-cyan-100/15 text-cyan-100/60" : "border-cyan-100/15 text-white hover:bg-slate-900"
         }`}
       >
         {selected?.label || placeholder || "Seleziona…"}
@@ -112,7 +112,7 @@ export function SearchableSelect({
 
               <div
                 data-searchable-select-panel="true"
-                className="absolute overflow-hidden rounded-2xl border border-white/10 bg-slate-950/70 shadow-2xl"
+                className="absolute overflow-hidden rounded-2xl border border-cyan-100/15 bg-cyan-950/45 shadow-2xl"
                 style={{ top: panel.top, left: panel.left, width: panel.width }}
                 role="listbox"
                 aria-label="Selettore"
@@ -124,20 +124,20 @@ export function SearchableSelect({
                   e.stopPropagation();
                 }}
               >
-                <div className="border-b border-white/10 p-2">
+                <div className="border-b border-cyan-100/15 p-2">
                   <input
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     autoFocus
                     placeholder="Cerca…"
-                    className="w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-rose-500/35"
+                    className="w-full rounded-xl border border-cyan-100/15 bg-cyan-950/45 px-3 py-2 text-sm text-white placeholder:text-cyan-100/60 outline-none focus:ring-2 focus:ring-rose-500/35"
                   />
                 </div>
 
                 <div className="overflow-auto p-1" style={{ maxHeight: panel.maxHeight }}>
                   <button
                     type="button"
-                    className={`w-full rounded-xl px-3 py-2 text-left text-sm text-slate-100 hover:bg-slate-900 ${value === "" ? "bg-slate-900" : ""}`}
+                    className={`w-full rounded-xl px-3 py-2 text-left text-sm text-white hover:bg-slate-900 ${value === "" ? "bg-slate-900" : ""}`}
                     onClick={() => {
                       onChange("");
                       setOpen(false);
@@ -149,7 +149,7 @@ export function SearchableSelect({
                     <button
                       key={o.value}
                       type="button"
-                      className={`w-full rounded-xl px-3 py-2 text-left text-sm text-slate-100 hover:bg-slate-900 ${o.value === value ? "bg-emerald-950/35" : ""}`}
+                      className={`w-full rounded-xl px-3 py-2 text-left text-sm text-white hover:bg-slate-900 ${o.value === value ? "bg-emerald-950/35" : ""}`}
                       onClick={() => {
                         onChange(o.value);
                         setOpen(false);
@@ -158,7 +158,7 @@ export function SearchableSelect({
                       {o.label}
                     </button>
                   ))}
-                  {filtered.length === 0 ? <div className="px-3 py-4 text-sm text-slate-400">Nessun risultato.</div> : null}
+                  {filtered.length === 0 ? <div className="px-3 py-4 text-sm text-cyan-100/60">Nessun risultato.</div> : null}
                 </div>
               </div>
             </div>,

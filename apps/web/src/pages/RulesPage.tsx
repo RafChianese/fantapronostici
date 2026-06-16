@@ -32,7 +32,7 @@ export default function RulesPage() {
   return (
     <div className="mx-auto max-w-3xl">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold text-slate-100">Regolamento</h1>
+        <h1 className="text-2xl font-bold text-white">Regolamento</h1>
         <Button variant="secondary" onClick={fetchRules}>
           Aggiorna
         </Button>
@@ -43,7 +43,7 @@ export default function RulesPage() {
           {loading ? (
             <div className="flex items-center gap-3 p-4">
               <Spinner />
-              <div className="text-sm text-slate-300">Caricamento regolamento…</div>
+              <div className="text-sm text-cyan-50/70">Caricamento regolamento…</div>
             </div>
           ) : error ? (
             <div className="p-4">
@@ -55,9 +55,9 @@ export default function RulesPage() {
           ) : (
             <div className="p-4">
               {data?.league?.name ? (
-                <div className="mb-3 text-xs text-slate-400">Lega: {data.league.name}</div>
+                <div className="mb-3 text-xs text-cyan-100/60">Lega: {data.league.name}</div>
               ) : null}
-              <pre className="whitespace-pre-wrap break-words text-sm leading-6 text-slate-100">
+              <pre className="whitespace-pre-wrap break-words text-sm leading-6 text-white">
                 {data?.regulation?.markdown || "Regolamento non disponibile"}
               </pre>
             </div>
@@ -65,7 +65,7 @@ export default function RulesPage() {
         </Card>
       </div>
 
-      <div className="mt-3 text-xs text-slate-400">
+      <div className="mt-3 text-xs text-cyan-100/60">
         Il regolamento è generato automaticamente in base alle regole configurate dall’amministratore della lega.
       </div>
     </div>

@@ -447,14 +447,14 @@ const tournamentMeta = useMemo(() => {
     return (
       <Link
         to={`/predictions?md=${p.md}`}
-        className="group relative grid h-[48px] w-[48px] sm:h-[68px] sm:w-[68px] place-items-center rounded-full border border-white/10 bg-white/5 shadow-[0_10px_30px_rgba(0,0,0,0.35)] hover:bg-white/10"
+        className="group relative grid h-[48px] w-[48px] sm:h-[68px] sm:w-[68px] place-items-center rounded-full border border-cyan-100/15 bg-cyan-100/5 shadow-[0_10px_30px_rgba(0,0,0,0.35)] hover:bg-cyan-100/10"
         style={{ boxShadow: `0 10px 40px rgba(0,0,0,0.35), inset 0 0 0 2px ${ringColor}` }}
         aria-label={`Giornata ${p.md}`}
       >
         <div className="absolute inset-[4px] sm:inset-[6px] rounded-full" style={{ background: `radial-gradient(circle at 30% 25%, rgba(255,255,255,0.14), ${fill} 55%, rgba(0,0,0,0.25))` }} />
         <div className="relative z-[1] text-center">
-          <div className="text-[10px] sm:text-[11px] font-bold text-slate-300">G{p.md}</div>
-          <div className={`mt-0.5 text-[15px] sm:text-base font-extrabold ${p.status === "IN_PROGRESS" ? "text-rose-200" : "text-slate-100"}`}>{label}</div>
+          <div className="text-[10px] sm:text-[11px] font-bold text-cyan-50/70">G{p.md}</div>
+          <div className={`mt-0.5 text-[15px] sm:text-base font-extrabold ${p.status === "IN_PROGRESS" ? "text-rose-200" : "text-white"}`}>{label}</div>
         </div>
       </Link>
     );
@@ -480,16 +480,16 @@ const tournamentMeta = useMemo(() => {
     return (
       <Link
         to={p.md ? `/predictions?md=${p.md}` : "/predictions"}
-        className="group relative grid h-[58px] w-[58px] shrink-0 place-items-center rounded-full border border-white/10 bg-white/5 transition hover:-translate-y-0.5 hover:bg-white/10 sm:h-[70px] sm:w-[70px]"
+        className="group relative grid h-[58px] w-[58px] shrink-0 place-items-center rounded-full border border-cyan-100/15 bg-cyan-100/5 transition hover:-translate-y-0.5 hover:bg-cyan-100/10 sm:h-[70px] sm:w-[70px]"
         style={{ boxShadow: `0 12px 38px rgba(0,0,0,0.35), inset 0 0 0 2px ${ringColor}` }}
         title={`${p.home} - ${p.away}`}
         aria-label={`${p.home} contro ${p.away}`}
       >
         <div className="absolute inset-[5px] rounded-full bg-[radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.16),rgba(255,255,255,0.04)_48%,rgba(0,0,0,0.28))]" />
         <div className="relative z-[1] text-center leading-none">
-          <div className="text-[9px] font-black tracking-tight text-slate-200 sm:text-[10px]">{home}</div>
+          <div className="text-[9px] font-black tracking-tight text-cyan-50/85 sm:text-[10px]">{home}</div>
           <div className={`my-1 text-[13px] font-extrabold sm:text-[15px] ${p.status === "IN_PROGRESS" ? "text-blue-100" : "text-white"}`}>{label}</div>
-          <div className="text-[9px] font-black tracking-tight text-slate-200 sm:text-[10px]">{away}</div>
+          <div className="text-[9px] font-black tracking-tight text-cyan-50/85 sm:text-[10px]">{away}</div>
         </div>
       </Link>
     );
@@ -501,8 +501,8 @@ const tournamentMeta = useMemo(() => {
         <div className="tm-glass flex flex-col items-center gap-4 rounded-3xl px-8 py-7 text-center">
           <Spinner />
           <div>
-            <div className="text-sm font-extrabold text-slate-100">Caricamento home</div>
-            <div className="mt-1 text-xs text-slate-300">Sto recuperando classifica, pronostici e partite.</div>
+            <div className="text-sm font-extrabold text-white">Caricamento home</div>
+            <div className="mt-1 text-xs text-cyan-50/70">Sto recuperando classifica, pronostici e partite.</div>
           </div>
         </div>
       </div>
@@ -516,7 +516,7 @@ const tournamentMeta = useMemo(() => {
           <CardHeader title="Lega" subtitle="Cambia lega" />
           <CardContent>
             <select
-              className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-3 py-3 text-sm font-semibold text-slate-100 outline-none focus:ring-2 focus:ring-rose-500/30"
+              className="w-full rounded-xl border border-cyan-100/15 bg-cyan-950/35 px-3 py-3 text-sm font-semibold text-white outline-none focus:ring-2 focus:ring-rose-500/30"
               value={activeMembership?.league.id || ""}
               onChange={(e) => setActiveLeague(e.target.value)}
             >
@@ -536,14 +536,14 @@ const tournamentMeta = useMemo(() => {
           <div className="p-4 sm:p-5">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="text-xs font-bold uppercase tracking-wide text-slate-300">{isTournamentPreMode ? "Pronostici partite" : "Prossima giornata"}</div>
-                <div className="mt-1 truncate text-2xl font-extrabold tracking-tight text-slate-100">
+                <div className="text-xs font-bold uppercase tracking-wide text-cyan-50/70">{isTournamentPreMode ? "Pronostici partite" : "Prossima giornata"}</div>
+                <div className="mt-1 truncate text-2xl font-extrabold tracking-tight text-white">
                   {nextEditableMatchday ? (isTournamentPreMode ? "Tutte le partite" : `Giornata ${nextEditableMatchday}`) : "—"}
                 </div>
-                <div className="mt-2 text-sm text-slate-200">
+                <div className="mt-2 text-sm text-cyan-50/85">
                   {nextEditableMatchday ? (
                     <>
-                      Pronostici inseriti: <b className="text-slate-100">{nextDone}</b>/{nextTotal || "—"}
+                      Pronostici inseriti: <b className="text-white">{nextDone}</b>/{nextTotal || "—"}
                     </>
                   ) : (
                     <>Nessuna giornata pronosticabile.</>
@@ -552,8 +552,8 @@ const tournamentMeta = useMemo(() => {
               </div>
 
               <div className="shrink-0 text-right">
-                <div className="text-xs text-slate-300">Countdown</div>
-                <div className="mt-1 inline-flex items-center rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-extrabold">
+                <div className="text-xs text-cyan-50/70">Countdown</div>
+                <div className="mt-1 inline-flex items-center rounded-xl border border-cyan-100/15 bg-cyan-100/5 px-3 py-2 text-sm font-extrabold">
                   {nextCountdown || "—"}
                 </div>
               </div>
@@ -563,42 +563,42 @@ const tournamentMeta = useMemo(() => {
               <>
                 <div className="mt-4 flex items-center justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <div className="rounded-full bg-white/10 p-1">
+                    <div className="rounded-full bg-cyan-100/10 p-1">
                       <div className="h-2.5 rounded-full bg-rose-500/80 transition-[width]" style={{ width: `${nextPct}%` }} />
                     </div>
-                    <div className="mt-2 text-xs text-slate-300">
-                      Mancano <b className="text-slate-100">{Math.max(0, nextTotal - nextDone)}</b> match
+                    <div className="mt-2 text-xs text-cyan-50/70">
+                      Mancano <b className="text-white">{Math.max(0, nextTotal - nextDone)}</b> match
                     </div>
                   </div>
 {/* Compact progress rings: matchday + tournament (if enabled) */}
 <div className="flex items-center gap-2">
   <div
-    className="relative grid h-[74px] w-[74px] shrink-0 place-items-center rounded-full border border-white/10 bg-white/5 shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
+    className="relative grid h-[74px] w-[74px] shrink-0 place-items-center rounded-full border border-cyan-100/15 bg-cyan-100/5 shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
     style={{ background: `conic-gradient(rgba(225,29,72,0.95) ${nextPct}%, rgba(255,255,255,0.08) 0)` }}
     title={isTournamentPreMode ? "Pronostici tutte le partite" : "Pronostici giornata"}
   >
-    <div className="grid h-[58px] w-[58px] place-items-center rounded-full border border-white/10 bg-slate-950/50">
+    <div className="grid h-[58px] w-[58px] place-items-center rounded-full border border-cyan-100/15 bg-slate-950/50">
       <div className="text-center">
-        <div className="text-base font-extrabold text-slate-100">
+        <div className="text-base font-extrabold text-white">
           {nextDone}/{nextTotal || "—"}
         </div>
-        <div className="text-[10px] font-semibold text-slate-400">match</div>
+        <div className="text-[10px] font-semibold text-cyan-100/60">match</div>
       </div>
     </div>
   </div>
 
   {tournamentMeta.total > 0 ? (
     <div
-      className="relative grid h-[74px] w-[74px] shrink-0 place-items-center rounded-full border border-white/10 bg-white/5 shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
+      className="relative grid h-[74px] w-[74px] shrink-0 place-items-center rounded-full border border-cyan-100/15 bg-cyan-100/5 shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
       style={{ background: `conic-gradient(rgba(251,191,36,0.9) ${tournamentMeta.pct}%, rgba(255,255,255,0.08) 0)` }}
       title="Pronostici torneo"
     >
-      <div className="grid h-[58px] w-[58px] place-items-center rounded-full border border-white/10 bg-slate-950/50">
+      <div className="grid h-[58px] w-[58px] place-items-center rounded-full border border-cyan-100/15 bg-slate-950/50">
         <div className="text-center">
-          <div className="text-base font-extrabold text-slate-100">
+          <div className="text-base font-extrabold text-white">
             {tournamentMeta.done}/{tournamentMeta.total}
           </div>
-          <div className="text-[10px] font-semibold text-slate-400">torneo</div>
+          <div className="text-[10px] font-semibold text-cyan-100/60">torneo</div>
         </div>
       </div>
     </div>
@@ -607,7 +607,7 @@ const tournamentMeta = useMemo(() => {
                 </div>
 
                 <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="text-xs text-slate-300">
+                  <div className="text-xs text-cyan-50/70">
                     {progressMeta?.firstKickoff ? (
                       <>
                         Prima partita: {new Date(progressMeta.firstKickoff).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
@@ -631,27 +631,27 @@ const tournamentMeta = useMemo(() => {
         <CardHeader title="Il tuo profilo" subtitle={leagueName} right={<Badge tone="slate">{displayName}</Badge>} />
         <CardContent>
           <div className="flex items-center gap-3">
-            <div className="shrink-0 rounded-2xl border border-white/10 bg-white/5 p-2">
+            <div className="shrink-0 rounded-2xl border border-cyan-100/15 bg-cyan-100/5 p-2">
               <UserAvatar avatarId={(user as any)?.avatarId} size={64} mode="full" className="rounded-2xl" />
             </div>
             <div className="grid w-full grid-cols-2 gap-2 sm:grid-cols-4">
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                <div className="text-[11px] font-semibold text-slate-400">Posizione</div>
-                <div className="mt-0.5 text-lg font-extrabold text-slate-100">{loading ? "—" : myPosition ?? "—"}</div>
+              <div className="rounded-2xl border border-cyan-100/15 bg-cyan-100/5 p-3">
+                <div className="text-[11px] font-semibold text-cyan-100/60">Posizione</div>
+                <div className="mt-0.5 text-lg font-extrabold text-white">{loading ? "—" : myPosition ?? "—"}</div>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                <div className="text-[11px] font-semibold text-slate-400">Punti</div>
-                <div className="mt-0.5 text-lg font-extrabold text-slate-100">
+              <div className="rounded-2xl border border-cyan-100/15 bg-cyan-100/5 p-3">
+                <div className="text-[11px] font-semibold text-cyan-100/60">Punti</div>
+                <div className="mt-0.5 text-lg font-extrabold text-white">
                   {loading ? "—" : <AnimatedNumber value={Number(totals?.total ?? 0)} />}
                 </div>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                <div className="text-[11px] font-semibold text-slate-400">Giornate</div>
-                <div className="mt-0.5 text-lg font-extrabold text-slate-100">{loading ? "—" : playedMatchdays}</div>
+              <div className="rounded-2xl border border-cyan-100/15 bg-cyan-100/5 p-3">
+                <div className="text-[11px] font-semibold text-cyan-100/60">Giornate</div>
+                <div className="mt-0.5 text-lg font-extrabold text-white">{loading ? "—" : playedMatchdays}</div>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                <div className="text-[11px] font-semibold text-slate-400">Esatti</div>
-                <div className="mt-0.5 text-lg font-extrabold text-slate-100">
+              <div className="rounded-2xl border border-cyan-100/15 bg-cyan-100/5 p-3">
+                <div className="text-[11px] font-semibold text-cyan-100/60">Esatti</div>
+                <div className="mt-0.5 text-lg font-extrabold text-white">
                   {loading ? "—" : <AnimatedNumber value={Number(exactHits ?? 0)} />}
                 </div>
               </div>
@@ -680,7 +680,7 @@ const tournamentMeta = useMemo(() => {
               ))}
             </div>
           ) : (
-            <div className="text-sm text-slate-300">Nessuna giornata disponibile.</div>
+            <div className="text-sm text-cyan-50/70">Nessuna giornata disponibile.</div>
           )}
         </CardContent>
       </Card>
@@ -696,9 +696,9 @@ const tournamentMeta = useMemo(() => {
               ))}
             </div>
           ) : (
-            <div className="text-sm text-slate-300">Nessuna partita giocata o live disponibile.</div>
+            <div className="text-sm text-cyan-50/70">Nessuna partita giocata o live disponibile.</div>
           )}
-          <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-slate-300">
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-cyan-50/70">
             <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-400" /> Esatto</span>
             <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-400" /> 1X2</span>
             <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-orange-400" /> Somma</span>
@@ -733,31 +733,31 @@ const tournamentMeta = useMemo(() => {
           ) : recentFinishedMatches.length ? (
             <div className="space-y-2">
               {recentFinishedMatches.map((m) => (
-                <div key={m.id} className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
+                <div key={m.id} className="flex items-center justify-between gap-3 rounded-2xl border border-cyan-100/15 bg-cyan-100/5 px-3 py-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex min-w-0 items-center gap-2">
                         {m.homeLogo ? (
-                          <img src={m.homeLogo} alt="" className="h-7 w-7 rounded-full bg-white/10 object-contain" />
+                          <img src={m.homeLogo} alt="" className="h-7 w-7 rounded-full bg-cyan-100/10 object-contain" />
                         ) : (
-                          <div className="grid h-7 w-7 place-items-center rounded-full bg-white/10 text-xs font-bold text-slate-200">{String(m.homeTeam || "H").slice(0, 1)}</div>
+                          <div className="grid h-7 w-7 place-items-center rounded-full bg-cyan-100/10 text-xs font-bold text-cyan-50/85">{String(m.homeTeam || "H").slice(0, 1)}</div>
                         )}
-                        <div className="min-w-0 truncate text-sm font-semibold text-slate-100">{m.homeTeam}</div>
+                        <div className="min-w-0 truncate text-sm font-semibold text-white">{m.homeTeam}</div>
                       </div>
-                      <div className="shrink-0 text-base font-extrabold text-slate-100">{m.homeScore ?? "—"}</div>
+                      <div className="shrink-0 text-base font-extrabold text-white">{m.homeScore ?? "—"}</div>
                     </div>
                     <div className="mt-2 flex items-center justify-between gap-2">
                       <div className="flex min-w-0 items-center gap-2">
                         {m.awayLogo ? (
-                          <img src={m.awayLogo} alt="" className="h-7 w-7 rounded-full bg-white/10 object-contain" />
+                          <img src={m.awayLogo} alt="" className="h-7 w-7 rounded-full bg-cyan-100/10 object-contain" />
                         ) : (
-                          <div className="grid h-7 w-7 place-items-center rounded-full bg-white/10 text-xs font-bold text-slate-200">{String(m.awayTeam || "A").slice(0, 1)}</div>
+                          <div className="grid h-7 w-7 place-items-center rounded-full bg-cyan-100/10 text-xs font-bold text-cyan-50/85">{String(m.awayTeam || "A").slice(0, 1)}</div>
                         )}
-                        <div className="min-w-0 truncate text-sm font-semibold text-slate-100">{m.awayTeam}</div>
+                        <div className="min-w-0 truncate text-sm font-semibold text-white">{m.awayTeam}</div>
                       </div>
-                      <div className="shrink-0 text-base font-extrabold text-slate-100">{m.awayScore ?? "—"}</div>
+                      <div className="shrink-0 text-base font-extrabold text-white">{m.awayScore ?? "—"}</div>
                     </div>
-                    <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
+                    <div className="mt-2 flex items-center justify-between text-xs text-cyan-100/60">
                       <span className="truncate">{m.group ? String(m.group) : ""}</span>
                       <span className="shrink-0">FT · {new Date(m.kickoffAt).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</span>
                     </div>
@@ -766,7 +766,7 @@ const tournamentMeta = useMemo(() => {
               ))}
             </div>
           ) : (
-            <div className="text-sm text-slate-300">Nessun risultato disponibile.</div>
+            <div className="text-sm text-cyan-50/70">Nessun risultato disponibile.</div>
           )}
         </CardContent>
       </Card>
@@ -798,8 +798,8 @@ const tournamentMeta = useMemo(() => {
                   <Link
                     key={r.userId}
                     to={`/users/${r.userId}`}
-                    className={`group block rounded-2xl border px-3 py-2 transition hover:-translate-y-0.5 hover:border-rose-400/40 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-rose-400/40 ${
-                      isMe ? "border-rose-400/40 bg-rose-500/10" : "border-white/10 bg-white/5"
+                    className={`group block rounded-2xl border px-3 py-2 transition hover:-translate-y-0.5 hover:border-rose-400/40 hover:bg-cyan-100/10 focus:outline-none focus:ring-2 focus:ring-rose-400/40 ${
+                      isMe ? "border-rose-400/40 bg-rose-500/10" : "border-cyan-100/15 bg-cyan-100/5"
                     }`}
                     aria-label={`Apri il dettaglio di ${r.displayName || "questo partecipante"}`}
                   >
@@ -807,14 +807,14 @@ const tournamentMeta = useMemo(() => {
                       <div className="flex min-w-0 items-center gap-3">
                         <div className="w-7 text-center text-sm font-extrabold">{medal}</div>
                         <div className="min-w-0">
-                          <div className="truncate text-sm font-semibold text-slate-100 group-hover:text-white">
+                          <div className="truncate text-sm font-semibold text-white group-hover:text-white">
                             {r.displayName || "—"}
                             {isMe ? "  (TU)" : ""}
                           </div>
-                          <div className="text-[11px] text-slate-400">Tocca per vedere i pronostici</div>
+                          <div className="text-[11px] text-cyan-100/60">Tocca per vedere i pronostici</div>
                         </div>
                       </div>
-                      <div className="shrink-0 rounded-xl border border-white/10 bg-black/20 px-2 py-1 text-sm font-extrabold text-slate-100">
+                      <div className="shrink-0 rounded-xl border border-cyan-100/15 bg-black/20 px-2 py-1 text-sm font-extrabold text-white">
                         {r.totalPoints}
                       </div>
                     </div>
@@ -823,7 +823,7 @@ const tournamentMeta = useMemo(() => {
               })}
             </div>
           ) : (
-            <div className="text-sm text-slate-300">Nessun dato classifica.</div>
+            <div className="text-sm text-cyan-50/70">Nessun dato classifica.</div>
           )}
         </CardContent>
       </Card>
