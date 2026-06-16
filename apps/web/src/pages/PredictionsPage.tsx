@@ -52,16 +52,16 @@ function StatusDot({ status }: { status: string }) {
 
 function PredictionsTabs({ tab, setTab }: { tab: "MATCHES" | "TOURNAMENT"; setTab: (t: "MATCHES" | "TOURNAMENT") => void }) {
   return (
-    <div className="grid w-full grid-cols-2 overflow-hidden rounded-2xl border border-cyan-100/15 bg-cyan-100/5 shadow-[0_10px_30px_rgba(0,0,0,0.35)] backdrop-blur-xl">
+    <div className="grid w-full grid-cols-2 overflow-hidden rounded-2xl border border-amber-100/15 bg-white/[0.055] shadow-[0_10px_30px_rgba(0,0,0,0.35)] backdrop-blur-xl">
       <button
-        className={`px-4 py-3 text-sm font-semibold transition-all ${tab === "MATCHES" ? "bg-rose-600 text-white" : "text-cyan-50/85 hover:bg-cyan-100/5"}`}
+        className={`px-4 py-3 text-sm font-semibold transition-all ${tab === "MATCHES" ? "bg-rose-600 text-white" : "text-orange-50/85 hover:bg-white/[0.055]"}`}
         onClick={() => setTab("MATCHES")}
         type="button"
       >
         Partite
       </button>
       <button
-        className={`px-4 py-3 text-sm font-semibold transition-all ${tab === "TOURNAMENT" ? "bg-rose-600 text-white" : "text-cyan-50/85 hover:bg-cyan-100/5"}`}
+        className={`px-4 py-3 text-sm font-semibold transition-all ${tab === "TOURNAMENT" ? "bg-rose-600 text-white" : "text-orange-50/85 hover:bg-white/[0.055]"}`}
         onClick={() => setTab("TOURNAMENT")}
         type="button"
       >
@@ -221,7 +221,7 @@ function CompetitionPredictionsPanel() {
         <CardHeader title="Pronostici torneo" subtitle="Vincitore, fasi a eliminazione e capocannoniere" right={<Button variant="secondary" onClick={load}>Aggiorna</Button>} />
         <CardContent className="space-y-4">
           {loading ? (
-            <div className="flex items-center gap-3 text-sm text-cyan-50/70">
+            <div className="flex items-center gap-3 text-sm text-orange-50/70">
               <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700" />
               Caricamento…
             </div>
@@ -233,7 +233,7 @@ function CompetitionPredictionsPanel() {
 
           {!loading && data && enabledAny ? (
             <>
-              <div className="rounded-2xl border border-cyan-100/15 bg-cyan-100/5 p-4 text-sm text-cyan-50/70 space-y-1">
+              <div className="rounded-2xl border border-amber-100/15 bg-white/[0.055] p-4 text-sm text-orange-50/70 space-y-1">
                 <div>
                   <b>Deadline:</b> {deadlineLabel || "(automatica)"}
                 </div>
@@ -288,7 +288,7 @@ function CompetitionPredictionsPanel() {
                       .map((t) => ({ value: String(t.id), label: t.name }))
                       .sort((a, b) => a.label.localeCompare(b.label, "it"))}
                   />
-                  {data.picks.winner?.pointsAwarded ? <div className="text-xs text-cyan-100/60">Punti assegnati: {data.picks.winner.pointsAwarded}</div> : null}
+                  {data.picks.winner?.pointsAwarded ? <div className="text-xs text-orange-50/60">Punti assegnati: {data.picks.winner.pointsAwarded}</div> : null}
                 </div>
               ) : null}
 
@@ -306,7 +306,7 @@ function CompetitionPredictionsPanel() {
                       .sort((a, b) => a.label.localeCompare(b.label, "it"))}
                   />
                   {(data.options.scorers?.length ?? 0) === 0 ? <Alert>Lista giocatori non disponibile per questa competizione.</Alert> : null}
-                  {data.picks.topScorer?.pointsAwarded ? <div className="text-xs text-cyan-100/60">Punti assegnati: {data.picks.topScorer.pointsAwarded}</div> : null}
+                  {data.picks.topScorer?.pointsAwarded ? <div className="text-xs text-orange-50/60">Punti assegnati: {data.picks.topScorer.pointsAwarded}</div> : null}
                 </div>
               ) : null}
 
@@ -314,7 +314,7 @@ function CompetitionPredictionsPanel() {
                 <Button onClick={save} disabled={!canEdit || saving}>
                   {saving ? "Salvo…" : "Salva"}
                 </Button>
-                {!canEdit ? <span className="text-xs text-cyan-100/60 self-center">Scelte bloccate dopo la deadline.</span> : null}
+                {!canEdit ? <span className="text-xs text-orange-50/60 self-center">Scelte bloccate dopo la deadline.</span> : null}
               </div>
             </>
           ) : null}
@@ -352,7 +352,7 @@ function TeamPickSearchableSelect({
           .map((t) => ({ value: String(t.id), label: t.name }))
           .sort((a, b) => a.label.localeCompare(b.label, "it"))}
       />
-      {pointsAwarded ? <div className="text-xs text-cyan-100/60">Punti assegnati: {pointsAwarded}</div> : null}
+      {pointsAwarded ? <div className="text-xs text-orange-50/60">Punti assegnati: {pointsAwarded}</div> : null}
     </div>
   );
 }
@@ -525,7 +525,7 @@ export default function PredictionsPage() {
   const renderLineups = (lineups: any[]) => {
     const teams = Array.isArray(lineups) ? lineups : [];
     if (!teams.length) {
-      return <div className="text-sm text-cyan-100/60">Formazioni non disponibili.</div>;
+      return <div className="text-sm text-orange-50/60">Formazioni non disponibili.</div>;
     }
 
     const PlayerRow = ({ p }: { p: any }) => {
@@ -533,13 +533,13 @@ export default function PredictionsPage() {
       const pos = typeof p?.position === "string" && p.position ? p.position : "";
       return (
         <div className="flex items-center justify-between gap-3 py-1 text-sm">
-          <div className="min-w-0 truncate font-medium text-cyan-50/85">
+          <div className="min-w-0 truncate font-medium text-orange-50/85">
             {num ? (
-              <span className="mr-2 inline-flex w-7 justify-center rounded-md bg-cyan-100/10 px-1 py-0.5 text-xs font-bold text-cyan-50/70">{num}</span>
+              <span className="mr-2 inline-flex w-7 justify-center rounded-md bg-white/[0.075] px-1 py-0.5 text-xs font-bold text-orange-50/70">{num}</span>
             ) : null}
             <span className="truncate">{p?.name || "—"}</span>
           </div>
-          <div className="shrink-0 text-xs font-semibold text-cyan-100/60">{pos}</div>
+          <div className="shrink-0 text-xs font-semibold text-orange-50/60">{pos}</div>
         </div>
       );
     };
@@ -552,23 +552,23 @@ export default function PredictionsPage() {
           const startXI = Array.isArray(t?.startXI) ? t.startXI : [];
           const subs = Array.isArray(t?.substitutes) ? t.substitutes : [];
           return (
-            <div key={idx} className="rounded-2xl border border-cyan-100/15 bg-cyan-950/35 p-4">
+            <div key={idx} className="rounded-2xl border border-amber-100/15 bg-[#07150f]/80 p-4">
               <div className="flex items-center gap-2">
                 {logo ? <img src={logo} alt={teamName} className="h-7 w-7 rounded-full object-contain" /> : null}
                 <div className="min-w-0 truncate text-sm font-semibold text-white">{teamName}</div>
               </div>
 
               <div className="mt-3">
-                <div className="text-xs font-semibold text-cyan-100/60">Titolari</div>
+                <div className="text-xs font-semibold text-orange-50/60">Titolari</div>
                 <div className="mt-1 divide-y divide-slate-100">
-                  {startXI.length ? startXI.map((p: any, i: number) => <PlayerRow key={i} p={p} />) : <div className="py-2 text-sm text-cyan-100/60">—</div>}
+                  {startXI.length ? startXI.map((p: any, i: number) => <PlayerRow key={i} p={p} />) : <div className="py-2 text-sm text-orange-50/60">—</div>}
                 </div>
               </div>
 
               <div className="mt-3">
-                <div className="text-xs font-semibold text-cyan-100/60">Panchina</div>
+                <div className="text-xs font-semibold text-orange-50/60">Panchina</div>
                 <div className="mt-1 divide-y divide-slate-100">
-                  {subs.length ? subs.map((p: any, i: number) => <PlayerRow key={i} p={p} />) : <div className="py-2 text-sm text-cyan-100/60">—</div>}
+                  {subs.length ? subs.map((p: any, i: number) => <PlayerRow key={i} p={p} />) : <div className="py-2 text-sm text-orange-50/60">—</div>}
                 </div>
               </div>
             </div>
@@ -580,7 +580,7 @@ export default function PredictionsPage() {
 
   const renderEventsSummary = (events: any[]) => {
     const items = Array.isArray(events) ? events : [];
-    if (!items.length) return <div className="text-sm text-cyan-100/60">Nessun evento disponibile.</div>;
+    if (!items.length) return <div className="text-sm text-orange-50/60">Nessun evento disponibile.</div>;
 
     const normalizeMinute = (ev: any) => {
       const m = Number(ev?.minute);
@@ -611,7 +611,7 @@ export default function PredictionsPage() {
       if (type === "GOAL") return <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/15 text-xs">⚽</span>;
       if (type === "CARD") return <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-500/15 text-xs">🟨</span>;
       if (type === "SUBSTITUTION") return <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-sky-500/15 text-xs">🔁</span>;
-      return <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-cyan-100/10 text-xs">•</span>;
+      return <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/[0.075] text-xs">•</span>;
     };
 
     const Row = ({ ev, idx }: { ev: any; idx: number }) => {
@@ -625,20 +625,20 @@ export default function PredictionsPage() {
           <div className="flex min-w-0 gap-2">
             <Icon type={String(ev?.type || "")} />
             <div className="min-w-0">
-              <div className="truncate font-medium text-cyan-50/85">{detail || "Evento"}</div>
-              <div className="truncate text-xs text-cyan-100/60">
+              <div className="truncate font-medium text-orange-50/85">{detail || "Evento"}</div>
+              <div className="truncate text-xs text-orange-50/60">
                 {team}{player ? ` · ${player}` : ""}{assist ? ` → ${assist}` : ""}
               </div>
             </div>
           </div>
-          <div className="shrink-0 text-xs font-semibold text-cyan-100/60">{right}</div>
+          <div className="shrink-0 text-xs font-semibold text-orange-50/60">{right}</div>
         </li>
       );
     };
 
     const Section = ({ title, rows }: { title: string; rows: any[] }) => (
       <div>
-        <div className="text-xs font-semibold text-cyan-100/60">{title}</div>
+        <div className="text-xs font-semibold text-orange-50/60">{title}</div>
         <ul className="mt-2 space-y-2">
           {rows.map((ev, idx) => (
             <Row key={idx} ev={ev} idx={idx} />
@@ -1141,28 +1141,28 @@ export default function PredictionsPage() {
             <div className="group relative">
               <button
                 type="button"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-100/15 bg-cyan-950/45 text-cyan-50/85 hover:bg-cyan-100/5"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-amber-100/15 bg-[#07150f]/90 text-orange-50/85 hover:bg-white/[0.055]"
                 aria-label="Info modalità"
               >
                 <Info className="h-4 w-4" aria-hidden="true" />
               </button>
-              <div className="pointer-events-none absolute right-0 top-11 z-40 hidden w-64 rounded-2xl border border-cyan-100/15 bg-slate-950/90 p-3 text-xs text-cyan-50/85 shadow-[0_10px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl group-hover:block">
+              <div className="pointer-events-none absolute right-0 top-11 z-40 hidden w-64 rounded-2xl border border-amber-100/15 bg-slate-950/90 p-3 text-xs text-orange-50/85 shadow-[0_10px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl group-hover:block">
                 <div className="font-semibold text-white">Modalità inserimento</div>
-                <div className="mt-1 text-cyan-50/70">Match per match: scorri una partita alla volta (consigliato su mobile). Lista: vedi tutte le partite della giornata.</div>
+                <div className="mt-1 text-orange-50/70">Match per match: scorri una partita alla volta (consigliato su mobile). Lista: vedi tutte le partite della giornata.</div>
               </div>
             </div>
 
-            <div className="inline-flex overflow-hidden rounded-xl border border-cyan-100/15 bg-slate-950">
+            <div className="inline-flex overflow-hidden rounded-xl border border-amber-100/15 bg-slate-950">
               <button
                 type="button"
-                className={`px-3 py-2 text-sm font-semibold transition-all ${uiMode === "MATCH" ? "bg-rose-600 text-white" : "text-cyan-50/85 hover:bg-cyan-100/5"}`}
+                className={`px-3 py-2 text-sm font-semibold transition-all ${uiMode === "MATCH" ? "bg-rose-600 text-white" : "text-orange-50/85 hover:bg-white/[0.055]"}`}
                 onClick={() => setUiMode("MATCH")}
               >
                 Match
               </button>
               <button
                 type="button"
-                className={`px-3 py-2 text-sm font-semibold transition-all ${uiMode === "LIST" ? "bg-rose-600 text-white" : "text-cyan-50/85 hover:bg-cyan-100/5"}`}
+                className={`px-3 py-2 text-sm font-semibold transition-all ${uiMode === "LIST" ? "bg-rose-600 text-white" : "text-orange-50/85 hover:bg-white/[0.055]"}`}
                 onClick={() => setUiMode("LIST")}
               >
                 Lista
@@ -1175,7 +1175,7 @@ export default function PredictionsPage() {
               <CardHeader title="Giornata" subtitle="Seleziona la giornata su cui inserire i pronostici." />
               <CardContent>
                 <select
-                  className="w-full rounded-xl border border-cyan-100/15 bg-cyan-950/45 px-3 py-2 text-sm text-white"
+                  className="w-full rounded-xl border border-amber-100/15 bg-[#07150f]/90 px-3 py-2 text-sm text-white"
                   value={String(selectedMatchday)}
                   onChange={(e) => {
                     const md = Number(e.target.value);
@@ -1199,7 +1199,7 @@ export default function PredictionsPage() {
           ) : null}
 
           {uiMode === "MATCH" ? (
-            <Card className="overflow-hidden border-cyan-100/15">
+            <Card className="overflow-hidden border-amber-100/15">
               <div
                 className="text-white"
                 style={{
@@ -1210,14 +1210,14 @@ export default function PredictionsPage() {
                 <div className="px-4 py-4 sm:px-6 sm:py-6">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="text-xs uppercase tracking-wide text-cyan-50/70">Giornata {selectedMatchday}</div>
+                      <div className="text-xs uppercase tracking-wide text-orange-50/70">Giornata {selectedMatchday}</div>
                       <div className="mt-1 text-lg font-extrabold">Indovina il risultato</div>
                     </div>
                     <div className="text-right">
-                      <div className="text-xs text-cyan-50/70">
+                      <div className="text-xs text-orange-50/70">
                         {currentMatch ? new Date(currentMatch.kickoffAt).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : ""}
                       </div>
-                      <div className="mt-1 inline-flex items-center gap-2 rounded-xl border border-cyan-100/15 bg-cyan-100/5 px-3 py-2 text-sm font-semibold">
+                      <div className="mt-1 inline-flex items-center gap-2 rounded-xl border border-amber-100/15 bg-white/[0.055] px-3 py-2 text-sm font-semibold">
                         {currentMatches.length ? currentIndex + 1 : 0}/{currentMatches.length}
                       </div>
                     </div>
@@ -1282,7 +1282,7 @@ export default function PredictionsPage() {
                       }}
                     >
                       <div className="flex items-center justify-between gap-3">
-                        <div className="inline-flex flex-wrap items-center gap-2 text-xs text-cyan-50/70">
+                        <div className="inline-flex flex-wrap items-center gap-2 text-xs text-orange-50/70">
                           <span>{currentMatch.status === "NOT_STARTED" ? "Non iniziata" : currentMatch.status === "IN_PROGRESS" ? "In corso" : "Terminata"}</span>
                           {currentMatch.isJolly ? (
                             <span className="inline-flex items-center gap-1 rounded-xl border border-amber-300/35 bg-amber-400/15 px-2.5 py-1 font-semibold text-amber-100 shadow-[0_0_20px_rgba(251,191,36,0.12)]">
@@ -1292,7 +1292,7 @@ export default function PredictionsPage() {
                         </div>
                         <div className="inline-flex items-center gap-2">
                           {!canEditCurrent ? (
-                            <span className="inline-flex items-center gap-2 rounded-xl border border-cyan-100/15 bg-cyan-100/5 px-3 py-2 text-xs font-semibold text-white">
+                            <span className="inline-flex items-center gap-2 rounded-xl border border-amber-100/15 bg-white/[0.055] px-3 py-2 text-xs font-semibold text-white">
                               <Lock className="h-4 w-4" aria-hidden="true" />
                               Bloccata
                             </span>
@@ -1316,15 +1316,15 @@ export default function PredictionsPage() {
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
                               {currentMatch.homeLogo ? (
-                                <img src={currentMatch.homeLogo} alt="" className="h-10 w-10 rounded-full bg-cyan-100/10 object-contain" />
+                                <img src={currentMatch.homeLogo} alt="" className="h-10 w-10 rounded-full bg-white/[0.075] object-contain" />
                               ) : (
-                                <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-cyan-100/10 text-sm font-bold">
+                                <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.075] text-sm font-bold">
                                   {String(currentMatch.homeTeam).slice(0, 1)}
                                 </span>
                               )}
                               <div className="min-w-0">
                                 <div className="truncate text-base font-extrabold">{currentMatch.homeTeam}</div>
-                                <div className="text-[11px] text-cyan-50/70">Casa</div>
+                                <div className="text-[11px] text-orange-50/70">Casa</div>
                               </div>
                             </div>
                           </div>
@@ -1333,12 +1333,12 @@ export default function PredictionsPage() {
                             <div className="flex items-center justify-end gap-2">
                               <div className="min-w-0">
                                 <div className="truncate text-base font-extrabold">{currentMatch.awayTeam}</div>
-                                <div className="text-[11px] text-cyan-50/70">Trasferta</div>
+                                <div className="text-[11px] text-orange-50/70">Trasferta</div>
                               </div>
                               {currentMatch.awayLogo ? (
-                                <img src={currentMatch.awayLogo} alt="" className="h-10 w-10 rounded-full bg-cyan-100/10 object-contain" />
+                                <img src={currentMatch.awayLogo} alt="" className="h-10 w-10 rounded-full bg-white/[0.075] object-contain" />
                               ) : (
-                                <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-cyan-100/10 text-sm font-bold">
+                                <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.075] text-sm font-bold">
                                   {String(currentMatch.awayTeam).slice(0, 1)}
                                 </span>
                               )}
@@ -1356,7 +1356,7 @@ export default function PredictionsPage() {
                             placeholder="0"
                             onChange={(e) => setCurrentScore("home", e.target.value)}
                           />
-                          <span className="text-2xl font-black text-cyan-50/85">-</span>
+                          <span className="text-2xl font-black text-orange-50/85">-</span>
                           <Input
                             inputMode="numeric"
                             disabled={!canEditCurrent}
@@ -1374,9 +1374,9 @@ export default function PredictionsPage() {
                         <div className="min-w-0 text-left">
                           <div className="flex items-center gap-2">
                             {currentMatch.homeLogo ? (
-                              <img src={currentMatch.homeLogo} alt="" className="h-10 w-10 rounded-full bg-cyan-100/10 object-contain" />
+                              <img src={currentMatch.homeLogo} alt="" className="h-10 w-10 rounded-full bg-white/[0.075] object-contain" />
                             ) : (
-                              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-cyan-100/10 text-sm font-bold">
+                              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.075] text-sm font-bold">
                                 {String(currentMatch.homeTeam).slice(0, 1)}
                               </span>
                             )}
@@ -1396,7 +1396,7 @@ export default function PredictionsPage() {
                             placeholder="0"
                             onChange={(e) => setCurrentScore("home", e.target.value)}
                           />
-                          <span className="text-2xl font-black text-cyan-50/85">-</span>
+                          <span className="text-2xl font-black text-orange-50/85">-</span>
                           <Input
                             inputMode="numeric"
                             disabled={!canEditCurrent}
@@ -1414,9 +1414,9 @@ export default function PredictionsPage() {
                               <div className="truncate text-base font-extrabold">{currentMatch.awayTeam}</div>
                             </div>
                             {currentMatch.awayLogo ? (
-                              <img src={currentMatch.awayLogo} alt="" className="h-10 w-10 rounded-full bg-cyan-100/10 object-contain" />
+                              <img src={currentMatch.awayLogo} alt="" className="h-10 w-10 rounded-full bg-white/[0.075] object-contain" />
                             ) : (
-                              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-cyan-100/10 text-sm font-bold">
+                              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.075] text-sm font-bold">
                                 {String(currentMatch.awayTeam).slice(0, 1)}
                               </span>
                             )}
@@ -1425,28 +1425,28 @@ export default function PredictionsPage() {
                       </div>
 
                       <div className="mt-4 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
-                        <div className="rounded-xl border border-cyan-100/15 bg-cyan-100/5 px-3 py-2">
-                          <div className="text-cyan-50/70">Esito</div>
+                        <div className="rounded-xl border border-amber-100/15 bg-white/[0.055] px-3 py-2">
+                          <div className="text-orange-50/70">Esito</div>
                           <div className="mt-0.5 font-extrabold">{currentDerived ? currentDerived.outcome : "—"}</div>
                         </div>
-                        <div className="rounded-xl border border-cyan-100/15 bg-cyan-100/5 px-3 py-2">
-                          <div className="text-cyan-50/70">Somma gol</div>
+                        <div className="rounded-xl border border-amber-100/15 bg-white/[0.055] px-3 py-2">
+                          <div className="text-orange-50/70">Somma gol</div>
                           <div className="mt-0.5 font-extrabold">{currentDerived ? currentDerived.sumGoals : "—"}</div>
                         </div>
                         {underOverEnabled ? (
-                          <div className="rounded-xl border border-cyan-100/15 bg-cyan-100/5 px-3 py-2">
-                            <div className="text-cyan-50/70">U/O 2.5</div>
+                          <div className="rounded-xl border border-amber-100/15 bg-white/[0.055] px-3 py-2">
+                            <div className="text-orange-50/70">U/O 2.5</div>
                             <div className="mt-0.5 font-extrabold">{currentDerived ? currentDerived.underOver : "—"}</div>
                           </div>
                         ) : null}
-                        <div className="rounded-xl border border-cyan-100/15 bg-cyan-100/5 px-3 py-2">
-                          <div className="text-cyan-50/70">Reale</div>
+                        <div className="rounded-xl border border-amber-100/15 bg-white/[0.055] px-3 py-2">
+                          <div className="text-orange-50/70">Reale</div>
                           <div className="mt-0.5 font-extrabold">{currentReal}</div>
                         </div>
                       </div>
 
                       {!currentDerived ? (
-                        <div className="mt-2 text-xs text-cyan-50/70">Inserisci entrambi i punteggi per vedere esito e metriche.</div>
+                        <div className="mt-2 text-xs text-orange-50/70">Inserisci entrambi i punteggi per vedere esito e metriche.</div>
                       ) : null}
 
                       <div className="mt-5">
@@ -1472,9 +1472,9 @@ export default function PredictionsPage() {
                         </button>
                         </div>
                         <div className="mt-2 flex justify-center">
-                          <div className="flex items-center gap-2 text-xs text-cyan-50/85">
+                          <div className="flex items-center gap-2 text-xs text-orange-50/85">
                           {saving ? (
-                            <span className="inline-flex items-center gap-2 rounded-xl border border-cyan-100/15 bg-cyan-100/5 px-3 py-2">
+                            <span className="inline-flex items-center gap-2 rounded-xl border border-amber-100/15 bg-white/[0.055] px-3 py-2">
                               <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-white/20 border-t-white/80" />
                               Salvataggio…
                             </span>
@@ -1489,10 +1489,10 @@ export default function PredictionsPage() {
                       </div>
 
                       {currentMatch.status === "FINISHED" && currentPred ? (
-                        <div className={`mt-4 rounded-2xl border px-3 py-3 text-sm ${exactHitCurrent ? "border-emerald-300/30 bg-emerald-400/10" : hasMatchPointsCurrent ? "border-sky-300/20 bg-sky-400/10" : "border-cyan-100/15 bg-cyan-100/5"}`}>
+                        <div className={`mt-4 rounded-2xl border px-3 py-3 text-sm ${exactHitCurrent ? "border-emerald-300/30 bg-emerald-400/10" : hasMatchPointsCurrent ? "border-sky-300/20 bg-sky-400/10" : "border-amber-100/15 bg-white/[0.055]"}`}>
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <div>
-                              <div className="text-xs uppercase tracking-wide text-cyan-50/70">Punti ottenuti</div>
+                              <div className="text-xs uppercase tracking-wide text-orange-50/70">Punti ottenuti</div>
                               <div className="mt-1 text-lg font-extrabold text-white">
                                 <AnimatedNumber value={Number(currentPred.totalPoints ?? 0)} /> pt
                               </div>
@@ -1503,7 +1503,7 @@ export default function PredictionsPage() {
                               </span>
                             ) : null}
                           </div>
-                          <div className="mt-2 text-xs text-cyan-50/85">{buildBreakdown(currentPred, !!config?.features?.underOver25)}</div>
+                          <div className="mt-2 text-xs text-orange-50/85">{buildBreakdown(currentPred, !!config?.features?.underOver25)}</div>
                         </div>
                       ) : null}
 
@@ -1513,7 +1513,7 @@ export default function PredictionsPage() {
                             <button
                               key={`${a}-${b}`}
                               type="button"
-                              className={`rounded-lg border px-2 py-1 text-xs ${currentPred?.homeGoals === a && currentPred?.awayGoals === b ? "border-rose-400 bg-rose-500/15 text-white" : "border-cyan-100/15 bg-cyan-100/5 text-white hover:bg-cyan-100/10"}`}
+                              className={`rounded-lg border px-2 py-1 text-xs ${currentPred?.homeGoals === a && currentPred?.awayGoals === b ? "border-rose-400 bg-rose-500/15 text-white" : "border-amber-100/15 bg-white/[0.055] text-white hover:bg-white/[0.075]"}`}
                               onClick={() => setCurrentScorePair(a, b)}
                             >
                               {a}-{b}
@@ -1523,7 +1523,7 @@ export default function PredictionsPage() {
                       ) : null}
                     </div>;
                   })() : (
-                    <div className="mt-4 rounded-2xl border border-cyan-100/15 bg-cyan-100/5 p-4 text-sm text-cyan-50/85">Nessuna partita trovata per questa giornata.</div>
+                    <div className="mt-4 rounded-2xl border border-amber-100/15 bg-white/[0.055] p-4 text-sm text-orange-50/85">Nessuna partita trovata per questa giornata.</div>
                   )}
                 </div>
               </div>
@@ -1538,7 +1538,7 @@ export default function PredictionsPage() {
           <CardContent>
             <div className="flex items-center gap-3">
               <select
-                className="w-full rounded-xl border border-cyan-100/15 bg-cyan-950/45 px-3 py-2 text-sm text-white"
+                className="w-full rounded-xl border border-amber-100/15 bg-[#07150f]/90 px-3 py-2 text-sm text-white"
                 defaultValue={String(firstNotFinishedMatchday)}
                 onChange={(e) => {
                   const md = Number(e.target.value);
@@ -1687,7 +1687,7 @@ export default function PredictionsPage() {
                       return <img src={logo} alt={name} className="h-6 w-6 rounded-full object-contain" />;
                     }
                     return (
-                      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-cyan-100/15 bg-cyan-950/45 text-[10px] font-bold text-cyan-50/85">
+                      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-amber-100/15 bg-[#07150f]/90 text-[10px] font-bold text-orange-50/85">
                         {name.trim().slice(0, 1).toUpperCase()}
                       </span>
                     );
@@ -1712,16 +1712,16 @@ export default function PredictionsPage() {
                           {!canEdit ? (
                             <span
                               title={lockReason}
-                              className="inline-flex items-center rounded-full border border-cyan-100/15 bg-cyan-950/35 px-2 py-1"
+                              className="inline-flex items-center rounded-full border border-amber-100/15 bg-[#07150f]/80 px-2 py-1"
                             >
-                              <Lock className="h-3.5 w-3.5 text-cyan-50/70" aria-hidden="true" />
+                              <Lock className="h-3.5 w-3.5 text-orange-50/70" aria-hidden="true" />
                             </span>
                           ) : null}
                         </div>
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            className="inline-flex items-center gap-1 rounded-full border border-cyan-100/15 bg-cyan-950/35 px-2 py-1 text-xs font-medium text-cyan-50/70 hover:bg-cyan-100/5"
+                            className="inline-flex items-center gap-1 rounded-full border border-amber-100/15 bg-[#07150f]/80 px-2 py-1 text-xs font-medium text-orange-50/70 hover:bg-white/[0.055]"
                             onClick={() => openDetail(m.id)}
                             title="Dettaglio match"
                           >
@@ -1758,7 +1758,7 @@ export default function PredictionsPage() {
                             inputMode="numeric"
                             disabled={!canEdit}
                             aria-label={`Gol ${m.homeTeam}`}
-                            className="!w-12 !px-2 !py-1 text-center !font-extrabold !text-white !bg-slate-950 !border-2 !border-cyan-100/15 hover:!border-white/20 focus:!border-rose-500 focus:!ring-2 focus:!ring-rose-500/30 shadow-sm"
+                            className="!w-12 !px-2 !py-1 text-center !font-extrabold !text-white !bg-slate-950 !border-2 !border-amber-100/15 hover:!border-white/20 focus:!border-rose-500 focus:!ring-2 focus:!ring-rose-500/30 shadow-sm"
                             value={p?.homeGoals === undefined ? "" : String(p.homeGoals)}
                             placeholder="0"
                             onChange={(e) => {
@@ -1771,12 +1771,12 @@ export default function PredictionsPage() {
                               });
                             }}
                           />
-                          <span className="px-1 text-xs text-cyan-100/60">-</span>
+                          <span className="px-1 text-xs text-orange-50/60">-</span>
                           <Input
                             inputMode="numeric"
                             disabled={!canEdit}
                             aria-label={`Gol ${m.awayTeam}`}
-                            className="!w-12 !px-2 !py-1 text-center !font-extrabold !text-white !bg-slate-950 !border-2 !border-cyan-100/15 hover:!border-white/20 focus:!border-rose-500 focus:!ring-2 focus:!ring-rose-500/30 shadow-sm"
+                            className="!w-12 !px-2 !py-1 text-center !font-extrabold !text-white !bg-slate-950 !border-2 !border-amber-100/15 hover:!border-white/20 focus:!border-rose-500 focus:!ring-2 focus:!ring-rose-500/30 shadow-sm"
                             value={p?.awayGoals === undefined ? "" : String(p.awayGoals)}
                             placeholder="0"
                             onChange={(e) => {
@@ -1826,7 +1826,7 @@ export default function PredictionsPage() {
                             <button
                               key={`${a}-${b}`}
                               type="button"
-                              className={`rounded-lg border px-2 py-1 text-xs ${activeQuick(a, b) ? "border-rose-500/60 bg-rose-500/10 text-rose-100" : "border-cyan-100/15 bg-slate-950/55 text-white hover:bg-cyan-100/10"}`}
+                              className={`rounded-lg border px-2 py-1 text-xs ${activeQuick(a, b) ? "border-rose-500/60 bg-rose-500/10 text-rose-100" : "border-amber-100/15 bg-slate-950/55 text-white hover:bg-white/[0.075]"}`}
                               onClick={() => setScore(a, b)}
                             >
                               {a}-{b}
@@ -1856,19 +1856,19 @@ export default function PredictionsPage() {
 
       {detailOpen ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 p-4 sm:items-center">
-          <div className="w-full max-w-3xl overflow-hidden rounded-2xl bg-cyan-950/45 shadow-xl ring-1 ring-slate-800">
-            <div className="flex items-center justify-between border-b border-cyan-100/15 px-5 py-4">
+          <div className="w-full max-w-3xl overflow-hidden rounded-2xl bg-[#07150f]/90 shadow-xl ring-1 ring-slate-800">
+            <div className="flex items-center justify-between border-b border-amber-100/15 px-5 py-4">
               <div className="min-w-0">
                 <div className="truncate text-base font-semibold text-white">Dettaglio match</div>
                 {detailMatchId && matchById.get(detailMatchId) ? (
-                  <div className="mt-0.5 truncate text-sm text-cyan-100/60">
+                  <div className="mt-0.5 truncate text-sm text-orange-50/60">
                     {matchById.get(detailMatchId)!.homeTeam} vs {matchById.get(detailMatchId)!.awayTeam}
                   </div>
                 ) : null}
               </div>
               <button
                 type="button"
-                className="rounded-xl p-2 text-cyan-100/60 hover:bg-cyan-100/10"
+                className="rounded-xl p-2 text-orange-50/60 hover:bg-white/[0.075]"
                 onClick={closeDetail}
                 aria-label="Chiudi"
               >
@@ -1888,18 +1888,18 @@ export default function PredictionsPage() {
               ) : (
                 <div className="space-y-4">
                   {/* Tabs */}
-                  <div className="flex items-center gap-2 rounded-2xl border border-cyan-100/15 bg-cyan-100/5/40 p-2">
+                  <div className="flex items-center gap-2 rounded-2xl border border-amber-100/15 bg-white/[0.055]/40 p-2">
                     <button
                       type="button"
                       onClick={() => setDetailTab("summary")}
-                      className={`flex-1 rounded-xl px-3 py-2 text-xs font-extrabold tracking-wide ${detailTab === "summary" ? "bg-rose-600 text-white" : "text-cyan-50/85 hover:bg-cyan-100/5"}`}
+                      className={`flex-1 rounded-xl px-3 py-2 text-xs font-extrabold tracking-wide ${detailTab === "summary" ? "bg-rose-600 text-white" : "text-orange-50/85 hover:bg-white/[0.055]"}`}
                     >
                       RIASSUNTO
                     </button>
                     <button
                       type="button"
                       onClick={() => setDetailTab("lineups")}
-                      className={`flex-1 rounded-xl px-3 py-2 text-xs font-extrabold tracking-wide ${detailTab === "lineups" ? "bg-rose-600 text-white" : "text-cyan-50/85 hover:bg-cyan-100/5"}`}
+                      className={`flex-1 rounded-xl px-3 py-2 text-xs font-extrabold tracking-wide ${detailTab === "lineups" ? "bg-rose-600 text-white" : "text-orange-50/85 hover:bg-white/[0.055]"}`}
                     >
                       FORMAZIONI
                     </button>
@@ -1908,11 +1908,11 @@ export default function PredictionsPage() {
                   {detailTab === "summary" ? (
                     <div className="space-y-6">
                       {/* Scorer */}
-                      <div className="rounded-2xl border border-cyan-100/15 bg-cyan-100/5/40 p-4">
+                      <div className="rounded-2xl border border-amber-100/15 bg-white/[0.055]/40 p-4">
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <div className="text-sm font-semibold text-white">Marcatore</div>
-                            <div className="mt-0.5 text-xs text-cyan-100/60">
+                            <div className="mt-0.5 text-xs text-orange-50/60">
                               {detailData.scorerEnabled
                                 ? detailData.canPickScorer
                                   ? `Se il giocatore segna: +${detailData.pointsScorer} punti`
@@ -1921,16 +1921,16 @@ export default function PredictionsPage() {
                             </div>
                           </div>
                           {detailData.scorerEnabled && detailData.lineupAvailable ? (
-                            <span className="text-xs font-medium text-cyan-100/60">Giocatori: disponibili</span>
+                            <span className="text-xs font-medium text-orange-50/60">Giocatori: disponibili</span>
                           ) : (
-                            <span className="text-xs font-medium text-cyan-100/60">Giocatori: —</span>
+                            <span className="text-xs font-medium text-orange-50/60">Giocatori: —</span>
                           )}
                         </div>
 
                         {detailData.scorerEnabled && detailData.lineupAvailable ? (
                           <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
                             <label className="block text-sm">
-                              <span className="mb-1 block text-xs font-medium text-cyan-50/70">Seleziona giocatore</span>
+                              <span className="mb-1 block text-xs font-medium text-orange-50/70">Seleziona giocatore</span>
                               <SearchableSelect
                                 disabled={!detailData.canPickScorer}
                                 value={detailPlayerId === null ? "" : String(detailPlayerId)}
@@ -2006,12 +2006,12 @@ export default function PredictionsPage() {
                             </div>
                           </div>
                         ) : (
-                          <div className="mt-3 text-sm text-cyan-100/60">{detailData.scorerEnabled ? "Lista giocatori non disponibile per questo match." : ""}</div>
+                          <div className="mt-3 text-sm text-orange-50/60">{detailData.scorerEnabled ? "Lista giocatori non disponibile per questo match." : ""}</div>
                         )}
 
                         {detailData.scorer ? (
-                          <div className="mt-2 text-xs text-cyan-100/60">
-                            Selezionato: <span className="font-semibold text-cyan-50/85">{detailData.scorer.playerName}</span>
+                          <div className="mt-2 text-xs text-orange-50/60">
+                            Selezionato: <span className="font-semibold text-orange-50/85">{detailData.scorer.playerName}</span>
                             {(() => {
                               const sel = String(detailData?.scorer?.playerExternalId || "");
                               const m = sel.match(/^(?:afp:|fdp:)?(\d+)$/i);
@@ -2022,7 +2022,7 @@ export default function PredictionsPage() {
                               return hit ? (
                                 <span className="ml-2 inline-flex items-center rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-extrabold text-emerald-800">+{detailData.pointsScorer} punti</span>
                               ) : (
-                                <span className="ml-2 inline-flex items-center rounded-full bg-cyan-100/10 px-2 py-0.5 text-[11px] font-semibold text-cyan-100/60">0 punti</span>
+                                <span className="ml-2 inline-flex items-center rounded-full bg-white/[0.075] px-2 py-0.5 text-[11px] font-semibold text-orange-50/60">0 punti</span>
                               );
                             })()}
                           </div>
@@ -2032,7 +2032,7 @@ export default function PredictionsPage() {
                       {/* Events */}
                       <div>
                         <div className="text-sm font-semibold text-white">Eventi</div>
-                        <div className="mt-2 rounded-2xl border border-cyan-100/15 bg-cyan-950/35 p-4">
+                        <div className="mt-2 rounded-2xl border border-amber-100/15 bg-[#07150f]/80 p-4">
                           {renderEventsSummary(detailData.events || [])}
                         </div>
                       </div>

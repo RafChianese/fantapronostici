@@ -56,10 +56,10 @@ export default function LoginPage() {
             </Button>
           </div>
 
-          <div className="flex items-center gap-3 text-xs text-cyan-100/60">
-            <div className="h-px flex-1 bg-cyan-100/10" />
+          <div className="flex items-center gap-3 text-xs text-orange-50/60">
+            <div className="h-px flex-1 bg-white/[0.075]" />
             <span>oppure</span>
-            <div className="h-px flex-1 bg-cyan-100/10" />
+            <div className="h-px flex-1 bg-white/[0.075]" />
           </div>
 
           {!showCredentials ? (
@@ -95,7 +95,7 @@ export default function LoginPage() {
               <Button type="submit" className="w-full" disabled={loading || !email.trim() || !password}>
                 {loading ? "Accesso in corso…" : "Entra"}
               </Button>
-              <div className="text-center text-xs text-cyan-100/60">
+              <div className="text-center text-xs text-orange-50/60">
                 Non hai un account? <Link className="font-semibold text-rose-300 hover:text-rose-200" to="/register">Registrati</Link>
               </div>
             </form>

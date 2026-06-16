@@ -43,7 +43,7 @@ export default function AdminLoginPage() {
             >
               Entra come admin
             </Button>
-            <div className="text-xs text-cyan-100/60">Demo: admin@example.com / Admin123!</div>
+            <div className="text-xs text-orange-50/60">Demo: admin@example.com / Admin123!</div>
           </div>
         </CardContent>
       </Card>

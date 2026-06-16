@@ -122,7 +122,7 @@ export default function LeaderboardPage() {
 
   return (
     <div className="tm-page-stack">
-      <div className="overflow-hidden rounded-3xl border border-cyan-100/15 shadow-sm">
+      <div className="overflow-hidden rounded-3xl border border-amber-100/15 shadow-sm">
         <div
           className="text-white"
           style={{
@@ -133,17 +133,17 @@ export default function LeaderboardPage() {
           <div className="p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-cyan-50/70">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-orange-50/70">
                   <Trophy className="h-4 w-4" aria-hidden="true" />
                   Classifica
                 </div>
                 <div className="mt-1 text-2xl font-extrabold tracking-tight">{leagueName || "Classifica generale"}</div>
-                {rows.length ? <div className="mt-1 text-sm text-cyan-50/70">Leader: {rows[0].displayName} · <b className="text-white">{rows[0].totalPoints}</b> pt</div> : null}
+                {rows.length ? <div className="mt-1 text-sm text-orange-50/70">Leader: {rows[0].displayName} · <b className="text-white">{rows[0].totalPoints}</b> pt</div> : null}
               </div>
               <div className="text-right">
                 {myRank ? (
-                  <div className="inline-flex flex-col items-end rounded-2xl border border-cyan-100/15 bg-cyan-100/5 px-3 py-2">
-                    <div className="text-[11px] font-semibold text-cyan-50/70">La tua posizione</div>
+                  <div className="inline-flex flex-col items-end rounded-2xl border border-amber-100/15 bg-white/[0.055] px-3 py-2">
+                    <div className="text-[11px] font-semibold text-orange-50/70">La tua posizione</div>
                     <div className="text-lg font-extrabold">#{myRank}</div>
                   </div>
                 ) : null}
@@ -195,9 +195,9 @@ export default function LeaderboardPage() {
       <CardContent>
         <div className="mb-4 flex items-center justify-end gap-2">
           <div className="hidden sm:block">
-            <label className="text-xs text-cyan-100/60">Ordina</label>
+            <label className="text-xs text-orange-50/60">Ordina</label>
             <select
-              className="mt-1 w-[260px] rounded-xl border border-cyan-100/15 bg-cyan-950/45 px-3 py-2 text-sm text-white"
+              className="mt-1 w-[260px] rounded-xl border border-amber-100/15 bg-[#07150f]/90 px-3 py-2 text-sm text-white"
               value={sortParam}
               onChange={(e) => {
                 const v = e.target.value;
@@ -223,7 +223,7 @@ export default function LeaderboardPage() {
         </div>
 
         {/* Legend / metric explanation */}
-        <div className="mb-4 rounded-2xl border border-cyan-100/15 bg-cyan-100/5 p-3">
+        <div className="mb-4 rounded-2xl border border-amber-100/15 bg-white/[0.055] p-3">
           <button
             type="button"
             onClick={() => setLegendOpen((v) => !v)}
@@ -237,7 +237,7 @@ export default function LeaderboardPage() {
           </button>
 
           {legendOpen ? (
-            <div className="mt-3 grid gap-2 text-xs text-cyan-50/70 sm:grid-cols-2">
+            <div className="mt-3 grid gap-2 text-xs text-orange-50/70 sm:grid-cols-2">
               <div className="flex items-center gap-2"><Trophy size={16} aria-hidden="true" /> <b>Punti</b>: totale punti in classifica</div>
               <div className="flex items-center gap-2"><Target size={16} aria-hidden="true" /> <b>Esatti</b>: risultati esatti</div>
               <div className="flex items-center gap-2"><CheckCircle2 size={16} aria-hidden="true" /> <b>1X2</b>: esito corretto</div>
@@ -251,13 +251,13 @@ export default function LeaderboardPage() {
               ) : null}
 
               {tieBreakers.length ? (
-                <div className="sm:col-span-2 text-xs text-cyan-50/70 pt-1">
+                <div className="sm:col-span-2 text-xs text-orange-50/70 pt-1">
                   <b>Tie-break</b> (a parità di punti): {tieBreakers.join(" → ")}
                 </div>
               ) : null}
             </div>
           ) : (
-            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-cyan-50/70">
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-orange-50/70">
               <span className="inline-flex items-center gap-1"><Trophy size={14} aria-hidden="true" /> Punti</span>
               <span className="inline-flex items-center gap-1"><Target size={14} aria-hidden="true" /> Esatti</span>
               <span className="inline-flex items-center gap-1"><CheckCircle2 size={14} aria-hidden="true" /> 1X2</span>
@@ -268,7 +268,7 @@ export default function LeaderboardPage() {
               {features.matchdayAwards ? (
                 <span className="inline-flex items-center gap-1"><Award size={14} aria-hidden="true" /> Premi</span>
               ) : null}
-              <span className="ml-auto inline-flex items-center gap-1 text-cyan-100/60">
+              <span className="ml-auto inline-flex items-center gap-1 text-orange-50/60">
                 <span className="hidden sm:inline">Apri per dettagli</span>
                 <span className="sm:hidden">Dettagli</span>
                 <ChevronDown size={14} aria-hidden="true" />
@@ -293,7 +293,7 @@ export default function LeaderboardPage() {
           <div className="space-y-2">
 
             {/* Desktop header */}
-            <div className="hidden sm:grid sm:grid-cols-12 sm:gap-3 sm:pb-2 sm:text-[11px] sm:font-semibold sm:uppercase sm:tracking-wide sm:text-cyan-50/70">
+            <div className="hidden sm:grid sm:grid-cols-12 sm:gap-3 sm:pb-2 sm:text-[11px] sm:font-semibold sm:uppercase sm:tracking-wide sm:text-orange-50/70">
               <div className="sm:col-span-6">Giocatore</div>
               <div className="sm:col-span-2 sm:text-right">Punti</div>
               <div className="sm:col-span-4 sm:text-right">Metriche</div>
@@ -306,14 +306,14 @@ export default function LeaderboardPage() {
               const isPrizePosition = idx < prizeCount;
               const medal = isPrizePosition ? (idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : "🏅") : "";
               const medalGlow = isPrizePosition ? "tm-medal-glow" : "";
-              const top3Row = isPrizePosition ? "border-yellow-200/30 bg-yellow-300/10 shadow-[0_0_35px_rgba(250,204,21,0.10)]" : "border-cyan-100/15 bg-cyan-100/5";
+              const top3Row = isPrizePosition ? "border-yellow-200/30 bg-yellow-300/10 shadow-[0_0_35px_rgba(250,204,21,0.10)]" : "border-amber-100/15 bg-white/[0.055]";
               const isMe = !!user?.id && r.userId === user.id;
               const gap = idx === 0 ? 0 : Math.max(0, leaderPoints - Number(r.totalPoints || 0));
               return (
               <div key={r.userId} className={`rounded-3xl border p-3 transition ${top3Row} ${isMe ? "brightness-110" : ""} ${flashCls}`}>
                 <Link
                   to={`/users/${r.userId}`}
-                  className="group block rounded-2xl transition hover:bg-cyan-100/5 focus:outline-none focus:ring-2 focus:ring-rose-400/40"
+                  className="group block rounded-2xl transition hover:bg-white/[0.055] focus:outline-none focus:ring-2 focus:ring-rose-400/40"
                   aria-label={`Apri il dettaglio di ${r.displayName}`}
                 >
                 {/* Mobile: 2 righe senza scroll orizzontale. Desktop: layout a colonne */}
@@ -321,12 +321,12 @@ export default function LeaderboardPage() {
                   <div className="flex items-center justify-between sm:col-span-6 sm:justify-start sm:gap-3">
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-2">
-                        <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-extrabold ${isPrizePosition ? "border-yellow-200/30 bg-yellow-300/10 text-yellow-50" : "border-cyan-100/15 bg-cyan-950/35 text-white"} ${medalGlow}`}>
+                        <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-extrabold ${isPrizePosition ? "border-yellow-200/30 bg-yellow-300/10 text-yellow-50" : "border-amber-100/15 bg-[#07150f]/80 text-white"} ${medalGlow}`}>
                           <span className="tabular-nums">#{idx + 1}</span>
                           {medal ? <span aria-hidden="true">{medal}</span> : null}
                         </span>
                         {delta !== 0 ? (
-                          <span className="text-[11px] font-semibold text-cyan-50/70" title="Variazione posizione">
+                          <span className="text-[11px] font-semibold text-orange-50/70" title="Variazione posizione">
                             {delta > 0 ? "▲" : "▼"}
                           </span>
                         ) : null}
@@ -335,7 +335,7 @@ export default function LeaderboardPage() {
                         <UserAvatar avatarId={(r as any).avatarId || null} size={26} className={`shadow-sm ${isPrizePosition ? "tm-top3-avatar" : ""}`} />
                         <div>
                           <div className="font-medium group-hover:underline">{r.displayName}</div>
-                          <div className="text-[11px] text-cyan-100/60">Apri dettaglio e pronostici</div>
+                          <div className="text-[11px] text-orange-50/60">Apri dettaglio e pronostici</div>
                         </div>
                         {/* Keep the row highlight for the logged user, but avoid extra labels ("Tu" / "Top"). */}
                       </div>
@@ -344,7 +344,7 @@ export default function LeaderboardPage() {
                       <div className="flex flex-col items-end gap-1">
                         <div>
                           <AnimatedNumber value={r.totalPoints} /> pt
-                          {idx !== 0 ? <span className="ml-2 text-xs font-semibold text-cyan-50/70">-{gap}</span> : null}
+                          {idx !== 0 ? <span className="ml-2 text-xs font-semibold text-orange-50/70">-{gap}</span> : null}
                         </div>
                         {(r.competitionPoints ?? 0) > 0 ? (
                           <span
@@ -362,7 +362,7 @@ export default function LeaderboardPage() {
                     <div className="flex flex-col items-end gap-1">
                       <div>
                         <AnimatedNumber value={r.totalPoints} /> pt
-                        {idx !== 0 ? <span className="ml-2 text-[11px] font-semibold text-cyan-50/70">-{gap}</span> : null}
+                        {idx !== 0 ? <span className="ml-2 text-[11px] font-semibold text-orange-50/70">-{gap}</span> : null}
                       </div>
                       {(r.competitionPoints ?? 0) > 0 ? (
                         <span
@@ -375,7 +375,7 @@ export default function LeaderboardPage() {
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center justify-start gap-x-4 gap-y-1 text-xs text-cyan-50/85 sm:col-span-4 sm:justify-end sm:flex-nowrap sm:gap-x-4">
+                  <div className="flex flex-wrap items-center justify-start gap-x-4 gap-y-1 text-xs text-orange-50/85 sm:col-span-4 sm:justify-end sm:flex-nowrap sm:gap-x-4">
                     {/* Mobile "stack": label+value; Desktop: icon+value */}
                     <span className="inline-flex items-center gap-1 whitespace-nowrap" title="Risultati esatti">
                       <Target size={14} aria-hidden="true" /> <span className="sm:hidden">Esatti:</span> {r.exactHits}
@@ -402,7 +402,7 @@ export default function LeaderboardPage() {
               </div>
             );
             })}
-            {rows.length === 0 ? <div className="py-6 text-sm text-cyan-50/70">Nessun partecipante attivo.</div> : null}
+            {rows.length === 0 ? <div className="py-6 text-sm text-orange-50/70">Nessun partecipante attivo.</div> : null}
           </div>
         )}
       </CardContent>

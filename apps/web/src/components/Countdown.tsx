@@ -33,7 +33,7 @@ export function Countdown({ lockUntilIso, nowIso, labelOpen, labelClosed, compac
 
   return (
     <div className="flex flex-col gap-1">
-      <div className="text-xs text-cyan-100/60">{closed ? (labelClosed ?? "Pronostici bloccati") : (labelOpen ?? "Modifiche aperte")}</div>
+      <div className="text-xs text-orange-50/60">{closed ? (labelClosed ?? "Pronostici bloccati") : (labelOpen ?? "Modifiche aperte")}</div>
       <div className="font-mono text-sm">{timeStr}</div>
     </div>
   );

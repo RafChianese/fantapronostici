@@ -59,7 +59,7 @@ function PredictionWindowPanel({ config, onSave }: { config: any; onSave: (patch
         <Input label="Dal" type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} />
         <Input label="Al" type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} />
       </div>
-      <div className="text-xs text-cyan-100/60">
+      <div className="text-xs text-orange-50/60">
         Se il filtro è valorizzato, in Pronostici saranno visibili e salvabili solo le partite con kickoff compreso nel range.
       </div>
       <div className="flex flex-wrap gap-2">
@@ -106,10 +106,10 @@ function MultiTeamSelect({
   }
 
   return (
-    <div className="space-y-2 rounded-xl border border-cyan-100/15 bg-cyan-950/45 p-3">
+    <div className="space-y-2 rounded-xl border border-amber-100/15 bg-[#07150f]/90 p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="text-sm font-semibold text-white">{title}</div>
-        <div className="text-xs text-cyan-100/60">Selezionate: {selected.length}</div>
+        <div className="text-xs text-orange-50/60">Selezionate: {selected.length}</div>
       </div>
       <Input
         label="Cerca squadra"
@@ -117,7 +117,7 @@ function MultiTeamSelect({
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Es. Francia"
       />
-      <div className="max-h-48 overflow-auto rounded-xl border border-cyan-100/15 bg-cyan-100/5 p-2">
+      <div className="max-h-48 overflow-auto rounded-xl border border-amber-100/15 bg-white/[0.055] p-2">
         {options.length ? options.map((team) => (
           <label key={team.id} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-white hover:bg-slate-800/70">
             <input
@@ -129,7 +129,7 @@ function MultiTeamSelect({
             <span>{team.name}</span>
           </label>
         )) : (
-          <div className="px-2 py-2 text-xs text-cyan-100/60">Nessuna squadra disponibile.</div>
+          <div className="px-2 py-2 text-xs text-orange-50/60">Nessuna squadra disponibile.</div>
         )}
       </div>
       {selected.length ? (
@@ -168,14 +168,14 @@ function CompetitionTypePanel({ config, onSave }: { config: any; onSave: (patch:
       {err ? <Alert tone="danger">{err}</Alert> : null}
       {ok ? <Alert tone="success">{ok}</Alert> : null}
       <select
-        className="w-full rounded-xl border border-cyan-100/15 bg-cyan-950/45 px-3 py-2 text-sm"
+        className="w-full rounded-xl border border-amber-100/15 bg-[#07150f]/90 px-3 py-2 text-sm"
         value={type}
         onChange={(e) => setType(e.target.value)}
       >
         <option value="LEAGUE">Campionato / girone senza fasi eliminatorie</option>
         <option value="KNOCKOUT_CUP">Coppa con fasi a eliminazione</option>
       </select>
-      <div className="text-xs text-cyan-100/60">
+      <div className="text-xs text-orange-50/60">
         Se scegli “Coppa con fasi a eliminazione”, gli admin delle leghe potranno abilitare i pronostici su quarti, semifinali e finale.
       </div>
       <Button disabled={saving} onClick={save}>{saving ? "Salvo…" : "Salva tipo competizione"}</Button>
@@ -327,7 +327,7 @@ export default function SuperAdminPage() {
           subtitle="Imposta risultati globali: vincitore, capocannonieri e liste squadre qualificate per quarti/semifinali/finale nelle coppe."
         />
         <CardContent className="space-y-4">
-          {!compOutcome ? <div className="text-sm text-cyan-100/60">Caricamento…</div> : null}
+          {!compOutcome ? <div className="text-sm text-orange-50/60">Caricamento…</div> : null}
           {err ? <Alert tone="danger">{err}</Alert> : null}
 
           {compOutcome ? (
@@ -359,7 +359,7 @@ export default function SuperAdminPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="text-sm font-semibold text-white">Capocannoniere #2 (opzionale)</div>
-                      <div className="text-xs text-cyan-100/60">Usalo solo se vuoi considerare un 2° top scorer (pari merito).</div>
+                      <div className="text-xs text-orange-50/60">Usalo solo se vuoi considerare un 2° top scorer (pari merito).</div>
                     </div>
                     {scorer2Id ? (
                       <Button variant="secondary" onClick={() => setScorer2Id("")}>Rimuovi</Button>
@@ -376,10 +376,10 @@ export default function SuperAdminPage() {
                 </div>
 
                 {external?.competitionType === "KNOCKOUT_CUP" ? (
-                  <div className="space-y-3 md:col-span-2 rounded-2xl border border-cyan-100/15 bg-cyan-100/5 p-4">
+                  <div className="space-y-3 md:col-span-2 rounded-2xl border border-amber-100/15 bg-white/[0.055] p-4">
                     <div>
                       <div className="text-sm font-semibold text-white">Squadre qualificate alle fasi a eliminazione</div>
-                      <div className="text-xs text-cyan-100/60">Liste globali usate per assegnare i punti ai pronostici del torneo. Puoi selezionare più squadre per ogni fase.</div>
+                      <div className="text-xs text-orange-50/60">Liste globali usate per assegnare i punti ai pronostici del torneo. Puoi selezionare più squadre per ogni fase.</div>
                     </div>
                     <MultiTeamSelect
                       title="Squadre arrivate ai quarti"
@@ -445,9 +445,9 @@ export default function SuperAdminPage() {
                 </Button>
 
                 {compOutcome?.outcome?.resolvedAt ? (
-                  <span className="text-xs text-cyan-100/60">Ultimo salvataggio: {new Date(compOutcome.outcome.resolvedAt).toLocaleString("it-IT")}</span>
+                  <span className="text-xs text-orange-50/60">Ultimo salvataggio: {new Date(compOutcome.outcome.resolvedAt).toLocaleString("it-IT")}</span>
                 ) : (
-                  <span className="text-xs text-cyan-100/60">Non ancora impostato.</span>
+                  <span className="text-xs text-orange-50/60">Non ancora impostato.</span>
                 )}
               </div>
             </>
@@ -462,14 +462,14 @@ export default function SuperAdminPage() {
             {leagues.map((l) => (
               <button
                 key={l.id}
-                className="w-full rounded-xl border border-cyan-100/15 px-4 py-3 text-left hover:bg-cyan-100/5"
+                className="w-full rounded-xl border border-amber-100/15 px-4 py-3 text-left hover:bg-white/[0.055]"
                 onClick={() => openLeague(l.id)}
               >
                 <div className="flex items-center justify-between">
                   <div className="font-medium">{l.name}</div>
                   <Badge>{l.code}</Badge>
                 </div>
-                <div className="mt-1 text-xs text-cyan-100/60">Membri: {l._count?.members ?? 0}</div>
+                <div className="mt-1 text-xs text-orange-50/60">Membri: {l._count?.members ?? 0}</div>
               </button>
             ))}
           </div>
@@ -480,7 +480,7 @@ export default function SuperAdminPage() {
         <CardHeader title="Dettaglio lega" subtitle="Approva membri e assegna admin" />
         <CardContent>
           {!selected ? (
-            <div className="text-sm text-cyan-100/60">Seleziona una lega a sinistra.</div>
+            <div className="text-sm text-orange-50/60">Seleziona una lega a sinistra.</div>
           ) : (
             <LeagueDetail league={selected} onChanged={async () => { await openLeague(selected.id); await load(); }} />
           )}
@@ -516,10 +516,10 @@ function MonetizationPanel({
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <div className="space-y-3">
-        <div className="flex items-center justify-between rounded-xl border border-cyan-100/15 p-3">
+        <div className="flex items-center justify-between rounded-xl border border-amber-100/15 p-3">
           <div>
             <div className="font-medium">Ads abilitati</div>
-            <div className="text-xs text-cyan-100/60">Se OFF, i pronostici sono visibili senza sblocco</div>
+            <div className="text-xs text-orange-50/60">Se OFF, i pronostici sono visibili senza sblocco</div>
           </div>
           <input
             type="checkbox"
@@ -529,10 +529,10 @@ function MonetizationPanel({
           />
         </div>
 
-        <div className="flex items-center justify-between rounded-xl border border-cyan-100/15 p-3">
+        <div className="flex items-center justify-between rounded-xl border border-amber-100/15 p-3">
           <div>
             <div className="font-medium">Fallback demo</div>
-            <div className="text-xs text-cyan-100/60">Se ON, usa il countdown demo quando Ad Manager non è disponibile</div>
+            <div className="text-xs text-orange-50/60">Se ON, usa il countdown demo quando Ad Manager non è disponibile</div>
           </div>
           <input
             type="checkbox"
@@ -542,7 +542,7 @@ function MonetizationPanel({
           />
         </div>
 
-        <div className="rounded-xl border border-cyan-100/15 p-3">
+        <div className="rounded-xl border border-amber-100/15 p-3">
           <div className="font-medium">Durata sblocco (minuti)</div>
           <div className="mt-2 flex items-center gap-2">
             <input
@@ -551,7 +551,7 @@ function MonetizationPanel({
               max={120}
               value={local.unlockMinutes}
               onChange={(e) => setLocal((x) => ({ ...x, unlockMinutes: Number(e.target.value) }))}
-              className="w-28 rounded-lg border border-cyan-100/15 px-3 py-2"
+              className="w-28 rounded-lg border border-amber-100/15 px-3 py-2"
             />
             <Button onClick={() => onSave({ ...local })}>Salva</Button>
           </div>
@@ -559,37 +559,37 @@ function MonetizationPanel({
       </div>
 
       <div className="space-y-3">
-        <div className="rounded-xl border border-cyan-100/15 p-3">
+        <div className="rounded-xl border border-amber-100/15 p-3">
           <div className="font-medium">Statistiche</div>
           <div className="mt-2 grid grid-cols-3 gap-2 text-sm">
-            <div className="rounded-lg bg-cyan-100/5 p-2">
-              <div className="text-xs text-cyan-100/60">Unlock totali</div>
+            <div className="rounded-lg bg-white/[0.055] p-2">
+              <div className="text-xs text-orange-50/60">Unlock totali</div>
               <div className="font-semibold">{stats?.totalUnlocks ?? 0}</div>
             </div>
-            <div className="rounded-lg bg-cyan-100/5 p-2">
-              <div className="text-xs text-cyan-100/60">Utenti unici</div>
+            <div className="rounded-lg bg-white/[0.055] p-2">
+              <div className="text-xs text-orange-50/60">Utenti unici</div>
               <div className="font-semibold">{stats?.uniqueUsers ?? 0}</div>
             </div>
-            <div className="rounded-lg bg-cyan-100/5 p-2">
-              <div className="text-xs text-cyan-100/60">Media minuti</div>
+            <div className="rounded-lg bg-white/[0.055] p-2">
+              <div className="text-xs text-orange-50/60">Media minuti</div>
               <div className="font-semibold">{stats?.avgMinutes ? Math.round(stats.avgMinutes) : "-"}</div>
             </div>
           </div>
         </div>
 
-        <div className="rounded-xl border border-cyan-100/15 p-3">
+        <div className="rounded-xl border border-amber-100/15 p-3">
           <div className="font-medium">Ultimi sblocchi</div>
           <div className="mt-2 space-y-2">
             {(stats?.last || []).slice(0, 8).map((r: any) => (
-              <div key={r.id} className="flex items-center justify-between rounded-lg bg-cyan-100/5 px-3 py-2">
+              <div key={r.id} className="flex items-center justify-between rounded-lg bg-white/[0.055] px-3 py-2">
                 <div>
                   <div className="text-sm font-medium">{r.user?.displayName || r.user?.email || r.userId}</div>
-                  <div className="text-xs text-cyan-100/60">{new Date(r.createdAt).toLocaleString()}</div>
+                  <div className="text-xs text-orange-50/60">{new Date(r.createdAt).toLocaleString()}</div>
                 </div>
                 <Badge>{r.minutes}m</Badge>
               </div>
             ))}
-            {(!stats?.last || stats.last.length === 0) ? <div className="text-sm text-cyan-100/60">Nessun dato.</div> : null}
+            {(!stats?.last || stats.last.length === 0) ? <div className="text-sm text-orange-50/60">Nessun dato.</div> : null}
           </div>
         </div>
       </div>
@@ -630,27 +630,27 @@ function FootballDataPanel({ selected, onChanged }: { selected: any; onChanged: 
 
       <div className="flex flex-wrap items-end gap-2">
         <label className="space-y-1 text-sm">
-          <div className="text-xs text-cyan-100/60">Season (opz.)</div>
+          <div className="text-xs text-orange-50/60">Season (opz.)</div>
           <input
             type="number"
-            className="w-40 rounded-xl border border-cyan-100/15 bg-cyan-950/45 px-3 py-2"
+            className="w-40 rounded-xl border border-amber-100/15 bg-[#07150f]/90 px-3 py-2"
             value={season}
             onChange={(e) => setSeason(e.target.value)}
             placeholder="es. 2024"
           />
         </label>
         <label className="space-y-1 text-sm">
-          <div className="text-xs text-cyan-100/60">Area (opz.)</div>
-          <input className="w-44 rounded-xl border border-cyan-100/15 bg-cyan-950/45 px-3 py-2" value={area} onChange={(e) => setArea(e.target.value)} placeholder="Italy / Europe" />
+          <div className="text-xs text-orange-50/60">Area (opz.)</div>
+          <input className="w-44 rounded-xl border border-amber-100/15 bg-[#07150f]/90 px-3 py-2" value={area} onChange={(e) => setArea(e.target.value)} placeholder="Italy / Europe" />
         </label>
         <label className="space-y-1 text-sm flex-1 min-w-[200px]">
-          <div className="text-xs text-cyan-100/60">Search (opz.)</div>
-          <input className="w-full rounded-xl border border-cyan-100/15 bg-cyan-950/45 px-3 py-2" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Serie A, Champions, Worldcup..." />
+          <div className="text-xs text-orange-50/60">Search (opz.)</div>
+          <input className="w-full rounded-xl border border-amber-100/15 bg-[#07150f]/90 px-3 py-2" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Serie A, Champions, Worldcup..." />
         </label>
         <Button disabled={loading} onClick={doSearch}>Cerca</Button>
       </div>
 
-      <div className="text-xs text-cyan-100/60">
+      <div className="text-xs text-orange-50/60">
         Selezionata: {selected.competitionCode ? `${selected.competitionCode}${selected.season ? ` (${selected.season})` : ""}` : "nessuna"} · API key: {selected.footballDataKeyPresent ? "OK" : "mancante"}
       </div>
 
@@ -663,11 +663,11 @@ function FootballDataPanel({ selected, onChanged }: { selected: any; onChanged: 
             return (
               <button
                 key={code}
-                className={`rounded-xl border p-3 text-left hover:bg-cyan-100/5 ${chosen?.code === code ? "border-slate-900" : "border-cyan-100/15"}`}
+                className={`rounded-xl border p-3 text-left hover:bg-white/[0.055] ${chosen?.code === code ? "border-slate-900" : "border-amber-100/15"}`}
                 onClick={() => setChosen({ code, name, area: areaName })}
               >
                 <div className="font-medium">{name}</div>
-                <div className="text-xs text-cyan-100/60">{areaName} · Code: {code}</div>
+                <div className="text-xs text-orange-50/60">{areaName} · Code: {code}</div>
               </button>
             );
           })}
@@ -723,8 +723,8 @@ function FootballDataSyncPanel() {
       {ok ? <Alert tone="success">{ok}</Alert> : null}
       <div className="flex flex-wrap items-end gap-2">
         <label className="space-y-1 text-sm">
-          <div className="text-xs text-cyan-100/60">Matchday (opz.)</div>
-          <input className="w-40 rounded-xl border border-cyan-100/15 bg-cyan-950/45 px-3 py-2" value={matchday} onChange={(e) => setMatchday(e.target.value)} placeholder="es. 1" />
+          <div className="text-xs text-orange-50/60">Matchday (opz.)</div>
+          <input className="w-40 rounded-xl border border-amber-100/15 bg-[#07150f]/90 px-3 py-2" value={matchday} onChange={(e) => setMatchday(e.target.value)} placeholder="es. 1" />
         </label>
         <Button
           disabled={loading}
@@ -760,7 +760,7 @@ function FootballDataSyncPanel() {
           Stato quota
         </Button>
       </div>
-      <div className="text-xs text-cyan-100/60">I risultati vengono sincronizzati automaticamente da football-data.org. La modifica manuale è disabilitata per queste partite.</div>
+      <div className="text-xs text-orange-50/60">I risultati vengono sincronizzati automaticamente da football-data.org. La modifica manuale è disabilitata per queste partite.</div>
     </div>
   );
 }
@@ -793,9 +793,9 @@ function ExternalProviderPanel({ config, onChanged }: { config: any; onChanged: 
 
       <div className="grid gap-3 md:grid-cols-3">
         <label className="space-y-1 text-sm">
-          <div className="text-xs text-cyan-100/60">Provider</div>
+          <div className="text-xs text-orange-50/60">Provider</div>
           <select
-            className="w-full rounded-xl border border-cyan-100/15 bg-cyan-950/45 px-3 py-2"
+            className="w-full rounded-xl border border-amber-100/15 bg-[#07150f]/90 px-3 py-2"
             value={local.provider}
             onChange={(e) => setLocal((x) => ({ ...x, provider: e.target.value }))}
           >
@@ -805,20 +805,20 @@ function ExternalProviderPanel({ config, onChanged }: { config: any; onChanged: 
         </label>
 
         <label className="space-y-1 text-sm">
-          <div className="text-xs text-cyan-100/60">League ID (API-Football)</div>
+          <div className="text-xs text-orange-50/60">League ID (API-Football)</div>
           <input
             type="number"
-            className="w-full rounded-xl border border-cyan-100/15 bg-cyan-950/45 px-3 py-2"
+            className="w-full rounded-xl border border-amber-100/15 bg-[#07150f]/90 px-3 py-2"
             value={local.apiFootballLeagueId}
             onChange={(e) => setLocal((x) => ({ ...x, apiFootballLeagueId: Number(e.target.value) }))}
           />
         </label>
 
         <label className="space-y-1 text-sm">
-          <div className="text-xs text-cyan-100/60">Season (es. 2025 per 2025/26)</div>
+          <div className="text-xs text-orange-50/60">Season (es. 2025 per 2025/26)</div>
           <input
             type="number"
-            className="w-full rounded-xl border border-cyan-100/15 bg-cyan-950/45 px-3 py-2"
+            className="w-full rounded-xl border border-amber-100/15 bg-[#07150f]/90 px-3 py-2"
             value={local.apiFootballSeason}
             onChange={(e) => setLocal((x) => ({ ...x, apiFootballSeason: Number(e.target.value) }))}
           />
@@ -827,9 +827,9 @@ function ExternalProviderPanel({ config, onChanged }: { config: any; onChanged: 
 
       <div className="grid gap-3 md:grid-cols-3">
         <label className="space-y-1 text-sm md:col-span-2">
-          <div className="text-xs text-cyan-100/60">Timezone</div>
+          <div className="text-xs text-orange-50/60">Timezone</div>
           <input
-            className="w-full rounded-xl border border-cyan-100/15 bg-cyan-950/45 px-3 py-2"
+            className="w-full rounded-xl border border-amber-100/15 bg-[#07150f]/90 px-3 py-2"
             value={local.apiFootballTimezone}
             onChange={(e) => setLocal((x) => ({ ...x, apiFootballTimezone: e.target.value }))}
           />
@@ -858,11 +858,11 @@ function ExternalProviderPanel({ config, onChanged }: { config: any; onChanged: 
         </div>
       </div>
 
-      <div className="rounded-xl border border-cyan-100/15 p-3">
+      <div className="rounded-xl border border-amber-100/15 p-3">
         <div className="text-sm font-medium">Trova League ID (ricerca)</div>
         <div className="mt-2 flex flex-wrap gap-2">
           <input
-            className="flex-1 rounded-xl border border-cyan-100/15 bg-cyan-950/45 px-3 py-2"
+            className="flex-1 rounded-xl border border-amber-100/15 bg-[#07150f]/90 px-3 py-2"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Es. Serie A, Champions..."
@@ -886,11 +886,11 @@ function ExternalProviderPanel({ config, onChanged }: { config: any; onChanged: 
             {searchResults.slice(0, 6).map((l: any) => (
               <button
                 key={l.id}
-                className="rounded-xl border border-cyan-100/15 p-3 text-left hover:bg-cyan-100/5"
+                className="rounded-xl border border-amber-100/15 p-3 text-left hover:bg-white/[0.055]"
                 onClick={() => setLocal((x) => ({ ...x, apiFootballLeagueId: l.id }))}
               >
                 <div className="font-medium">{l.name}</div>
-                <div className="text-xs text-cyan-100/60">{l.country} · ID: {l.id}</div>
+                <div className="text-xs text-orange-50/60">{l.country} · ID: {l.id}</div>
               </button>
             ))}
           </div>
@@ -959,9 +959,9 @@ function LeagueDetail({ league, onChanged }: { league: any; onChanged: () => voi
       {err ? <Alert tone="danger">{err}</Alert> : null}
       {ok ? <Alert tone="success">{ok}</Alert> : null}
 
-      <div className="rounded-xl border border-cyan-100/15 p-3">
+      <div className="rounded-xl border border-amber-100/15 p-3">
         <div className="font-medium">{league.name}</div>
-        <div className="text-xs text-cyan-100/60">Code: {league.code} • ID: {league.id}</div>
+        <div className="text-xs text-orange-50/60">Code: {league.code} • ID: {league.id}</div>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -976,11 +976,11 @@ function LeagueDetail({ league, onChanged }: { league: any; onChanged: () => voi
       {tab === "members" ? (
         <div className="space-y-2">
           {(league.members || []).map((m: any) => (
-            <div key={m.id} className="rounded-xl border border-cyan-100/15 p-3">
+            <div key={m.id} className="rounded-xl border border-amber-100/15 p-3">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="font-medium">{m.user.displayName}</div>
-                  <div className="text-xs text-cyan-100/60">{m.user.email}</div>
+                  <div className="text-xs text-orange-50/60">{m.user.email}</div>
                 </div>
                 <div className="flex gap-2">
                   <Badge>{m.status}</Badge>
@@ -1067,11 +1067,11 @@ function LeagueDetail({ league, onChanged }: { league: any; onChanged: () => voi
                     onChange={(e) => setRules({ ...rules, pointsSumGoals: Number(e.target.value) })}
                   />
 
-                  <div className="rounded-xl border border-cyan-100/15 p-3">
+                  <div className="rounded-xl border border-amber-100/15 p-3">
                     <div className="font-medium">Modalità punteggio</div>
                     <div className="mt-2">
                       <select
-                        className="w-full rounded-xl border border-cyan-100/15 bg-cyan-950/45 px-3 py-2 text-sm"
+                        className="w-full rounded-xl border border-amber-100/15 bg-[#07150f]/90 px-3 py-2 text-sm"
                         value={rules.scoringMode}
                         onChange={(e) => setRules({ ...rules, scoringMode: e.target.value })}
                       >
@@ -1083,7 +1083,7 @@ function LeagueDetail({ league, onChanged }: { league: any; onChanged: () => voi
                   </div>
 
                   <div className="grid gap-2 md:grid-cols-2">
-                    <label className="flex items-center gap-2 rounded-xl border border-cyan-100/15 p-3 text-sm">
+                    <label className="flex items-center gap-2 rounded-xl border border-amber-100/15 p-3 text-sm">
                       <input
                         type="checkbox"
                         checked={!!rules.allowOutcomeWithExact}
@@ -1091,7 +1091,7 @@ function LeagueDetail({ league, onChanged }: { league: any; onChanged: () => voi
                       />
                       <span>Outcome valido con Exact</span>
                     </label>
-                    <label className="flex items-center gap-2 rounded-xl border border-cyan-100/15 p-3 text-sm">
+                    <label className="flex items-center gap-2 rounded-xl border border-amber-100/15 p-3 text-sm">
                       <input
                         type="checkbox"
                         checked={!!rules.allowSumGoalsWithExact}
@@ -1099,7 +1099,7 @@ function LeagueDetail({ league, onChanged }: { league: any; onChanged: () => voi
                       />
                       <span>Somma gol valida con Exact</span>
                     </label>
-                    <label className="flex items-center gap-2 rounded-xl border border-cyan-100/15 p-3 text-sm">
+                    <label className="flex items-center gap-2 rounded-xl border border-amber-100/15 p-3 text-sm">
                       <input
                         type="checkbox"
                         checked={!!rules.allowSumGoalsWithOutcome}
@@ -1107,7 +1107,7 @@ function LeagueDetail({ league, onChanged }: { league: any; onChanged: () => voi
                       />
                       <span>Somma gol valida con Outcome</span>
                     </label>
-                    <label className="flex items-center gap-2 rounded-xl border border-cyan-100/15 p-3 text-sm">
+                    <label className="flex items-center gap-2 rounded-xl border border-amber-100/15 p-3 text-sm">
                       <input
                         type="checkbox"
                         checked={!!rules.enableMatchdayAwards}
@@ -1117,11 +1117,11 @@ function LeagueDetail({ league, onChanged }: { league: any; onChanged: () => voi
                     </label>
                   </div>
 
-                  <div className="rounded-xl border border-cyan-100/15 p-3">
+                  <div className="rounded-xl border border-amber-100/15 p-3">
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="font-medium">Under/Over 2.5</div>
-                        <div className="text-xs text-cyan-100/60">Bonus punti opzionale</div>
+                        <div className="text-xs text-orange-50/60">Bonus punti opzionale</div>
                       </div>
                       <input
                         type="checkbox"
@@ -1158,7 +1158,7 @@ function LeagueDetail({ league, onChanged }: { league: any; onChanged: () => voi
                   </Button>
                 </div>
               ) : (
-                <div className="text-sm text-cyan-100/60">Nessuna regola trovata.</div>
+                <div className="text-sm text-orange-50/60">Nessuna regola trovata.</div>
               )}
             </CardContent>
           </Card>
@@ -1183,10 +1183,10 @@ function LeagueDetail({ league, onChanged }: { league: any; onChanged: () => voi
                     }}
                   />
 
-                  <div className="flex items-center justify-between rounded-xl border border-cyan-100/15 p-3">
+                  <div className="flex items-center justify-between rounded-xl border border-amber-100/15 p-3">
                     <div>
                       <div className="font-medium">Lock forzato</div>
-                      <div className="text-xs text-cyan-100/60">Blocca tutto immediatamente</div>
+                      <div className="text-xs text-orange-50/60">Blocca tutto immediatamente</div>
                     </div>
                     <input
                       type="checkbox"
@@ -1268,7 +1268,7 @@ function LeagueDetail({ league, onChanged }: { league: any; onChanged: () => voi
                   </div>
                 </div>
               ) : (
-                <div className="text-sm text-cyan-100/60">Nessuna impostazione trovata.</div>
+                <div className="text-sm text-orange-50/60">Nessuna impostazione trovata.</div>
               )}
             </CardContent>
           </Card>
@@ -1341,11 +1341,11 @@ function SuperMatchRow({ match, onSaved }: { match: any; onSaved: () => void }) 
   const [err, setErr] = useState("");
 
   return (
-    <div className="rounded-xl border border-cyan-100/15 bg-cyan-950/45 p-4">
+    <div className="rounded-xl border border-amber-100/15 bg-[#07150f]/90 p-4">
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
           <div className="font-medium">{match.homeTeam} - {match.awayTeam}</div>
-          <div className="text-xs text-cyan-100/60">{new Date(match.kickoffAt).toLocaleString()}</div>
+          <div className="text-xs text-orange-50/60">{new Date(match.kickoffAt).toLocaleString()}</div>
           <div className="mt-1 flex gap-2">
             <Badge>{status}</Badge>
             <Badge>{match.source}</Badge>
@@ -1354,8 +1354,8 @@ function SuperMatchRow({ match, onSaved }: { match: any; onSaved: () => void }) 
 
         <div className="flex flex-wrap items-end gap-2">
           <label className="space-y-1 text-sm">
-            <div className="text-xs text-cyan-100/60">Stato</div>
-            <select className="rounded-xl border border-cyan-100/15 bg-cyan-950/45 px-3 py-2 text-sm" value={status} onChange={(e) => setStatus(e.target.value)}>
+            <div className="text-xs text-orange-50/60">Stato</div>
+            <select className="rounded-xl border border-amber-100/15 bg-[#07150f]/90 px-3 py-2 text-sm" value={status} onChange={(e) => setStatus(e.target.value)}>
               <option value="NOT_STARTED">NON_INIZIATA</option>
               <option value="IN_PROGRESS">IN_CORSO</option>
               <option value="FINISHED">FINITA</option>

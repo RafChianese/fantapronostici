@@ -14,7 +14,7 @@ export default function ForgotPasswordPage() {
               Consiglio: usa l’accesso con <span className="font-semibold">Google</span> o <span className="font-semibold">Microsoft</span>.
             </div>
           </Alert>
-          <div className="text-center text-sm text-cyan-100/60">
+          <div className="text-center text-sm text-orange-50/60">
             Torna al <Link className="text-rose-300 underline" to="/login">login</Link>.
           </div>
         </CardContent>
