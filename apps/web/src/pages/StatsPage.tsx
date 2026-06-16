@@ -7,8 +7,8 @@ import { Trophy, Target, CheckCircle2, Sigma, TrendingUp, BarChart3, Crown, Flam
 
 function StatTile({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-cyan-100/15 bg-cyan-950/35 p-4">
-      <div className="text-xs text-cyan-100/60">{label}</div>
+    <div className="rounded-2xl border border-emerald-100/15 bg-emerald-950/35 p-4">
+      <div className="text-xs text-emerald-100/60">{label}</div>
       <div className="mt-1 text-2xl font-semibold text-white">{value}</div>
     </div>
   );
@@ -16,14 +16,14 @@ function StatTile({ label, value }: { label: string; value: React.ReactNode }) {
 
 function LeaderTile({ icon, title, name, value }: { icon: React.ReactNode; title: string; name: string; value: number }) {
   return (
-    <div className="rounded-2xl border border-cyan-100/15 bg-cyan-950/35 p-4">
-      <div className="flex items-center gap-2 text-xs font-semibold text-cyan-50/70">
+    <div className="rounded-2xl border border-emerald-100/15 bg-emerald-950/35 p-4">
+      <div className="flex items-center gap-2 text-xs font-semibold text-emerald-50/70">
         {icon}
         {title}
       </div>
       <div className="mt-2 flex items-baseline justify-between gap-3">
         <div className="min-w-0 truncate text-base font-extrabold text-white">{name}</div>
-        <div className="shrink-0 rounded-xl bg-cyan-100/5 px-2 py-1 text-sm font-extrabold text-white ring-1 ring-slate-800">{value}</div>
+        <div className="shrink-0 rounded-xl bg-emerald-100/5 px-2 py-1 text-sm font-extrabold text-white ring-1 ring-slate-800">{value}</div>
       </div>
     </div>
   );
@@ -109,7 +109,7 @@ export default function StatsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="overflow-hidden rounded-3xl border border-cyan-100/15 shadow-sm">
+      <div className="overflow-hidden rounded-3xl border border-emerald-100/15 shadow-sm">
         <div
           className="text-white"
           style={{
@@ -120,12 +120,12 @@ export default function StatsPage() {
           <div className="p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-cyan-50/70">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-emerald-50/70">
                   <BarChart3 className="h-4 w-4" aria-hidden="true" />
                   Statistiche
                 </div>
                 <div className="mt-1 text-2xl font-extrabold tracking-tight">Statistiche lega</div>
-                <div className="mt-1 text-sm text-cyan-50/70">{headline}</div>
+                <div className="mt-1 text-sm text-emerald-50/70">{headline}</div>
               </div>
               <button
                 type="button"
@@ -198,7 +198,7 @@ export default function StatsPage() {
                     <div className="mt-2 flex items-end justify-between gap-3">
                       <div className="min-w-0">
                         <div className="truncate text-base font-extrabold text-white">{stat.displayName || "—"}</div>
-                        <div className="mt-1 text-xs text-cyan-50/70">{stat.description}</div>
+                        <div className="mt-1 text-xs text-emerald-50/70">{stat.description}</div>
                       </div>
                       <div className="shrink-0 rounded-xl bg-black/25 px-2.5 py-1 text-sm font-black text-amber-100 ring-1 ring-amber-200/20">{Number(stat.value || 0)}</div>
                     </div>
@@ -227,20 +227,20 @@ export default function StatsPage() {
         <CardHeader
           title="Distribuzione"
           subtitle="Quanti utenti rientrano in ciascuna fascia punti (per giornata)"
-          right={<BarChart3 size={18} className="text-cyan-100/60" aria-hidden="true" />}
+          right={<BarChart3 size={18} className="text-emerald-100/60" aria-hidden="true" />}
         />
         <CardContent>
           {data.distribution?.length ? (
             <div className="space-y-2">
               {data.distribution.map((b) => (
-                <div key={b.label} className="flex items-center justify-between rounded-xl border border-cyan-100/15 bg-cyan-950/35 px-3 py-2">
+                <div key={b.label} className="flex items-center justify-between rounded-xl border border-emerald-100/15 bg-emerald-950/35 px-3 py-2">
                   <div className="text-sm font-semibold text-white">{b.label}</div>
                   <Badge>{b.count}</Badge>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-sm text-cyan-50/70">Nessun dato.</div>
+            <div className="text-sm text-emerald-50/70">Nessun dato.</div>
           )}
         </CardContent>
       </Card>

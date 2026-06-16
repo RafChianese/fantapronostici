@@ -10,12 +10,12 @@ export function Button(
     "inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:translate-y-[1px]";
   const v =
     variant === "primary"
-      ? "bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 text-slate-950 shadow-[0_10px_30px_rgba(56,189,248,0.24)] hover:shadow-[0_14px_38px_rgba(56,189,248,0.34)] hover:brightness-110"
+      ? "bg-gradient-to-r from-emerald-400 via-sky-400 to-blue-500 text-slate-950 shadow-[0_10px_30px_rgba(56,189,248,0.24)] hover:shadow-[0_14px_38px_rgba(56,189,248,0.34)] hover:brightness-110"
       : variant === "danger"
       ? "bg-rose-500 text-white shadow-[0_10px_30px_rgba(244,63,94,0.20)] hover:brightness-110"
       : variant === "ghost"
-      ? "bg-transparent text-cyan-50/85 hover:bg-cyan-100/10"
-      : "tm-glass text-white border border-cyan-100/15 shadow-sm hover:shadow-md hover:bg-cyan-100/10";
+      ? "bg-transparent text-emerald-50/85 hover:bg-emerald-100/10"
+      : "tm-glass text-white border border-emerald-100/15 shadow-sm hover:shadow-md hover:bg-emerald-100/10";
   return <button className={`${base} ${v} ${className}`} {...rest} />;
 }
 
@@ -35,7 +35,7 @@ export function Input(
 
   return (
     <label className="block space-y-1 text-sm">
-      <span className="font-medium text-cyan-50/85">{label}</span>
+      <span className="font-medium text-emerald-50/85">{label}</span>
       {inputEl}
     </label>
   );
@@ -85,7 +85,7 @@ export function CardHeader(
         <>
           <div>
             <div className="text-lg font-semibold text-white">{anyProps.title}</div>
-            {anyProps.subtitle ? <div className="mt-1 text-sm text-cyan-50/70">{anyProps.subtitle}</div> : null}
+            {anyProps.subtitle ? <div className="mt-1 text-sm text-emerald-50/70">{anyProps.subtitle}</div> : null}
           </div>
           {anyProps.right}
         </>
@@ -115,17 +115,17 @@ export function Badge({
       : tone === "rose"
       ? "bg-rose-950/40 text-rose-200 border-rose-900/60"
       : tone === "slate"
-      ? "bg-cyan-950/45 text-cyan-50/85 border-cyan-100/15"
-      : "bg-cyan-950/45 text-cyan-50/85 border-cyan-100/15";
+      ? "bg-emerald-950/45 text-emerald-50/85 border-emerald-100/15"
+      : "bg-emerald-950/45 text-emerald-50/85 border-emerald-100/15";
   return <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${t}`}>{children}</span>;
 }
 
 export function Spinner() {
-  return <div className="h-5 w-5 animate-spin rounded-full border-2 border-cyan-200/20 border-t-cyan-300" />;
+  return <div className="h-5 w-5 animate-spin rounded-full border-2 border-emerald-200/20 border-t-emerald-300" />;
 }
 
 export function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`animate-pulse rounded-xl bg-cyan-950/35 ${className}`} aria-hidden="true" />;
+  return <div className={`animate-pulse rounded-xl bg-emerald-950/35 ${className}`} aria-hidden="true" />;
 }
 
 export function Alert({ tone = "info", children }: { tone?: "info" | "danger" | "success"; children: React.ReactNode }) {

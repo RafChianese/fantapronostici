@@ -24,7 +24,7 @@ function fmtDate(value: string) {
 function TeamLogo({ src, name }: { src?: string | null; name: string }) {
   if (!src) {
     return (
-      <div className="grid h-9 w-9 place-items-center rounded-full border border-cyan-100/15 bg-cyan-100/10 text-xs font-extrabold text-cyan-50/85">
+      <div className="grid h-9 w-9 place-items-center rounded-full border border-emerald-100/15 bg-emerald-100/10 text-xs font-extrabold text-emerald-50/85">
         {name.slice(0, 2).toUpperCase()}
       </div>
     );
@@ -37,7 +37,7 @@ function StatusBadge({ status }: { status: CalendarMatch["status"] }) {
     return <span className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-2 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-emerald-200">Live</span>;
   }
   if (status === "FINISHED") {
-    return <span className="rounded-full border border-slate-300/20 bg-slate-400/10 px-2 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-cyan-50/85">Terminata</span>;
+    return <span className="rounded-full border border-slate-300/20 bg-slate-400/10 px-2 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-emerald-50/85">Terminata</span>;
   }
   return <span className="rounded-full border border-sky-300/20 bg-sky-400/10 px-2 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-sky-200">Prossima</span>;
 }
@@ -50,13 +50,13 @@ function FilterTabs({ filter, setFilter }: { filter: "NEXT" | "ALL" | "LIVE" | "
     { key: "ALL", label: "Tutte" },
   ];
   return (
-    <div className="grid grid-cols-4 overflow-hidden rounded-2xl border border-cyan-100/15 bg-cyan-100/5 p-1 shadow-[0_10px_30px_rgba(0,0,0,0.25)] backdrop-blur-xl">
+    <div className="grid grid-cols-4 overflow-hidden rounded-2xl border border-emerald-100/15 bg-emerald-100/5 p-1 shadow-[0_10px_30px_rgba(0,0,0,0.25)] backdrop-blur-xl">
       {items.map((it) => (
         <button
           key={it.key}
           type="button"
           onClick={() => setFilter(it.key)}
-          className={`rounded-xl px-2 py-2.5 text-xs font-extrabold transition sm:text-sm ${filter === it.key ? "bg-rose-600 text-white shadow-lg" : "text-cyan-50/70 hover:bg-cyan-100/5"}`}
+          className={`rounded-xl px-2 py-2.5 text-xs font-extrabold transition sm:text-sm ${filter === it.key ? "bg-rose-600 text-white shadow-lg" : "text-emerald-50/70 hover:bg-emerald-100/5"}`}
         >
           {it.label}
         </button>
@@ -167,7 +167,7 @@ export default function CalendarPage() {
                       <div className="mx-auto mb-2 flex justify-center"><TeamLogo src={match.homeLogo} name={match.homeTeam} /></div>
                       <div className="truncate text-sm font-bold text-white">{match.homeTeam}</div>
                     </div>
-                    <div className="rounded-2xl border border-cyan-100/15 bg-slate-950/50 px-3 py-2 text-xl font-black text-white">
+                    <div className="rounded-2xl border border-emerald-100/15 bg-slate-950/50 px-3 py-2 text-xl font-black text-white">
                       {fmtScore(match.homeScore)} - {fmtScore(match.awayScore)}
                     </div>
                     <div className="min-w-0 text-center">
@@ -176,9 +176,9 @@ export default function CalendarPage() {
                     </div>
                   </div>
 
-                  <div className="mt-3 flex items-center justify-between text-xs text-cyan-50/70">
+                  <div className="mt-3 flex items-center justify-between text-xs text-emerald-50/70">
                     <span>{fmtDate(match.kickoffAt)}</span>
-                    <span className="inline-flex items-center gap-1 text-cyan-100/60">
+                    <span className="inline-flex items-center gap-1 text-emerald-100/60">
                       Pronostici {selected ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                     </span>
                   </div>
@@ -203,7 +203,7 @@ export default function CalendarPage() {
                       <div
                         key={p.userId}
                         className={`rounded-3xl border p-3 transition ${
-                          isGold ? "border-yellow-200/40 bg-yellow-300/15 shadow-[0_0_35px_rgba(250,204,21,0.18)] backdrop-blur-xl" : "border-cyan-100/15 bg-cyan-100/5"
+                          isGold ? "border-yellow-200/40 bg-yellow-300/15 shadow-[0_0_35px_rgba(250,204,21,0.18)] backdrop-blur-xl" : "border-emerald-100/15 bg-emerald-100/5"
                         }`}
                       >
                         <div className="flex items-center justify-between gap-3">
@@ -211,7 +211,7 @@ export default function CalendarPage() {
                             <UserAvatar avatarId={p.avatarId || null} mode="full" size={42} />
                             <div className="min-w-0">
                               <div className={`truncate text-sm font-extrabold ${isGold ? "text-yellow-50" : "text-white"}`}>{p.displayName}</div>
-                              <div className="text-xs text-cyan-100/60">Pronostico: <b className="text-cyan-50/85">{pred}</b></div>
+                              <div className="text-xs text-emerald-100/60">Pronostico: <b className="text-emerald-50/85">{pred}</b></div>
                             </div>
                           </div>
                           <div className="text-right">
