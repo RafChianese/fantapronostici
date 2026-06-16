@@ -18,7 +18,7 @@ function fmtPoints(value: number | null | undefined) {
 function TeamLogo({ src, name }: { src?: string | null; name: string }) {
   if (!src) {
     return (
-      <div className="grid h-9 w-9 place-items-center rounded-full border border-emerald-100/15 bg-emerald-100/10 text-xs font-extrabold text-emerald-50/85">
+      <div className="grid h-9 w-9 place-items-center rounded-full border border-cyan-100/15 bg-cyan-100/10 text-xs font-extrabold text-cyan-50/85">
         {name.slice(0, 2).toUpperCase()}
       </div>
     );
@@ -28,18 +28,18 @@ function TeamLogo({ src, name }: { src?: string | null; name: string }) {
 
 function LiveTabs({ tab, setTab }: { tab: "MATCHES" | "LEADERBOARD"; setTab: (tab: "MATCHES" | "LEADERBOARD") => void }) {
   return (
-    <div className="grid w-full grid-cols-2 overflow-hidden rounded-2xl border border-emerald-100/15 bg-emerald-100/5 p-1 shadow-[0_10px_30px_rgba(0,0,0,0.25)] backdrop-blur-xl">
+    <div className="grid w-full grid-cols-2 overflow-hidden rounded-2xl border border-cyan-100/15 bg-cyan-100/5 p-1 shadow-[0_10px_30px_rgba(0,0,0,0.25)] backdrop-blur-xl">
       <button
         type="button"
         onClick={() => setTab("MATCHES")}
-        className={`rounded-xl px-4 py-2.5 text-sm font-extrabold transition ${tab === "MATCHES" ? "bg-rose-600 text-white shadow-lg" : "text-emerald-50/70 hover:bg-emerald-100/5"}`}
+        className={`rounded-xl px-4 py-2.5 text-sm font-extrabold transition ${tab === "MATCHES" ? "bg-rose-600 text-white shadow-lg" : "text-cyan-50/70 hover:bg-cyan-100/5"}`}
       >
         Match live
       </button>
       <button
         type="button"
         onClick={() => setTab("LEADERBOARD")}
-        className={`rounded-xl px-4 py-2.5 text-sm font-extrabold transition ${tab === "LEADERBOARD" ? "bg-rose-600 text-white shadow-lg" : "text-emerald-50/70 hover:bg-emerald-100/5"}`}
+        className={`rounded-xl px-4 py-2.5 text-sm font-extrabold transition ${tab === "LEADERBOARD" ? "bg-rose-600 text-white shadow-lg" : "text-cyan-50/70 hover:bg-cyan-100/5"}`}
       >
         Classifica live
       </button>
@@ -62,7 +62,7 @@ function RankDelta({ value }: { value: number }) {
       </span>
     );
   }
-  return <span className="rounded-full border border-emerald-100/15 bg-emerald-100/5 px-2 py-0.5 text-xs font-bold text-emerald-100/60">=</span>;
+  return <span className="rounded-full border border-cyan-100/15 bg-cyan-100/5 px-2 py-0.5 text-xs font-bold text-cyan-100/60">=</span>;
 }
 
 export default function LivePage() {
@@ -142,7 +142,7 @@ export default function LivePage() {
         </Card>
       ) : tab === "LEADERBOARD" ? (
         leaderboard.length === 0 ? (
-          <div className="rounded-2xl border border-emerald-100/15 bg-emerald-100/5 p-4 text-sm text-emerald-50/70">
+          <div className="rounded-2xl border border-cyan-100/15 bg-cyan-100/5 p-4 text-sm text-cyan-50/70">
             Classifica live non disponibile. Appena ci saranno dati live, comparirà qui.
           </div>
         ) : (
@@ -159,18 +159,18 @@ export default function LivePage() {
                       ? "border-yellow-200/30 bg-yellow-300/10 shadow-[0_0_35px_rgba(250,204,21,0.10)]"
                       : isMoving
                       ? "border-sky-300/20 bg-sky-400/10"
-                      : "border-emerald-100/15 bg-emerald-100/5"
+                      : "border-cyan-100/15 bg-cyan-100/5"
                   }`}
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex min-w-0 items-center gap-3">
-                      <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-2xl border text-sm font-black ${isPrizePosition ? "border-yellow-200/30 bg-yellow-300/10 text-yellow-50" : "border-emerald-100/15 bg-emerald-950/35 text-white"}`}>
+                      <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-2xl border text-sm font-black ${isPrizePosition ? "border-yellow-200/30 bg-yellow-300/10 text-yellow-50" : "border-cyan-100/15 bg-cyan-950/35 text-white"}`}>
                         {medal || row.liveRank}
                       </div>
                       <UserAvatar avatarId={row.avatarId || null} mode="full" size={42} />
                       <div className="min-w-0">
                         <div className="truncate text-sm font-extrabold text-white">{row.displayName}</div>
-                        <div className="mt-0.5 text-xs text-emerald-50/70">
+                        <div className="mt-0.5 text-xs text-cyan-50/70">
                           Ufficiale: <b className="text-white">{fmtPoints(row.officialPoints)}</b>
                           {" · "}
                           Live: <b className={Number(row.liveDelta) >= 0 ? "text-emerald-200" : "text-rose-200"}>{Number(row.liveDelta) >= 0 ? "+" : ""}{fmtPoints(row.liveDelta)}</b>
@@ -192,7 +192,7 @@ export default function LivePage() {
         <Card>
           <CardHeader title="Nessuna partita live" subtitle="Al momento non ci sono match in corso." />
           <CardContent>
-            <div className="rounded-2xl border border-emerald-100/15 bg-emerald-100/5 p-4 text-sm text-emerald-50/70">
+            <div className="rounded-2xl border border-cyan-100/15 bg-cyan-100/5 p-4 text-sm text-cyan-50/70">
               Quando una partita sarà in corso, qui vedrai la card del match e la lista dei pronostici dei partecipanti.
             </div>
           </CardContent>
@@ -221,7 +221,7 @@ export default function LivePage() {
                       <div className="mx-auto mb-2 flex justify-center"><TeamLogo src={match.homeLogo} name={match.homeTeam} /></div>
                       <div className="truncate text-sm font-bold text-white">{match.homeTeam}</div>
                     </div>
-                    <div className="rounded-2xl border border-emerald-100/15 bg-slate-950/50 px-3 py-2 text-xl font-black text-white">
+                    <div className="rounded-2xl border border-cyan-100/15 bg-slate-950/50 px-3 py-2 text-xl font-black text-white">
                       {fmtScore(match.homeScore)} - {fmtScore(match.awayScore)}
                     </div>
                     <div className="min-w-0 text-center">
@@ -230,9 +230,9 @@ export default function LivePage() {
                     </div>
                   </div>
 
-                  <div className="mt-3 flex items-center justify-between text-xs text-emerald-50/70">
+                  <div className="mt-3 flex items-center justify-between text-xs text-cyan-50/70">
                     <span>{match.exactLiveCount} esatti live</span>
-                    <span className="inline-flex items-center gap-1 text-emerald-100/60">
+                    <span className="inline-flex items-center gap-1 text-cyan-100/60">
                       Dettaglio {selected ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                     </span>
                   </div>
@@ -257,7 +257,7 @@ export default function LivePage() {
                         className={`rounded-3xl border p-3 transition ${
                           p.isExactLive
                             ? "border-yellow-200/40 bg-yellow-300/15 shadow-[0_0_35px_rgba(250,204,21,0.18)] backdrop-blur-xl"
-                            : "border-emerald-100/15 bg-emerald-100/5"
+                            : "border-cyan-100/15 bg-cyan-100/5"
                         }`}
                       >
                         <div className="flex items-center justify-between gap-3">
@@ -267,7 +267,7 @@ export default function LivePage() {
                               <div className={`truncate text-sm font-extrabold ${p.isExactLive ? "text-yellow-50" : "text-white"}`}>
                                 {p.displayName}
                               </div>
-                              <div className="text-xs text-emerald-100/60">Pronostico: <b className="text-emerald-50/85">{pred}</b></div>
+                              <div className="text-xs text-cyan-100/60">Pronostico: <b className="text-cyan-50/85">{pred}</b></div>
                             </div>
                           </div>
 
@@ -292,7 +292,7 @@ export default function LivePage() {
         </>
       )}
 
-      <div className="pb-2 text-center text-xs text-emerald-100/60">
+      <div className="pb-2 text-center text-xs text-cyan-100/60">
         I punteggi live sono simulati sul risultato attuale e possono cambiare fino al termine della partita.
       </div>
     </div>

@@ -7,15 +7,15 @@ export function Button(
 ) {
   const { className = "", variant = "primary", ...rest } = props;
   const base =
-    "inline-flex items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-black tracking-tight transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50 active:translate-y-[1px]";
+    "inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:translate-y-[1px]";
   const v =
     variant === "primary"
-      ? "bg-gradient-to-r from-lime-300 via-emerald-400 to-green-500 text-slate-950 shadow-[0_14px_32px_rgba(34,197,94,0.24)] hover:shadow-[0_18px_42px_rgba(34,197,94,0.34)] hover:brightness-105"
+      ? "bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 text-slate-950 shadow-[0_10px_30px_rgba(56,189,248,0.24)] hover:shadow-[0_14px_38px_rgba(56,189,248,0.34)] hover:brightness-110"
       : variant === "danger"
-      ? "bg-gradient-to-r from-rose-500 to-red-500 text-white shadow-[0_12px_30px_rgba(244,63,94,0.22)] hover:brightness-110"
+      ? "bg-rose-500 text-white shadow-[0_10px_30px_rgba(244,63,94,0.20)] hover:brightness-110"
       : variant === "ghost"
-      ? "bg-transparent text-slate-100/86 hover:bg-white/[0.06] hover:text-white"
-      : "border border-white/10 bg-white/[0.055] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-lime-300/30 hover:bg-white/[0.085]";
+      ? "bg-transparent text-cyan-50/85 hover:bg-cyan-100/10"
+      : "tm-glass text-white border border-cyan-100/15 shadow-sm hover:shadow-md hover:bg-cyan-100/10";
   return <button className={`${base} ${v} ${className}`} {...rest} />;
 }
 
@@ -35,7 +35,7 @@ export function Input(
 
   return (
     <label className="block space-y-1 text-sm">
-      <span className="font-medium text-slate-100/85">{label}</span>
+      <span className="font-medium text-cyan-50/85">{label}</span>
       {inputEl}
     </label>
   );
@@ -48,7 +48,7 @@ export function Card({ children, className = "" }: { children: React.ReactNode; 
   // making them appear anchored in the middle of the page.
   return (
     <div
-      className={`tm-glass transition-shadow duration-200 hover:border-lime-300/22 hover:shadow-[0_22px_56px_rgba(0,0,0,0.36)] ${className}`}
+      className={`tm-glass shadow-[0_14px_40px_rgba(0,0,0,0.24)] transition-shadow duration-200 hover:shadow-[0_18px_48px_rgba(0,0,0,0.32)] ${className}`}
     >
       {children}
     </div>
@@ -77,15 +77,15 @@ export function CardHeader(
   // - Legacy pages: <CardHeader className="...">...</CardHeader>
   const anyProps: any = props as any;
   return (
-    <div className={`tm-glass-header flex items-start justify-between gap-4 p-4 pl-5 sm:p-5 sm:pl-6 ${anyProps.className || ""}`}
+    <div className={`tm-glass-header flex items-start justify-between gap-4 p-4 sm:p-5 ${anyProps.className || ""}`}
     >
       {anyProps.children ? (
         anyProps.children
       ) : (
         <>
           <div>
-            <div className="text-lg font-black tracking-tight text-white">{anyProps.title}</div>
-            {anyProps.subtitle ? <div className="mt-1 text-sm text-slate-300/70">{anyProps.subtitle}</div> : null}
+            <div className="text-lg font-semibold text-white">{anyProps.title}</div>
+            {anyProps.subtitle ? <div className="mt-1 text-sm text-cyan-50/70">{anyProps.subtitle}</div> : null}
           </div>
           {anyProps.right}
         </>
@@ -107,33 +107,33 @@ export function Badge({
 }) {
   const t =
     tone === "green"
-      ? "bg-emerald-500/12 text-emerald-200 border-emerald-300/20"
+      ? "bg-emerald-950/40 text-emerald-200 border-emerald-900/60"
       : tone === "amber"
-      ? "bg-amber-500/12 text-amber-200 border-amber-300/22"
+      ? "bg-amber-950/40 text-amber-200 border-amber-900/60"
       : tone === "blue"
-      ? "bg-sky-500/12 text-sky-200 border-sky-300/20"
+      ? "bg-sky-950/40 text-sky-200 border-sky-900/60"
       : tone === "rose"
-      ? "bg-rose-500/12 text-rose-200 border-rose-300/20"
+      ? "bg-rose-950/40 text-rose-200 border-rose-900/60"
       : tone === "slate"
-      ? "bg-emerald-950/45 text-slate-100/85 border-emerald-100/15"
-      : "bg-emerald-950/45 text-slate-100/85 border-emerald-100/15";
+      ? "bg-cyan-950/45 text-cyan-50/85 border-cyan-100/15"
+      : "bg-cyan-950/45 text-cyan-50/85 border-cyan-100/15";
   return <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${t}`}>{children}</span>;
 }
 
 export function Spinner() {
-  return <div className="h-5 w-5 animate-spin rounded-full border-2 border-lime-300/25 border-t-emerald-300" />;
+  return <div className="h-5 w-5 animate-spin rounded-full border-2 border-cyan-200/20 border-t-cyan-300" />;
 }
 
 export function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`animate-pulse rounded-xl bg-slate-700/25 ${className}`} aria-hidden="true" />;
+  return <div className={`animate-pulse rounded-xl bg-cyan-950/35 ${className}`} aria-hidden="true" />;
 }
 
 export function Alert({ tone = "info", children }: { tone?: "info" | "danger" | "success"; children: React.ReactNode }) {
   const cls =
     tone === "danger"
-      ? "bg-rose-500/10 border-rose-300/20 text-rose-200"
+      ? "bg-rose-950/35 border-rose-900/60 text-rose-200"
       : tone === "success"
-      ? "bg-slate-700/25 border-emerald-900/60 text-emerald-200"
-      : "bg-sky-500/10 border-sky-300/20 text-sky-200";
+      ? "bg-emerald-950/35 border-emerald-900/60 text-emerald-200"
+      : "bg-sky-950/35 border-sky-900/60 text-sky-200";
   return <div className={`rounded-2xl border px-4 py-3 text-sm ${cls}`}>{children}</div>;
 }

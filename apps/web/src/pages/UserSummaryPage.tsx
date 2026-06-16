@@ -274,7 +274,7 @@ export default function UserSummaryPage() {
   }));
 
   const renderMiniChart = () => {
-    if (chartSeries.length < 2) return <div className="text-xs text-emerald-100/60">Nessun andamento disponibile.</div>;
+    if (chartSeries.length < 2) return <div className="text-xs text-cyan-100/60">Nessun andamento disponibile.</div>;
     const w = 100;
     const h = 60;
     const pad = 6;
@@ -291,7 +291,7 @@ export default function UserSummaryPage() {
           <path d={d} fill="none" stroke="currentColor" strokeWidth={2.2} className="text-teal-600" />
           {pts.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r={2.2} className="text-teal-600" fill="currentColor" />)}
         </svg>
-        <div className="mt-1 flex items-center justify-between text-[11px] text-emerald-100/60">
+        <div className="mt-1 flex items-center justify-between text-[11px] text-cyan-100/60">
           <span>{chartSeries[0].label}</span>
           <span>{chartSeries[chartSeries.length - 1].label}</span>
         </div>
@@ -301,7 +301,7 @@ export default function UserSummaryPage() {
 
   const TeamDot = ({ name, logo }: { name: string; logo?: string | null }) => {
     if (logo) return <img src={logo} alt={name} className="h-7 w-7 rounded-full object-contain" />;
-    return <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-emerald-100/15 bg-emerald-950/45 text-[10px] font-bold text-emerald-50/70">{name.trim().slice(0, 1).toUpperCase()}</span>;
+    return <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-cyan-100/15 bg-cyan-950/45 text-[10px] font-bold text-cyan-50/70">{name.trim().slice(0, 1).toUpperCase()}</span>;
   };
 
   const StatusPill = ({ status }: { status: string }) => {
@@ -343,10 +343,10 @@ export default function UserSummaryPage() {
           <CardHeader
             title="Pronostici protetti"
             subtitle={error || "Guarda una pubblicità per visualizzare i pronostici degli altri utenti."}
-            right={<Link className="text-sm text-emerald-100/60 hover:underline" to="/leaderboard">← Torna alla classifica</Link>}
+            right={<Link className="text-sm text-cyan-100/60 hover:underline" to="/leaderboard">← Torna alla classifica</Link>}
           />
           <CardContent className="space-y-3">
-            <div className="text-sm text-emerald-100/60">
+            <div className="text-sm text-cyan-100/60">
               Al termine della pubblicità, la visualizzazione sarà sbloccata per <b>{unlockMinutes} minuti</b>.
               {unlockExpiresAt ? <span className="ml-1">Sblocco attuale fino alle {new Date(unlockExpiresAt).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}.</span> : null}
             </div>
@@ -374,14 +374,14 @@ export default function UserSummaryPage() {
 
         {showAd ? (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-            <div className="w-full max-w-lg rounded-2xl bg-emerald-950/45 p-5 shadow-xl">
+            <div className="w-full max-w-lg rounded-2xl bg-cyan-950/45 p-5 shadow-xl">
               <div className="flex items-center justify-between">
                 <div className="font-semibold">Pubblicità</div>
-                <button className="text-sm text-emerald-100/60 hover:underline" onClick={() => setShowAd(false)}>
+                <button className="text-sm text-cyan-100/60 hover:underline" onClick={() => setShowAd(false)}>
                   Chiudi
                 </button>
               </div>
-              <div className="mt-3 rounded-xl bg-emerald-100/10 p-4 text-sm text-emerald-50/70">
+              <div className="mt-3 rounded-xl bg-cyan-100/10 p-4 text-sm text-cyan-50/70">
                 {demoAdsEnabled ? (
                   <>
                     <div className="mb-2 font-medium">[DEMO] Spazio pubblicitario</div>
@@ -391,16 +391,16 @@ export default function UserSummaryPage() {
                   <>
                     <div className="mb-2 font-medium">Spazio pubblicitario</div>
                     <div className="opacity-80">Se hai integrato Google Ad Manager (GPT), qui verrà renderizzato lo slot configurato.</div>
-                    <div id="gam-rewarded-slot" className="mt-3 flex min-h-[260px] items-center justify-center rounded-xl border border-emerald-100/15 bg-slate-950">
-                      <div className="text-xs text-emerald-100/60">Slot GAM</div>
+                    <div id="gam-rewarded-slot" className="mt-3 flex min-h-[260px] items-center justify-center rounded-xl border border-cyan-100/15 bg-slate-950">
+                      <div className="text-xs text-cyan-100/60">Slot GAM</div>
                     </div>
                   </>
                 )}
               </div>
               <div className="mt-4 flex items-center justify-between">
-                <div className="text-sm text-emerald-100/60">Tempo rimanente: <b>{adSecondsLeft}s</b></div>
+                <div className="text-sm text-cyan-100/60">Tempo rimanente: <b>{adSecondsLeft}s</b></div>
                 <button
-                  className={`rounded-xl px-4 py-2 text-sm font-medium ${adSecondsLeft === 0 ? "bg-teal-600 text-white hover:bg-teal-700" : "bg-slate-200 text-emerald-100/60"}`}
+                  className={`rounded-xl px-4 py-2 text-sm font-medium ${adSecondsLeft === 0 ? "bg-teal-600 text-white hover:bg-teal-700" : "bg-slate-200 text-cyan-100/60"}`}
                   disabled={adSecondsLeft !== 0}
                   onClick={async () => {
                     try {
@@ -425,7 +425,7 @@ export default function UserSummaryPage() {
   }
 
   if (error) return <div className="text-sm text-red-600">{error}</div>;
-  if (!data) return <div className="text-sm text-emerald-100/60">Nessun dato.</div>;
+  if (!data) return <div className="text-sm text-cyan-100/60">Nessun dato.</div>;
 
   return (
     <div className="space-y-6">
@@ -433,33 +433,33 @@ export default function UserSummaryPage() {
         <CardHeader
           title={`Dettaglio: ${safeUser.displayName}`}
           subtitle={`${safeLeague.name} · Totale punti: ${fmtPoints(safeSummary.total)} (Esatto ${safeSummary.exact} · 1X2 ${safeSummary.outcome} · Somma ${safeSummary.sumGoals}${features.underOver25 ? ` · U/O 2.5 ${safeSummary.underOver ?? 0}` : ""})`}
-          right={<Link className="text-sm text-emerald-100/60 hover:underline" to="/leaderboard">← Torna alla classifica</Link>}
+          right={<Link className="text-sm text-cyan-100/60 hover:underline" to="/leaderboard">← Torna alla classifica</Link>}
         />
         <CardContent className="space-y-4">
-          <div className="flex items-center gap-3 rounded-2xl border border-emerald-100/15 bg-emerald-100/5 p-3">
+          <div className="flex items-center gap-3 rounded-2xl border border-cyan-100/15 bg-cyan-100/5 p-3">
             <UserAvatar avatarId={(safeUser as any).avatarId || null} size={60} mode="full" className="shadow-sm" />
             <div className="min-w-0">
               <div className="truncate text-sm font-semibold text-white">{safeUser.displayName}</div>
-              <div className="mt-0.5 text-xs text-emerald-100/60">{safeLeague.name}</div>
+              <div className="mt-0.5 text-xs text-cyan-100/60">{safeLeague.name}</div>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="rounded-2xl border border-emerald-100/15 bg-emerald-100/5 p-3"><div className="text-[11px] font-medium text-emerald-100/60">% Esatti</div><div className="mt-1 text-2xl font-semibold text-white">{pctExact}%</div><div className="mt-1 text-xs text-emerald-100/60">Su {finishedCount} partite finite</div></div>
-            <div className="rounded-2xl border border-emerald-100/15 bg-emerald-100/5 p-3"><div className="text-[11px] font-medium text-emerald-100/60">% 1X2</div><div className="mt-1 text-2xl font-semibold text-white">{pctOutcome}%</div><div className="mt-1 text-xs text-emerald-100/60">Su {finishedCount} partite finite</div></div>
-            <div className="rounded-2xl border border-emerald-100/15 bg-emerald-100/5 p-3"><div className="text-[11px] font-medium text-emerald-100/60">Streak 1X2</div><div className="mt-1 text-2xl font-semibold text-white">{streakOutcome}</div><div className="mt-1 text-xs text-emerald-100/60">Consecutivi corretti</div></div>
-            <div className="rounded-2xl border border-emerald-100/15 bg-emerald-100/5 p-3"><div className="text-[11px] font-medium text-emerald-100/60">Miglior giornata</div><div className="mt-1 text-2xl font-semibold text-white">G{bestMatchday.md}</div><div className="mt-1 text-xs text-emerald-100/60">{bestMatchday.pts} punti</div></div>
+            <div className="rounded-2xl border border-cyan-100/15 bg-cyan-100/5 p-3"><div className="text-[11px] font-medium text-cyan-100/60">% Esatti</div><div className="mt-1 text-2xl font-semibold text-white">{pctExact}%</div><div className="mt-1 text-xs text-cyan-100/60">Su {finishedCount} partite finite</div></div>
+            <div className="rounded-2xl border border-cyan-100/15 bg-cyan-100/5 p-3"><div className="text-[11px] font-medium text-cyan-100/60">% 1X2</div><div className="mt-1 text-2xl font-semibold text-white">{pctOutcome}%</div><div className="mt-1 text-xs text-cyan-100/60">Su {finishedCount} partite finite</div></div>
+            <div className="rounded-2xl border border-cyan-100/15 bg-cyan-100/5 p-3"><div className="text-[11px] font-medium text-cyan-100/60">Streak 1X2</div><div className="mt-1 text-2xl font-semibold text-white">{streakOutcome}</div><div className="mt-1 text-xs text-cyan-100/60">Consecutivi corretti</div></div>
+            <div className="rounded-2xl border border-cyan-100/15 bg-cyan-100/5 p-3"><div className="text-[11px] font-medium text-cyan-100/60">Miglior giornata</div><div className="mt-1 text-2xl font-semibold text-white">G{bestMatchday.md}</div><div className="mt-1 text-xs text-cyan-100/60">{bestMatchday.pts} punti</div></div>
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl border border-emerald-100/15 bg-emerald-950/45 p-3">
-              <div className="flex items-center justify-between"><div><div className="text-sm font-semibold text-white">Andamento punti</div><div className="text-xs text-emerald-100/60">Totale cumulativo per match</div></div><Badge tone="gray">Streak esatti {streakExact}</Badge></div>
+            <div className="rounded-2xl border border-cyan-100/15 bg-cyan-950/45 p-3">
+              <div className="flex items-center justify-between"><div><div className="text-sm font-semibold text-white">Andamento punti</div><div className="text-xs text-cyan-100/60">Totale cumulativo per match</div></div><Badge tone="gray">Streak esatti {streakExact}</Badge></div>
               <div className="mt-2 text-white">{renderMiniChart()}</div>
             </div>
-            <div className="rounded-2xl border border-emerald-100/15 bg-emerald-950/45 p-3">
+            <div className="rounded-2xl border border-cyan-100/15 bg-cyan-950/45 p-3">
               <div className="text-sm font-semibold text-white">Sintesi</div>
-              <div className="mt-1 text-xs text-emerald-100/60">Esatti: <b>{exactHits}</b> · 1X2: <b>{outcomeHits}</b> · Partite finite: <b>{finishedCount}</b></div>
-              <div className="mt-2 text-xs text-emerald-100/60">Nota: le percentuali si basano solo sulle partite terminate con risultato disponibile.</div>
+              <div className="mt-1 text-xs text-cyan-100/60">Esatti: <b>{exactHits}</b> · 1X2: <b>{outcomeHits}</b> · Partite finite: <b>{finishedCount}</b></div>
+              <div className="mt-2 text-xs text-cyan-100/60">Nota: le percentuali si basano solo sulle partite terminate con risultato disponibile.</div>
             </div>
           </div>
         </CardContent>
@@ -478,10 +478,10 @@ export default function UserSummaryPage() {
                 const value = meta.valueKey === "playerName" ? pick.playerName : pick.teamName;
                 const points = Number(pick.pointsAwarded ?? 0);
                 return (
-                  <div key={pick.type} className={`rounded-2xl border p-4 ${points > 0 ? "border-emerald-500/30 bg-emerald-500/10" : "border-emerald-100/15 bg-emerald-950/35"}`}>
-                    <div className="text-[11px] font-bold uppercase tracking-wide text-emerald-100/60">{meta.label}</div>
+                  <div key={pick.type} className={`rounded-2xl border p-4 ${points > 0 ? "border-emerald-500/30 bg-emerald-500/10" : "border-cyan-100/15 bg-cyan-950/35"}`}>
+                    <div className="text-[11px] font-bold uppercase tracking-wide text-cyan-100/60">{meta.label}</div>
                     <div className="mt-2 text-base font-extrabold text-white">{value || "—"}</div>
-                    <div className="mt-2 inline-flex rounded-full border border-emerald-100/15 bg-black/20 px-2 py-0.5 text-xs font-bold text-emerald-50/85">
+                    <div className="mt-2 inline-flex rounded-full border border-cyan-100/15 bg-black/20 px-2 py-0.5 text-xs font-bold text-cyan-50/85">
                       {fmtPoints(points)} pt
                     </div>
                   </div>
@@ -499,7 +499,7 @@ export default function UserSummaryPage() {
           right={
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <select
-                className="min-w-[210px] rounded-xl border border-emerald-100/15 bg-emerald-950/45 px-3 py-2 text-sm text-white"
+                className="min-w-[210px] rounded-xl border border-cyan-100/15 bg-cyan-950/45 px-3 py-2 text-sm text-white"
                 value={selectedMatchday}
                 onChange={(e) => setSelectedMatchday(e.target.value)}
               >
@@ -521,7 +521,7 @@ export default function UserSummaryPage() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <div className="text-base font-semibold text-white">Giornata {md}</div>
-                    <div className="text-xs text-emerald-100/60">{byMatchday[md]?.length ?? 0} partite · {pointsByMatchday.get(md) ?? 0} punti</div>
+                    <div className="text-xs text-cyan-100/60">{byMatchday[md]?.length ?? 0} partite · {pointsByMatchday.get(md) ?? 0} punti</div>
                   </div>
                   {String(md) === defaultMatchday ? <Badge tone="green">Corrente</Badge> : null}
                 </div>
@@ -540,7 +540,7 @@ export default function UserSummaryPage() {
                     ? "border-emerald-500/35 bg-emerald-500/10"
                     : pts > 0
                     ? "border-sky-500/25 bg-sky-500/10"
-                    : "border-emerald-100/15 bg-emerald-950/35";
+                    : "border-cyan-100/15 bg-cyan-950/35";
 
                   return (
                     <div key={m?.id ?? `${m?.kickoffAt}-${m?.homeTeam}`} className={`rounded-2xl border p-4 ${shell}`}>
@@ -560,16 +560,16 @@ export default function UserSummaryPage() {
                           <div className="flex items-center gap-2"><TeamDot name={m?.homeTeam || ""} logo={m?.homeLogo} /><div className="truncate text-sm font-semibold text-white">{m?.homeTeam}</div></div>
                           <div className="flex items-center gap-2"><TeamDot name={m?.awayTeam || ""} logo={m?.awayLogo} /><div className="truncate text-sm font-semibold text-white">{m?.awayTeam}</div></div>
                         </div>
-                        <div className="rounded-2xl border border-emerald-100/15 bg-black/20 px-4 py-3 text-center">
-                          <div className="text-[11px] uppercase tracking-wide text-emerald-100/60">Pronostico</div>
+                        <div className="rounded-2xl border border-cyan-100/15 bg-black/20 px-4 py-3 text-center">
+                          <div className="text-[11px] uppercase tracking-wide text-cyan-100/60">Pronostico</div>
                           <div className="mt-1 text-2xl font-extrabold text-white">{pr}</div>
-                          <div className="mt-2 text-[11px] uppercase tracking-wide text-emerald-100/60">Reale</div>
-                          <div className="mt-1 text-lg font-bold text-emerald-50/85">{real}</div>
+                          <div className="mt-2 text-[11px] uppercase tracking-wide text-cyan-100/60">Reale</div>
+                          <div className="mt-1 text-lg font-bold text-cyan-50/85">{real}</div>
                         </div>
-                        <div className="space-y-2 rounded-2xl border border-emerald-100/15 bg-black/20 p-3 text-sm">
-                          <div className="flex items-center justify-between"><span className="text-emerald-100/60">Data</span><span className="font-medium text-white">{date} · {time}</span></div>
-                          <div className="flex items-center justify-between"><span className="text-emerald-100/60">Punti match</span><span className="font-semibold text-white">{pts}</span></div>
-                          <div className="flex items-start justify-between gap-3"><span className="text-emerald-100/60">Breakdown</span><span className="text-right text-emerald-50/85">{buildBreakdown(it?.points)}</span></div>
+                        <div className="space-y-2 rounded-2xl border border-cyan-100/15 bg-black/20 p-3 text-sm">
+                          <div className="flex items-center justify-between"><span className="text-cyan-100/60">Data</span><span className="font-medium text-white">{date} · {time}</span></div>
+                          <div className="flex items-center justify-between"><span className="text-cyan-100/60">Punti match</span><span className="font-semibold text-white">{pts}</span></div>
+                          <div className="flex items-start justify-between gap-3"><span className="text-cyan-100/60">Breakdown</span><span className="text-right text-cyan-50/85">{buildBreakdown(it?.points)}</span></div>
                         </div>
                       </div>
                     </div>
@@ -577,7 +577,7 @@ export default function UserSummaryPage() {
                 })}
               </div>
             ))}
-            {safeItems.length === 0 ? <div className="py-6 text-sm text-emerald-100/60">Nessuna partita.</div> : null}
+            {safeItems.length === 0 ? <div className="py-6 text-sm text-cyan-100/60">Nessuna partita.</div> : null}
           </div>
         </CardContent>
       </Card>
