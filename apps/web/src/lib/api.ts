@@ -238,6 +238,7 @@ export type LeagueStatsResponse = {
   topOutcomeHits?: { userId: string; displayName: string; value: number } | null;
   topSumGoalsHits?: { userId: string; displayName: string; value: number } | null;
   topUnderOverHits?: { userId: string; displayName: string; value: number } | null;
+  funStats?: Array<{ key: string; title: string; description: string; userId?: string; displayName?: string; value?: number }>;
 
   features?: { underOver25: boolean };
 

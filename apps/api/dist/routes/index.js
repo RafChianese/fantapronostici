@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { authRouter } from "./publicAuth.js";
+import { legacyEmailAuthRouter } from "./legacyEmailAuth.js";
 import { publicRouter } from "./publicRoutes.js";
 import { meRouter } from "./meRoutes.js";
 import { adminRouter } from "./adminRoutes.js";
@@ -11,6 +12,7 @@ import { superRouter } from "./superRoutes.js";
 import { pushRouter } from "./pushRoutes.js";
 export const apiRouter = Router();
 apiRouter.use("/auth", authRouter);
+apiRouter.use("/auth", legacyEmailAuthRouter);
 apiRouter.use("/", publicRouter);
 apiRouter.use("/push", pushRouter);
 apiRouter.use("/me", meRouter);

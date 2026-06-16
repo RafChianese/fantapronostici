@@ -167,7 +167,7 @@ export default function LeaderboardPage() {
               <Button variant="ghost" onClick={() => setSortOpen(false)} aria-label="Chiudi">✕</Button>
             </div>
 
-            <div className="divide-y divide-white/10">
+            <div className="space-y-2">
               {sortOptions.map((opt) => {
                 const active = opt.key === sortKey && opt.dir === sortDir;
                 return (
@@ -290,7 +290,7 @@ export default function LeaderboardPage() {
             ))}
           </div>
         ) : (
-          <div className="divide-y divide-white/10">
+          <div className="space-y-2">
 
             {/* Desktop header */}
             <div className="hidden sm:grid sm:grid-cols-12 sm:gap-3 sm:pb-2 sm:text-[11px] sm:font-semibold sm:uppercase sm:tracking-wide sm:text-slate-300">
@@ -306,14 +306,14 @@ export default function LeaderboardPage() {
               const isPrizePosition = idx < prizeCount;
               const medal = isPrizePosition ? (idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : "🏅") : "";
               const medalGlow = isPrizePosition ? "tm-medal-glow" : "";
-              const top3Row = isPrizePosition ? "tm-top3-row" : "";
+              const top3Row = isPrizePosition ? "border-yellow-200/30 bg-yellow-300/10 shadow-[0_0_35px_rgba(250,204,21,0.10)]" : "border-white/10 bg-white/5";
               const isMe = !!user?.id && r.userId === user.id;
               const gap = idx === 0 ? 0 : Math.max(0, leaderPoints - Number(r.totalPoints || 0));
               return (
-              <div key={r.userId} className={`py-3 ${top3Row} ${isMe ? "brightness-110" : ""} ${flashCls}`}>
+              <div key={r.userId} className={`rounded-3xl border p-3 transition ${top3Row} ${isMe ? "brightness-110" : ""} ${flashCls}`}>
                 <Link
                   to={`/users/${r.userId}`}
-                  className="group block rounded-2xl px-2 py-2 transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-rose-400/40"
+                  className="group block rounded-2xl transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-rose-400/40"
                   aria-label={`Apri il dettaglio di ${r.displayName}`}
                 >
                 {/* Mobile: 2 righe senza scroll orizzontale. Desktop: layout a colonne */}
@@ -321,7 +321,7 @@ export default function LeaderboardPage() {
                   <div className="flex items-center justify-between sm:col-span-6 sm:justify-start sm:gap-3">
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-2">
-                        <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-extrabold ${isPrizePosition ? "border-rose-400/35 bg-rose-500/10" : "border-white/10 bg-white/5"} ${medalGlow}`}>
+                        <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-extrabold ${isPrizePosition ? "border-yellow-200/30 bg-yellow-300/10 text-yellow-50" : "border-white/10 bg-slate-950/60 text-white"} ${medalGlow}`}>
                           <span className="tabular-nums">#{idx + 1}</span>
                           {medal ? <span aria-hidden="true">{medal}</span> : null}
                         </span>

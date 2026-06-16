@@ -51,11 +51,95 @@ export function extractTopScorerFromScorers(scorers) {
 }
 export async function fetchMatchDetail(args) {
     const data = await client.getMatch(args.matchId);
+    // DEBUG: log raw football-data response for match detail (non-production only)
+    if (process.env.NODE_ENV !== "production") {
+        try {
+            console.log("⚽ FOOTBALL-DATA RAW MATCH DETAIL META:", {
+                matchId: args.matchId,
+                status: data?.status ?? data?.match?.status,
+                goals: Array.isArray(data?.goals) ? data.goals.length : 0,
+                bookings: Array.isArray(data?.bookings) ? data.bookings.length : 0,
+                substitutions: Array.isArray(data?.substitutions) ? data.substitutions.length : 0,
+                hasLineups: !!data?.homeTeam?.lineup || !!data?.awayTeam?.lineup,
+            });
+            console.log("⚽ FOOTBALL-DATA RAW MATCH DETAIL PAYLOAD:", JSON.stringify(data, null, 2));
+        }
+        catch {
+            // ignore logging failures
+        }
+    }
     return data;
 }
 export async function fetchTeamDetail(args) {
     const data = await client.getTeam(args.teamId);
     return data;
+}
+function uniqById(items) {
+    const seen = new Set();
+    const out = [];
+    for (const it of items) {
+        if (!Number.isFinite(it.id))
+            continue;
+        if (seen.has(it.id))
+            continue;
+        seen.add(it.id);
+        out.push(it);
+    }
+    return out;
+}
+/**
+ * Best-effort list of players for a competition.
+ * If the scorers endpoint is empty (common on some plans/competitions), we fallback to team squads.
+ */
+export async function fetchCompetitionPlayerOptions(args) {
+    const teams = await fetchCompetitionTeams({ competitionCode: args.competitionCode });
+    // If squads are embedded in the teams response, use them.
+    const embedded = [];
+    for (const t of teams) {
+        const squad = t?.squad;
+        if (!Array.isArray(squad))
+            continue;
+        for (const p of squad) {
+            const id = Number(p?.id);
+            const name = typeof p?.name === "string" ? p.name.trim() : "";
+            if (!Number.isFinite(id) || !name)
+                continue;
+            embedded.push({ id, name, teamId: Number(t.id), teamName: String(t.shortName || t.name || "").trim() || null });
+        }
+    }
+    if (embedded.length)
+        return uniqById(embedded);
+    // Fallback: fetch each team detail to obtain squad.
+    const teamIds = teams
+        .map((t) => Number(t?.id))
+        .filter((id) => Number.isFinite(id));
+    const limit = 3;
+    const queue = [...teamIds];
+    const out = [];
+    async function worker() {
+        while (queue.length) {
+            const teamId = queue.shift();
+            if (!teamId)
+                return;
+            try {
+                const detail = await fetchTeamDetail({ teamId });
+                const teamName = String(detail?.name || detail?.shortName || "").trim() || null;
+                const squad = Array.isArray(detail?.squad) ? detail.squad : [];
+                for (const p of squad) {
+                    const id = Number(p?.id);
+                    const name = typeof p?.name === "string" ? p.name.trim() : "";
+                    if (!Number.isFinite(id) || !name)
+                        continue;
+                    out.push({ id, name, teamId, teamName });
+                }
+            }
+            catch {
+                // ignore single team errors
+            }
+        }
+    }
+    await Promise.all(new Array(limit).fill(0).map(() => worker()));
+    return uniqById(out).sort((a, b) => a.name.localeCompare(b.name, "it"));
 }
 export function extractScorersFromMatchDetail(detail) {
     const out = [];
@@ -143,6 +227,52 @@ export function extractEventsFromMatchDetail(detail) {
         return am - bm;
     });
     return events;
+}
+export function extractLineupsFromMatchDetail(detail) {
+    // football-data.org v4 /matches/{id} (on some plans) may include:
+    // homeTeam.lineup, homeTeam.bench, awayTeam.lineup, awayTeam.bench
+    // We normalize to the shape used by FE: [{ team, startXI, substitutes }]
+    const out = [];
+    const mapPlayer = (p) => {
+        const id = Number(p?.id);
+        const name = typeof p?.name === "string" ? p.name.trim() : "";
+        if (!name)
+            return null;
+        return {
+            id: Number.isFinite(id) ? id : null,
+            name,
+            number: Number.isFinite(Number(p?.shirtNumber)) ? Number(p.shirtNumber) : null,
+            position: typeof p?.position === "string" ? p.position : null,
+        };
+    };
+    const mapTeam = (t) => {
+        if (!t)
+            return null;
+        const tid = Number(t?.id);
+        return {
+            id: Number.isFinite(tid) ? tid : null,
+            name: typeof t?.shortName === "string" && t.shortName.trim()
+                ? t.shortName.trim()
+                : typeof t?.name === "string"
+                    ? t.name.trim()
+                    : "Team",
+            logo: typeof t?.crest === "string" ? t.crest : null,
+        };
+    };
+    const ht = detail?.homeTeam;
+    const at = detail?.awayTeam;
+    const homeLineup = Array.isArray(ht?.lineup) ? ht.lineup.map(mapPlayer).filter(Boolean) : [];
+    const homeBench = Array.isArray(ht?.bench) ? ht.bench.map(mapPlayer).filter(Boolean) : [];
+    const awayLineup = Array.isArray(at?.lineup) ? at.lineup.map(mapPlayer).filter(Boolean) : [];
+    const awayBench = Array.isArray(at?.bench) ? at.bench.map(mapPlayer).filter(Boolean) : [];
+    // Only return if at least one team has data.
+    if (homeLineup.length || homeBench.length) {
+        out.push({ team: mapTeam(ht), startXI: homeLineup, substitutes: homeBench });
+    }
+    if (awayLineup.length || awayBench.length) {
+        out.push({ team: mapTeam(at), startXI: awayLineup, substitutes: awayBench });
+    }
+    return out;
 }
 export function mapFootballDataStatus(status) {
     switch (status) {

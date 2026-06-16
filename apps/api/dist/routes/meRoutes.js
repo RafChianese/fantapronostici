@@ -2,18 +2,409 @@ import { Router } from "express";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { prisma } from "../lib/prisma.js";
+import { env } from "../lib/env.js";
 import { ensureLeagueConfig } from "../services/ensureLeagueConfig.js";
 import { requireAuth, requireLeagueMember, resolveLeagueId } from "../middleware/authMiddleware.js";
 import { assertPredictionsEditableForMatches, getLockInfo } from "../lib/lock.js";
 import { recalcAllScoresForLeague } from "../lib/scoring.js";
 import { getMonetizationConfig } from "../lib/monetization.js";
-import { extractEventsFromMatchDetail, extractScorersFromMatchDetail, fetchCompetitionScorers, fetchCompetitionTeams, fetchMatchDetail, } from "../services/footballDataService.js";
+import { fetchCompetitionScorers, fetchCompetitionTeams, fetchCompetitionPlayerOptions, } from "../services/footballDataService.js";
+import { fetchFixtureEvents, fetchFixtureLineups, fetchFixturesRange } from "../services/apiFootball.js";
+import { AvatarPresetIdSchema } from "../lib/avatarPresets.js";
+import { assertPredictableMatches, getPredictionWindow, isPredictableMatch, isPlaceholderMatch } from "../lib/predictableMatches.js";
+function normTeamName(s) {
+    return String(s || "")
+        .toLowerCase()
+        .replace(/\b(fc|cf|calcio|football|club)\b/g, "")
+        .replace(/[^a-z0-9]+/g, "")
+        .trim();
+}
+async function resolveFixtureIdForMatch(match) {
+    // Already present
+    if (match?.apiFootballFixtureId) {
+        return { fixtureId: Number(match.apiFootballFixtureId), round: match.apiRound ?? null, leagueId: match.apiLeagueId ?? null, season: match.apiSeason ?? null };
+    }
+    // Need API key + super settings
+    if (!env.API_FOOTBALL_KEY?.trim())
+        return { fixtureId: null };
+    const ss = await prisma.superSetting.findFirst({ orderBy: { createdAt: "asc" } }).catch(() => null);
+    const leagueId = ss?.apiFootballLeagueId ?? null;
+    const season = ss?.apiFootballSeason ?? null;
+    const tz = ss?.apiFootballTimezone || "Europe/Rome";
+    if (!leagueId || !season)
+        return { fixtureId: null };
+    // Query fixtures in a tight date window around kickoff (same day ±1)
+    const kickoff = new Date(match.kickoffAt);
+    const day = kickoff.toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
+    const d0 = new Date(kickoff);
+    d0.setUTCDate(d0.getUTCDate() - 1);
+    const d1 = new Date(kickoff);
+    d1.setUTCDate(d1.getUTCDate() + 1);
+    const from = d0.toISOString().slice(0, 10);
+    const to = d1.toISOString().slice(0, 10);
+    const rows = await fetchFixturesRange({ leagueId, season, timezone: tz, from, to }).catch(() => []);
+    if (!rows.length)
+        return { fixtureId: null };
+    const hn = normTeamName(match.homeTeam);
+    const an = normTeamName(match.awayTeam);
+    // Pick best candidate: name match + closest kickoff time
+    let best = null;
+    let bestScore = Infinity;
+    for (const r of rows) {
+        const rh = normTeamName(r?.teams?.home?.name);
+        const ra = normTeamName(r?.teams?.away?.name);
+        if (!rh || !ra)
+            continue;
+        const namesOk = rh === hn && ra === an;
+        if (!namesOk)
+            continue;
+        const k = new Date(r?.fixture?.date);
+        const diff = Math.abs(k.getTime() - kickoff.getTime());
+        if (diff < bestScore) {
+            bestScore = diff;
+            best = r;
+        }
+    }
+    if (!best?.fixture?.id)
+        return { fixtureId: null };
+    return { fixtureId: Number(best.fixture.id), round: best?.league?.round ?? null, leagueId, season };
+}
 export const meRouter = Router();
+meRouter.get("/calendar", requireAuth, requireLeagueMember, async (req, res) => {
+    const leagueId = resolveLeagueId(req);
+    if (!leagueId)
+        return res.status(400).json({ message: "Missing leagueId" });
+    await ensureLeagueConfig(leagueId);
+    const [rules, rawMatches, members, jollyRows] = await Promise.all([
+        prisma.rule.findUnique({ where: { leagueId } }),
+        prisma.match.findMany({
+            orderBy: [{ kickoffAt: "asc" }],
+            select: {
+                id: true,
+                matchday: true,
+                group: true,
+                homeTeam: true,
+                awayTeam: true,
+                homeLogo: true,
+                awayLogo: true,
+                kickoffAt: true,
+                status: true,
+                homeScore: true,
+                awayScore: true,
+            },
+        }),
+        prisma.leagueMember.findMany({
+            where: { leagueId, status: "APPROVED" },
+            include: { user: true },
+            orderBy: { createdAt: "asc" },
+        }),
+        prisma.matchdayJolly.findMany({ where: { leagueId }, select: { matchId: true } }),
+    ]);
+    if (!rules)
+        return res.status(500).json({ message: "Missing rules for league" });
+    const matchesBase = rawMatches.filter((match) => !isPlaceholderMatch(match));
+    const matchIds = matchesBase.map((m) => m.id);
+    const predictions = matchIds.length
+        ? await prisma.prediction.findMany({ where: { leagueId, matchId: { in: matchIds } } })
+        : [];
+    const predByUserMatch = new Map();
+    for (const p of predictions)
+        predByUserMatch.set(`${p.userId}:${p.matchId}`, p);
+    const jollySet = new Set(jollyRows.map((r) => String(r.matchId)));
+    const now = Date.now();
+    const matches = matchesBase.map((match) => {
+        const status = String(match.status || "NOT_STARTED");
+        const kickoffTs = new Date(match.kickoffAt).getTime();
+        const derivedStatus = status === "FINISHED" || status === "IN_PROGRESS" || status === "NOT_STARTED"
+            ? status
+            : Number.isFinite(kickoffTs) && kickoffTs <= now
+                ? "IN_PROGRESS"
+                : "NOT_STARTED";
+        const isJolly = jollySet.has(String(match.id));
+        const participants = members.map((m) => {
+            const prediction = predByUserMatch.get(`${m.userId}:${match.id}`) || null;
+            let points = 0;
+            let breakdown = { exact: 0, outcome: 0, sumGoals: 0, underOver: 0 };
+            let isExactLive = false;
+            if (prediction && derivedStatus === "IN_PROGRESS" && match.homeScore !== null && match.awayScore !== null) {
+                const live = computeLivePointsForPrediction(prediction, match, rules, isJolly);
+                points = Number(live.totalPoints || 0);
+                breakdown = {
+                    exact: Number(live.pointsExact || 0),
+                    outcome: Number(live.pointsOutcome || 0),
+                    sumGoals: Number(live.pointsSumGoals || 0),
+                    underOver: Number(live.pointsUnderOver || 0),
+                };
+                isExactLive = !!live.isExact;
+            }
+            else if (prediction && derivedStatus === "FINISHED") {
+                points = Number(prediction.totalPoints ?? 0);
+                breakdown = {
+                    exact: Number(prediction.pointsExact ?? 0),
+                    outcome: Number(prediction.pointsOutcome ?? 0),
+                    sumGoals: Number(prediction.pointsSumGoals ?? 0),
+                    underOver: Number(prediction.pointsUnderOver ?? 0),
+                };
+            }
+            return {
+                userId: m.user.id,
+                displayName: m.user.displayName,
+                avatarId: m.user.avatarId ?? null,
+                avatarJson: m.user.avatarJson ?? null,
+                prediction: prediction ? { homeGoals: prediction.homeGoals, awayGoals: prediction.awayGoals } : null,
+                points,
+                breakdown,
+                isExactLive,
+            };
+        });
+        participants.sort((a, b) => {
+            if (a.isExactLive !== b.isExactLive)
+                return a.isExactLive ? -1 : 1;
+            if (Number(b.points) !== Number(a.points))
+                return Number(b.points) - Number(a.points);
+            return String(a.displayName).localeCompare(String(b.displayName));
+        });
+        return {
+            ...match,
+            status: derivedStatus,
+            isJolly,
+            participants,
+            exactLiveCount: participants.filter((p) => p.isExactLive).length,
+        };
+    });
+    res.json({ matches });
+});
+meRouter.get("/live", requireAuth, requireLeagueMember, async (req, res) => {
+    const leagueId = resolveLeagueId(req);
+    if (!leagueId)
+        return res.status(400).json({ message: "Missing leagueId" });
+    await ensureLeagueConfig(leagueId);
+    const [rules, liveMatches, members, jollyRows, allLeaguePredictions, competitionPoints, monetization] = await Promise.all([
+        prisma.rule.findUnique({ where: { leagueId } }),
+        prisma.match.findMany({
+            where: { status: "IN_PROGRESS" },
+            orderBy: [{ kickoffAt: "asc" }],
+            select: {
+                id: true,
+                matchday: true,
+                group: true,
+                homeTeam: true,
+                awayTeam: true,
+                homeLogo: true,
+                awayLogo: true,
+                kickoffAt: true,
+                status: true,
+                homeScore: true,
+                awayScore: true,
+            },
+        }),
+        prisma.leagueMember.findMany({
+            where: { leagueId, status: "APPROVED" },
+            include: { user: true },
+            orderBy: { createdAt: "asc" },
+        }),
+        prisma.matchdayJolly.findMany({ where: { leagueId }, select: { matchId: true } }),
+        prisma.prediction.findMany({ where: { leagueId }, select: { userId: true, totalPoints: true } }),
+        prisma.competitionPick.groupBy({
+            by: ["userId"],
+            where: { leagueId },
+            _sum: { pointsAwarded: true },
+        }),
+        prisma.leagueMonetization.findUnique({ where: { leagueId }, include: { prizes: true } }),
+    ]);
+    if (!rules)
+        return res.status(500).json({ message: "Missing rules for league" });
+    const matchIds = liveMatches.map((m) => m.id);
+    const predictions = matchIds.length
+        ? await prisma.prediction.findMany({ where: { leagueId, matchId: { in: matchIds } } })
+        : [];
+    const predByUserMatch = new Map();
+    for (const p of predictions)
+        predByUserMatch.set(`${p.userId}:${p.matchId}`, p);
+    const jollySet = new Set(jollyRows.map((r) => String(r.matchId)));
+    const livePointsByUser = new Map();
+    const storedLivePointsByUser = new Map();
+    const matches = liveMatches.map((match) => {
+        const isJolly = jollySet.has(String(match.id));
+        const participants = members.map((m) => {
+            const prediction = predByUserMatch.get(`${m.userId}:${match.id}`) || null;
+            const live = computeLivePointsForPrediction(prediction, match, rules, isJolly);
+            livePointsByUser.set(m.user.id, (livePointsByUser.get(m.user.id) || 0) + Number(live.totalPoints || 0));
+            storedLivePointsByUser.set(m.user.id, (storedLivePointsByUser.get(m.user.id) || 0) + Number(prediction?.totalPoints ?? 0));
+            return {
+                userId: m.user.id,
+                displayName: m.user.displayName,
+                avatarId: m.user.avatarId ?? null,
+                avatarJson: m.user.avatarJson ?? null,
+                prediction: prediction ? { homeGoals: prediction.homeGoals, awayGoals: prediction.awayGoals } : null,
+                livePoints: live.totalPoints,
+                liveBreakdown: {
+                    exact: live.pointsExact,
+                    outcome: live.pointsOutcome,
+                    sumGoals: live.pointsSumGoals,
+                    underOver: live.pointsUnderOver,
+                },
+                isExactLive: live.isExact,
+            };
+        });
+        participants.sort((a, b) => {
+            if (a.isExactLive !== b.isExactLive)
+                return a.isExactLive ? -1 : 1;
+            if (Number(b.livePoints) !== Number(a.livePoints))
+                return Number(b.livePoints) - Number(a.livePoints);
+            return String(a.displayName).localeCompare(String(b.displayName));
+        });
+        return {
+            ...match,
+            isJolly,
+            participants,
+            exactLiveCount: participants.filter((p) => p.isExactLive).length,
+        };
+    });
+    const officialTotalsByUser = new Map();
+    for (const p of allLeaguePredictions) {
+        officialTotalsByUser.set(String(p.userId), (officialTotalsByUser.get(String(p.userId)) || 0) + Number(p.totalPoints ?? 0));
+    }
+    for (const row of competitionPoints) {
+        const userId = String(row.userId);
+        officialTotalsByUser.set(userId, (officialTotalsByUser.get(userId) || 0) + Number(row._sum?.pointsAwarded ?? 0));
+    }
+    const officialRows = members
+        .map((m) => ({ userId: m.user.id, totalPoints: officialTotalsByUser.get(m.user.id) || 0, displayName: m.user.displayName }))
+        .sort((a, b) => b.totalPoints - a.totalPoints || String(a.displayName).localeCompare(String(b.displayName)));
+    const officialRankByUser = new Map();
+    officialRows.forEach((row, index) => officialRankByUser.set(row.userId, index + 1));
+    const liveLeaderboard = members
+        .map((m) => {
+        const officialPoints = officialTotalsByUser.get(m.user.id) || 0;
+        const livePoints = livePointsByUser.get(m.user.id) || 0;
+        const storedLivePoints = storedLivePointsByUser.get(m.user.id) || 0;
+        const liveDelta = livePoints - storedLivePoints;
+        return {
+            userId: m.user.id,
+            displayName: m.user.displayName,
+            avatarId: m.user.avatarId ?? null,
+            avatarJson: m.user.avatarJson ?? null,
+            officialPoints,
+            liveDelta,
+            liveTotalPoints: officialPoints + liveDelta,
+            officialRank: officialRankByUser.get(m.user.id) ?? null,
+        };
+    })
+        .sort((a, b) => {
+        if (b.liveTotalPoints !== a.liveTotalPoints)
+            return b.liveTotalPoints - a.liveTotalPoints;
+        return String(a.displayName).localeCompare(String(b.displayName));
+    })
+        .map((row, index) => ({
+        ...row,
+        liveRank: index + 1,
+        rankDelta: row.officialRank ? row.officialRank - (index + 1) : 0,
+    }));
+    const prizeCount = Array.isArray(monetization?.prizes) && monetization.prizes.length > 0 ? monetization.prizes.length : 3;
+    res.json({ matches, liveLeaderboard, prizeCount });
+});
+function decimalNumber(value, fallback = 0) {
+    const n = Number(value ?? fallback);
+    return Number.isFinite(n) ? n : fallback;
+}
+function outcomeLive(home, away) {
+    if (home > away)
+        return "H";
+    if (home < away)
+        return "A";
+    return "D";
+}
+function computeAdjustedLivePoints(params) {
+    let ex = params.pointsExact;
+    let out = params.pointsOutcome;
+    let sum = params.pointsSumGoals;
+    let uo = params.pointsUnderOver;
+    if (params.mode === "CUMULATIVE") {
+        return { pointsExact: ex, pointsOutcome: out, pointsSumGoals: sum, pointsUnderOver: uo, totalPoints: ex + out + sum + uo };
+    }
+    if (params.mode === "BEST_ONLY") {
+        const max = Math.max(ex, out, sum, uo);
+        if (max <= 0)
+            return { pointsExact: 0, pointsOutcome: 0, pointsSumGoals: 0, pointsUnderOver: 0, totalPoints: 0 };
+        if (ex === max)
+            return { pointsExact: ex, pointsOutcome: 0, pointsSumGoals: 0, pointsUnderOver: 0, totalPoints: ex };
+        if (out === max)
+            return { pointsExact: 0, pointsOutcome: out, pointsSumGoals: 0, pointsUnderOver: 0, totalPoints: out };
+        if (sum === max)
+            return { pointsExact: 0, pointsOutcome: 0, pointsSumGoals: sum, pointsUnderOver: 0, totalPoints: sum };
+        return { pointsExact: 0, pointsOutcome: 0, pointsSumGoals: 0, pointsUnderOver: uo, totalPoints: uo };
+    }
+    const uoWithExact = params.allowUnderOverWithExact ?? true;
+    const uoWithOutcome = params.allowUnderOverWithOutcome ?? true;
+    const uoWithSum = params.allowUnderOverWithSumGoals ?? true;
+    if (ex > 0) {
+        out = out > 0 && params.allowOutcomeWithExact ? out : 0;
+        sum = sum > 0 && params.allowSumGoalsWithExact ? sum : 0;
+        uo = uo > 0 && uoWithExact ? uo : 0;
+        return { pointsExact: ex, pointsOutcome: out, pointsSumGoals: sum, pointsUnderOver: uo, totalPoints: ex + out + sum + uo };
+    }
+    if (out > 0) {
+        sum = sum > 0 && params.allowSumGoalsWithOutcome ? sum : 0;
+        uo = uo > 0 && uoWithOutcome ? uo : 0;
+        return { pointsExact: 0, pointsOutcome: out, pointsSumGoals: sum, pointsUnderOver: uo, totalPoints: out + sum + uo };
+    }
+    if (sum > 0) {
+        uo = uo > 0 && uoWithSum ? uo : 0;
+        return { pointsExact: 0, pointsOutcome: 0, pointsSumGoals: sum, pointsUnderOver: uo, totalPoints: sum + uo };
+    }
+    if (uo > 0)
+        return { pointsExact: 0, pointsOutcome: 0, pointsSumGoals: 0, pointsUnderOver: uo, totalPoints: uo };
+    return { pointsExact: 0, pointsOutcome: 0, pointsSumGoals: 0, pointsUnderOver: 0, totalPoints: 0 };
+}
+function computeLivePointsForPrediction(prediction, match, rules, isJolly) {
+    if (!prediction || match.homeScore === null || match.homeScore === undefined || match.awayScore === null || match.awayScore === undefined) {
+        return { pointsExact: 0, pointsOutcome: 0, pointsSumGoals: 0, pointsUnderOver: 0, totalPoints: 0, isExact: false };
+    }
+    const ph = Number(prediction.homeGoals);
+    const pa = Number(prediction.awayGoals);
+    const rh = Number(match.homeScore);
+    const ra = Number(match.awayScore);
+    let pointsExact = ph === rh && pa === ra ? decimalNumber(rules.pointsExact) : 0;
+    let pointsOutcome = outcomeLive(ph, pa) === outcomeLive(rh, ra) ? decimalNumber(rules.pointsOutcome) : 0;
+    let pointsSumGoals = ph + pa === rh + ra ? decimalNumber(rules.pointsSumGoals) : 0;
+    let pointsUnderOver = 0;
+    if (rules.enableUnderOver25) {
+        const predOver = ph + pa > 2;
+        const realOver = rh + ra > 2;
+        if (predOver === realOver)
+            pointsUnderOver = decimalNumber(rules.pointsUnderOver25);
+    }
+    const adjusted = computeAdjustedLivePoints({
+        mode: rules.scoringMode,
+        pointsExact,
+        pointsOutcome,
+        pointsSumGoals,
+        pointsUnderOver,
+        allowOutcomeWithExact: rules.allowOutcomeWithExact,
+        allowSumGoalsWithExact: rules.allowSumGoalsWithExact,
+        allowSumGoalsWithOutcome: rules.allowSumGoalsWithOutcome,
+        allowUnderOverWithExact: rules.allowUnderOverWithExact,
+        allowUnderOverWithOutcome: rules.allowUnderOverWithOutcome,
+        allowUnderOverWithSumGoals: rules.allowUnderOverWithSumGoals,
+    });
+    const multiplier = isJolly ? Math.max(1, Math.floor(Number(rules.jollyMultiplier || 1))) : 1;
+    const withJolly = multiplier > 1
+        ? {
+            pointsExact: adjusted.pointsExact * multiplier,
+            pointsOutcome: adjusted.pointsOutcome * multiplier,
+            pointsSumGoals: adjusted.pointsSumGoals * multiplier,
+            pointsUnderOver: adjusted.pointsUnderOver * multiplier,
+            totalPoints: adjusted.totalPoints * multiplier,
+        }
+        : adjusted;
+    return { ...withJolly, isExact: ph === rh && pa === ra };
+}
 meRouter.use(requireAuth);
 meRouter.get("/", async (req, res) => {
     const user = await prisma.user.findUnique({
         where: { id: req.user.id },
-        select: { id: true, email: true, displayName: true, globalRole: true, isActive: true, createdAt: true },
+        select: { id: true, email: true, displayName: true, avatarId: true, avatarJson: true, globalRole: true, isActive: true, createdAt: true },
     });
     const memberships = await prisma.leagueMember.findMany({
         where: { userId: req.user.id },
@@ -24,16 +415,24 @@ meRouter.get("/", async (req, res) => {
 });
 // Update profile (display name)
 const UpdateProfileSchema = z.object({
-    displayName: z.string().trim().min(2).max(60),
+    // Allow updating either displayName, avatarId, or both.
+    displayName: z.string().trim().min(2).max(60).optional(),
+    avatarId: AvatarPresetIdSchema.optional(),
 });
 meRouter.put("/profile", async (req, res) => {
-    const { displayName } = UpdateProfileSchema.parse(req.body);
+    const { displayName, avatarId } = UpdateProfileSchema.parse(req.body);
+    if (!displayName && !avatarId) {
+        return res.status(400).json({ message: "Nessun campo da aggiornare" });
+    }
     let user;
     try {
         user = await prisma.user.update({
             where: { id: req.user.id },
-            data: { displayName },
-            select: { id: true, email: true, displayName: true, globalRole: true, isActive: true, createdAt: true },
+            data: {
+                ...(displayName ? { displayName } : {}),
+                ...(avatarId ? { avatarId } : {}),
+            },
+            select: { id: true, email: true, displayName: true, avatarId: true, avatarJson: true, globalRole: true, isActive: true, createdAt: true },
         });
     }
     catch (e) {
@@ -64,12 +463,22 @@ meRouter.get("/lock", async (req, res) => {
 });
 meRouter.get("/predictions", requireLeagueMember, async (req, res) => {
     const leagueId = resolveLeagueId(req);
-    const predictions = await prisma.prediction.findMany({
+    const allPredictions = await prisma.prediction.findMany({
         where: { userId: req.user.id, leagueId },
         include: { match: true },
         orderBy: { match: { kickoffAt: "asc" } },
     });
-    res.json({ predictions });
+    const window = await getPredictionWindow();
+    const predictions = allPredictions.filter((p) => isPredictableMatch(p.match, window));
+    // Include scorer picks so the FE can show the selected scorer on match cards.
+    const matchIds = predictions.map((p) => p.matchId);
+    const scorerPicks = matchIds.length
+        ? await prisma.scorerPick.findMany({
+            where: { userId: req.user.id, leagueId, matchId: { in: matchIds } },
+            select: { matchId: true, playerName: true, playerExternalId: true },
+        })
+        : [];
+    res.json({ predictions, scorerPicks });
 });
 // Match detail (lineups + events) + scorer pick
 meRouter.get("/matches/:matchId/detail", requireLeagueMember, async (req, res) => {
@@ -84,70 +493,152 @@ meRouter.get("/matches/:matchId/detail", requireLeagueMember, async (req, res) =
     ]);
     if (!match)
         return res.status(404).json({ message: "Match non trovato" });
+    const predictionWindow = await getPredictionWindow();
+    if (!isPredictableMatch(match, predictionWindow)) {
+        return res.status(400).json({ message: "Partita non pronosticabile.", reason: "MATCH_NOT_PREDICTABLE" });
+    }
     const scorerEnabled = !!rules?.enableScorer;
     const pointsScorer = Number(rules?.pointsScorer ?? 3) || 3;
-    // football-data.org does not provide real lineups. We expose squads (if available) as a "lineup-like" list.
-    const fdMatchId = match?.footballDataMatchId ? Number(match.footballDataMatchId) : null;
-    const competitionCode = String(match?.footballDataCompetitionCode || "").trim();
+    // Prefer API-Football for match detail (events + lineups). We cache the normalized payload on Match
+    // to avoid consuming the free plan request quota (100/day).
+    // If fixtureId is missing (e.g. matches were synced from football-data), we try to resolve it once
+    // via a tight fixtures range query and then persist it on the Match.
+    const resolved = await resolveFixtureIdForMatch(match);
+    const fixtureId = resolved.fixtureId;
+    if (fixtureId && !match?.apiFootballFixtureId) {
+        // Persist resolved fixture id for future requests
+        await prisma.match.update({
+            where: { id: matchId },
+            data: {
+                apiFootballFixtureId: fixtureId,
+                apiLeagueId: resolved.leagueId ?? null,
+                apiSeason: resolved.season ?? null,
+                apiRound: resolved.round ?? null,
+            },
+        }).catch(() => null);
+    }
+    const normalizeApiFootballEvents = (rows) => {
+        const out = [];
+        for (const r of Array.isArray(rows) ? rows : []) {
+            const typeRaw = String(r?.type || "").toLowerCase();
+            let type = "";
+            if (typeRaw === "goal")
+                type = "GOAL";
+            else if (typeRaw === "card")
+                type = "CARD";
+            else if (typeRaw === "subst")
+                type = "SUBSTITUTION";
+            else
+                type = r?.type || "";
+            out.push({
+                type,
+                detail: r?.detail ?? null,
+                team: r?.team ? { id: r.team.id ?? null, name: r.team.name ?? null, logo: r.team.logo ?? null } : null,
+                player: r?.player ? { id: r.player.id ?? null, name: r.player.name ?? null } : null,
+                assist: r?.assist ? { id: r.assist.id ?? null, name: r.assist.name ?? null } : null,
+                time: r?.time ? { elapsed: r.time.elapsed ?? null, extra: r.time.extra ?? null } : null,
+            });
+        }
+        return out;
+    };
+    const normalizeApiFootballLineups = (rows) => {
+        const out = [];
+        for (const t of Array.isArray(rows) ? rows : []) {
+            const team = t?.team;
+            const mapP = (p) => ({
+                id: Number(p?.id) || null,
+                name: String(p?.name || "").trim(),
+                number: p?.number ?? null,
+                position: p?.pos ?? p?.position ?? null,
+            });
+            const startXI = Array.isArray(t?.startXI) ? t.startXI.map(mapP).filter((p) => p?.name) : [];
+            const substitutes = Array.isArray(t?.substitutes) ? t.substitutes.map(mapP).filter((p) => p?.name) : [];
+            if (!team?.id || !team?.name)
+                continue;
+            out.push({
+                team: { id: Number(team.id), name: String(team.name), logo: team.logo ?? null },
+                startXI,
+                substitutes,
+            });
+        }
+        return out;
+    };
+    const buildGoalScorersFromEvents = (evs) => {
+        const seen = new Set();
+        const out = [];
+        for (const ev of Array.isArray(evs) ? evs : []) {
+            if (String(ev?.type || "") !== "GOAL")
+                continue;
+            const pid = Number(ev?.player?.id);
+            const name = String(ev?.player?.name || "").trim();
+            if (!Number.isFinite(pid) || !name)
+                continue;
+            if (seen.has(pid))
+                continue;
+            seen.add(pid);
+            out.push({ id: pid, name });
+        }
+        return out;
+    };
+    let lineups = [];
     let events = [];
     let goalScorers = [];
-    if (fdMatchId) {
-        try {
-            const detail = await fetchMatchDetail({ matchId: fdMatchId });
-            events = extractEventsFromMatchDetail(detail);
-            goalScorers = extractScorersFromMatchDetail(detail);
+    // --- 1) API-Football path (preferred) ---
+    if (fixtureId) {
+        const cached = match?.apiFootballDetailJson;
+        const cachedAt = match?.apiFootballDetailFetchedAt ? new Date(match.apiFootballDetailFetchedAt) : null;
+        // TTL strategy:
+        // - FINISHED: cache basically forever (we still keep it in DB)
+        // - NOT_STARTED/IN_PROGRESS: refresh every 5 minutes
+        const ttlMs = match.status === "FINISHED" ? 365 * 24 * 60 * 60 * 1000 : 5 * 60 * 1000;
+        const cacheFresh = !!(cached && cachedAt && Date.now() - cachedAt.getTime() < ttlMs);
+        if (cacheFresh) {
+            lineups = Array.isArray(cached?.lineups) ? cached.lineups : [];
+            events = Array.isArray(cached?.events) ? cached.events : [];
+            goalScorers = Array.isArray(cached?.goalScorers) ? cached.goalScorers : [];
         }
-        catch (e) {
-            // best-effort
-            events = [];
-            goalScorers = [];
-        }
-    }
-    // Build pseudo-lineups from squads (if football-data returns squads for competition teams).
-    let lineups = [];
-    try {
-        if (competitionCode) {
-            const teams = await fetchCompetitionTeams({ competitionCode });
-            const htId = Number(match?.footballDataHomeTeamId);
-            const atId = Number(match?.footballDataAwayTeamId);
-            const homeTeam = teams.find((t) => Number(t?.id) === htId);
-            const awayTeam = teams.find((t) => Number(t?.id) === atId);
-            const mapSquad = (t) => {
-                const tid = Number(t?.id) || null;
-                const logo = tid && tid === Number(htId)
-                    ? match?.homeLogo ?? null
-                    : tid && tid === Number(atId)
-                        ? match?.awayLogo ?? null
-                        : t?.crest ?? null;
-                const squad = Array.isArray(t?.squad) ? t.squad : [];
-                return {
-                    team: { id: tid, name: String(t?.shortName || t?.name || "").trim() || "Team", logo },
-                    startXI: squad.map((p) => ({ id: Number(p?.id) || null, name: String(p?.name || "").trim() })),
-                    substitutes: [],
-                };
-            };
-            if (homeTeam)
-                lineups.push(mapSquad(homeTeam));
-            if (awayTeam)
-                lineups.push(mapSquad(awayTeam));
-        }
-    }
-    catch {
-        lineups = [];
-    }
-    const lineupAvailable = Array.isArray(lineups) && lineups.some((t) => (t.startXI?.length || 0) > 0 || (t.substitutes?.length || 0) > 0);
-    // Can pick scorer only if feature enabled, lineup available, and match editable.
-    let canPickScorer = false;
-    if (scorerEnabled && lineupAvailable) {
-        try {
-            await assertPredictionsEditableForMatches(leagueId, [matchId]);
-            canPickScorer = match.status === "NOT_STARTED";
-        }
-        catch {
-            canPickScorer = false;
+        else {
+            try {
+                const [rawLineups, rawEvents] = await Promise.all([
+                    fetchFixtureLineups(fixtureId),
+                    fetchFixtureEvents(fixtureId),
+                ]);
+                lineups = normalizeApiFootballLineups(rawLineups);
+                events = normalizeApiFootballEvents(rawEvents);
+                goalScorers = buildGoalScorersFromEvents(events);
+                // Save to DB to avoid repeated API calls (free plan is 100/day)
+                const detailJson = { provider: "api-football", fixtureId, lineups, events, goalScorers };
+                await prisma.match.update({
+                    where: { id: matchId },
+                    data: {
+                        apiFootballDetailJson: detailJson,
+                        apiFootballDetailFetchedAt: new Date(),
+                        // also persist goal scorers for scoring if the match is finished and we don't have them yet
+                        ...(match.status === "FINISHED" && !match?.goalScorersJson ? { goalScorersJson: goalScorers } : {}),
+                    },
+                });
+            }
+            catch {
+                // best-effort; keep empty arrays
+                lineups = [];
+                events = [];
+                goalScorers = [];
+            }
         }
     }
-    res.json({
+    // --- No football-data fallback: we rely on API-Football caching only ---
+    // --- 3) Fallback pseudo-lineups from squads ---
+    // If we have cached scorers from DB (e.g. sync job), use them.
+    if (!goalScorers.length && match?.goalScorersJson) {
+        goalScorers = Array.isArray(match.goalScorersJson) ? match.goalScorersJson : [];
+    }
+    const lineupAvailable = Array.isArray(lineups) &&
+        lineups.some((t) => (Array.isArray(t?.startXI) && t.startXI.length > 0) ||
+            (Array.isArray(t?.substitutes) && t.substitutes.length > 0));
+    // FE uses this to decide whether to show scorer picker UI.
+    // We only allow picking scorer when rule is enabled and we have a fixture to resolve players from.
+    const canPickScorer = scorerEnabled && !!fixtureId && lineupAvailable;
+    const payload = {
         match,
         lineupAvailable,
         lineups,
@@ -157,7 +648,26 @@ meRouter.get("/matches/:matchId/detail", requireLeagueMember, async (req, res) =
         scorerEnabled,
         pointsScorer,
         canPickScorer,
-    });
+    };
+    // DEBUG: log normalized response sent to FE (non-production only)
+    if (process.env.NODE_ENV !== "production") {
+        try {
+            console.log("📦 MATCH DETAIL NORMALIZED META:", {
+                matchId,
+                scorerEnabled,
+                lineupTeams: Array.isArray(lineups) ? lineups.length : 0,
+                startXI: Array.isArray(lineups) ? lineups.reduce((acc, t) => acc + (t?.startXI?.length || 0), 0) : 0,
+                subs: Array.isArray(lineups) ? lineups.reduce((acc, t) => acc + (t?.substitutes?.length || 0), 0) : 0,
+                events: Array.isArray(events) ? events.length : 0,
+                goalScorers: Array.isArray(goalScorers) ? goalScorers.length : 0,
+            });
+            console.log("📦 MATCH DETAIL NORMALIZED PAYLOAD:", JSON.stringify(payload, null, 2));
+        }
+        catch {
+            // ignore logging failures
+        }
+    }
+    res.json(payload);
 });
 const PutScorerSchema = z.object({
     playerId: z.number().int().positive().nullable(),
@@ -175,6 +685,10 @@ meRouter.put("/matches/:matchId/scorer", requireLeagueMember, async (req, res) =
     ]);
     if (!match)
         return res.status(404).json({ message: "Match non trovato" });
+    const predictionWindow = await getPredictionWindow();
+    if (!isPredictableMatch(match, predictionWindow)) {
+        return res.status(400).json({ message: "Partita non pronosticabile.", reason: "MATCH_NOT_PREDICTABLE" });
+    }
     if (!(rules?.enableScorer)) {
         return res.status(400).json({ message: "Funzionalità marcatore non attiva", reason: "SCORER_DISABLED" });
     }
@@ -190,9 +704,21 @@ meRouter.put("/matches/:matchId/scorer", requireLeagueMember, async (req, res) =
     if (match.status !== "NOT_STARTED") {
         return res.status(400).json({ message: "Non modificabile: partita iniziata/terminata", reason: "MATCH_STARTED" });
     }
-    const competitionCode = String(match?.footballDataCompetitionCode || "").trim();
-    if (!competitionCode) {
-        return res.status(400).json({ message: "Rosa non disponibile per questo match", reason: "NO_SQUAD_PROVIDER" });
+    const resolved = await resolveFixtureIdForMatch(match);
+    const fixtureId = resolved.fixtureId;
+    if (fixtureId && !match?.apiFootballFixtureId) {
+        await prisma.match.update({
+            where: { id: matchId },
+            data: {
+                apiFootballFixtureId: fixtureId,
+                apiLeagueId: resolved.leagueId ?? null,
+                apiSeason: resolved.season ?? null,
+                apiRound: resolved.round ?? null,
+            },
+        }).catch(() => null);
+    }
+    if (!fixtureId) {
+        return res.status(400).json({ message: "Rosa non disponibile per questo match (manca fixtureId)", reason: "NO_FIXTURE" });
     }
     // Clear
     if (data.playerId === null) {
@@ -200,16 +726,33 @@ meRouter.put("/matches/:matchId/scorer", requireLeagueMember, async (req, res) =
         await recalcAllScoresForLeague(leagueId);
         return res.json({ ok: true, scorer: null });
     }
-    const teams = await fetchCompetitionTeams({ competitionCode });
-    const htId = Number(match?.footballDataHomeTeamId);
-    const atId = Number(match?.footballDataAwayTeamId);
-    const homeTeam = teams.find((t) => Number(t?.id) === htId);
-    const awayTeam = teams.find((t) => Number(t?.id) === atId);
     const allPlayers = [];
-    for (const t of [homeTeam, awayTeam]) {
-        const squad = Array.isArray(t?.squad) ? t.squad : [];
-        for (const p of squad)
-            allPlayers.push({ id: Number(p.id), name: String(p.name) });
+    // Preferred: API-Football lineups (cached on Match when available)
+    if (fixtureId) {
+        let lineups = [];
+        const cached = match?.apiFootballDetailJson;
+        if (cached && Array.isArray(cached?.lineups)) {
+            lineups = cached.lineups;
+        }
+        else {
+            try {
+                const raw = await fetchFixtureLineups(fixtureId);
+                lineups = Array.isArray(raw) ? raw : [];
+            }
+            catch {
+                lineups = [];
+            }
+        }
+        for (const t of Array.isArray(lineups) ? lineups : []) {
+            const startXI = Array.isArray(t?.startXI) ? t.startXI : [];
+            const subs = Array.isArray(t?.substitutes) ? t.substitutes : [];
+            for (const p of [...startXI, ...subs]) {
+                const id = Number(p?.id);
+                const name = String(p?.name || "").trim();
+                if (Number.isFinite(id) && name)
+                    allPlayers.push({ id, name });
+            }
+        }
     }
     if (!allPlayers.length) {
         return res.status(400).json({ message: "Lista giocatori non disponibile per questo match", reason: "NO_SQUAD" });
@@ -219,7 +762,7 @@ meRouter.put("/matches/:matchId/scorer", requireLeagueMember, async (req, res) =
     if (!hit) {
         return res.status(400).json({ message: "Giocatore non valido (non presente nella rosa)", reason: "INVALID_PLAYER" });
     }
-    const playerExternalId = `fdp:${pid}`;
+    const playerExternalId = `afp:${pid}`;
     const playerName = String(data.playerName || hit.name).trim().slice(0, 120);
     const pick = await prisma.scorerPick.upsert({
         where: { userId_leagueId_matchId: { userId: req.user.id, leagueId, matchId } },
@@ -242,6 +785,7 @@ meRouter.put("/predictions", requireLeagueMember, async (req, res) => {
     const leagueId = resolveLeagueId(req);
     const { predictions } = PutPredictionsSchema.parse(req.body);
     try {
+        await assertPredictableMatches(predictions.map((p) => p.matchId));
         await assertPredictionsEditableForMatches(leagueId, predictions.map((p) => p.matchId));
     }
     catch (e) {
@@ -290,6 +834,12 @@ const PutCompetitionPredictionsSchema = z.object({
     winnerTeamName: z.string().trim().min(1).max(200).nullable().optional(),
     topScorerPlayerId: z.number().int().positive().nullable().optional(),
     topScorerPlayerName: z.string().trim().min(1).max(200).nullable().optional(),
+    quarterFinalistTeamId: z.number().int().positive().nullable().optional(),
+    quarterFinalistTeamName: z.string().trim().min(1).max(200).nullable().optional(),
+    semiFinalistTeamId: z.number().int().positive().nullable().optional(),
+    semiFinalistTeamName: z.string().trim().min(1).max(200).nullable().optional(),
+    finalistTeamId: z.number().int().positive().nullable().optional(),
+    finalistTeamName: z.string().trim().min(1).max(200).nullable().optional(),
 });
 meRouter.get("/competition-predictions", requireLeagueMember, async (req, res) => {
     const leagueId = resolveLeagueId(req);
@@ -305,8 +855,13 @@ meRouter.get("/competition-predictions", requireLeagueMember, async (req, res) =
         : (await prisma.match.findFirst({ orderBy: { kickoffAt: "asc" }, select: { kickoffAt: true } }))?.kickoffAt ?? null;
     const deadlineMs = deadline ? new Date(deadline).getTime() : NaN;
     const canEdit = !deadline || !Number.isFinite(deadlineMs) ? true : Date.now() < deadlineMs;
+    const competitionType = String(superSetting?.competitionType || "LEAGUE");
+    const isKnockoutCup = competitionType === "KNOCKOUT_CUP";
     const enableWinner = !!rules?.enableCompetitionWinner;
     const enableTop = !!rules?.enableCompetitionTopScorer;
+    const enableQuarter = isKnockoutCup && !!rules?.enableCompetitionQuarterFinalist;
+    const enableSemi = isKnockoutCup && !!rules?.enableCompetitionSemiFinalist;
+    const enableFinalist = isKnockoutCup && !!rules?.enableCompetitionFinalist;
     const provider = String(superSetting?.provider || "FOOTBALL_DATA").toUpperCase();
     const competitionCode = String(superSetting?.footballDataCompetitionCode || "").trim();
     const season = superSetting?.footballDataSeason ?? null;
@@ -326,24 +881,71 @@ meRouter.get("/competition-predictions", requireLeagueMember, async (req, res) =
         catch {
             scorers = [];
         }
+        // Best-effort fallback: if scorers endpoint returns empty, use cached/derived squad players.
+        if (!scorers.length) {
+            const cache = await prisma.competitionOutcome.findUnique({ where: { leagueId } }).catch(() => null);
+            const fresh = cache?.playerOptionsFetchedAt
+                ? Date.now() - new Date(cache.playerOptionsFetchedAt).getTime() < 24 * 60 * 60 * 1000
+                : false;
+            if (fresh && cache?.playerOptionsJson) {
+                scorers = Array.isArray(cache.playerOptionsJson) ? cache.playerOptionsJson : [];
+            }
+            else {
+                try {
+                    const players = await fetchCompetitionPlayerOptions({ competitionCode });
+                    scorers = players.map((p) => ({ id: p.id, name: p.name, teamName: p.teamName ?? null, goals: 0 }));
+                    await prisma.competitionOutcome.upsert({
+                        where: { leagueId },
+                        create: {
+                            leagueId,
+                            provider: "FOOTBALL_DATA",
+                            competitionCode,
+                            ...(season ? { season: Number(season) } : {}),
+                            playerOptionsJson: players,
+                            playerOptionsFetchedAt: new Date(),
+                        },
+                        update: {
+                            provider: "FOOTBALL_DATA",
+                            competitionCode,
+                            ...(season ? { season: Number(season) } : { season: null }),
+                            playerOptionsJson: players,
+                            playerOptionsFetchedAt: new Date(),
+                        },
+                    });
+                }
+                catch {
+                    scorers = [];
+                }
+            }
+        }
     }
     const pickWinner = picks.find((p) => p.type === "WINNER") || null;
     const pickTop = picks.find((p) => p.type === "TOP_SCORER") || null;
+    const pickQuarter = picks.find((p) => p.type === "QUARTER_FINALIST") || null;
+    const pickSemi = picks.find((p) => p.type === "SEMI_FINALIST") || null;
+    const pickFinalist = picks.find((p) => p.type === "FINALIST") || null;
     res.json({
-        enabled: { winner: enableWinner, topScorer: enableTop },
+        competitionType,
+        enabled: { winner: enableWinner, topScorer: enableTop, quarterFinalist: enableQuarter, semiFinalist: enableSemi, finalist: enableFinalist },
         points: {
-            winner: rules?.pointsCompetitionWinner ?? 15,
-            topScorer: rules?.pointsCompetitionTopScorer ?? 12,
+            winner: decimalNumber(rules?.pointsCompetitionWinner, 15),
+            topScorer: decimalNumber(rules?.pointsCompetitionTopScorer, 12),
+            quarterFinalist: decimalNumber(rules?.pointsCompetitionQuarterFinalist, 8),
+            semiFinalist: decimalNumber(rules?.pointsCompetitionSemiFinalist, 10),
+            finalist: decimalNumber(rules?.pointsCompetitionFinalist, 12),
         },
         deadline: deadline ? new Date(deadline).toISOString() : null,
         canEdit,
         picks: {
             winner: pickWinner
-                ? { teamExternalId: pickWinner.teamExternalId, teamName: pickWinner.teamName, pointsAwarded: pickWinner.pointsAwarded }
+                ? { teamExternalId: pickWinner.teamExternalId, teamName: pickWinner.teamName, pointsAwarded: decimalNumber(pickWinner.pointsAwarded) }
                 : null,
             topScorer: pickTop
-                ? { playerExternalId: pickTop.playerExternalId, playerName: pickTop.playerName, pointsAwarded: pickTop.pointsAwarded }
+                ? { playerExternalId: pickTop.playerExternalId, playerName: pickTop.playerName, pointsAwarded: decimalNumber(pickTop.pointsAwarded) }
                 : null,
+            quarterFinalist: pickQuarter ? { teamExternalId: pickQuarter.teamExternalId, teamName: pickQuarter.teamName, pointsAwarded: decimalNumber(pickQuarter.pointsAwarded) } : null,
+            semiFinalist: pickSemi ? { teamExternalId: pickSemi.teamExternalId, teamName: pickSemi.teamName, pointsAwarded: decimalNumber(pickSemi.pointsAwarded) } : null,
+            finalist: pickFinalist ? { teamExternalId: pickFinalist.teamExternalId, teamName: pickFinalist.teamName, pointsAwarded: decimalNumber(pickFinalist.pointsAwarded) } : null,
         },
         options: {
             teams: teams
@@ -364,9 +966,10 @@ meRouter.put("/competition-predictions", requireLeagueMember, async (req, res) =
     const leagueId = resolveLeagueId(req);
     const body = PutCompetitionPredictionsSchema.parse(req.body);
     await ensureLeagueConfig(leagueId);
-    const [rules, settings] = await Promise.all([
+    const [rules, settings, superSetting] = await Promise.all([
         prisma.rule.findUnique({ where: { leagueId } }),
         prisma.setting.findUnique({ where: { leagueId } }),
+        prisma.superSetting.findFirst({ orderBy: { createdAt: "asc" } }).catch(() => null),
     ]);
     const deadline = settings?.competitionPredictionsDeadline
         ? new Date(settings.competitionPredictionsDeadline)
@@ -377,8 +980,13 @@ meRouter.put("/competition-predictions", requireLeagueMember, async (req, res) =
             return res.status(400).json({ message: "Deadline scaduta: pronostici competizione bloccati", reason: "DEADLINE" });
         }
     }
+    const competitionType = String(superSetting?.competitionType || "LEAGUE");
+    const isKnockoutCup = competitionType === "KNOCKOUT_CUP";
     const enableWinner = !!rules?.enableCompetitionWinner;
     const enableTop = !!rules?.enableCompetitionTopScorer;
+    const enableQuarter = isKnockoutCup && !!rules?.enableCompetitionQuarterFinalist;
+    const enableSemi = isKnockoutCup && !!rules?.enableCompetitionSemiFinalist;
+    const enableFinalist = isKnockoutCup && !!rules?.enableCompetitionFinalist;
     if (enableWinner) {
         if (body.winnerTeamId === null) {
             await prisma.competitionPick.deleteMany({ where: { leagueId, userId: req.user.id, type: "WINNER" } });
@@ -415,6 +1023,23 @@ meRouter.put("/competition-predictions", requireLeagueMember, async (req, res) =
             });
         }
     }
+    async function upsertTeamPick(enabled, type, teamId, teamName) {
+        if (!enabled)
+            return;
+        if (teamId === null) {
+            await prisma.competitionPick.deleteMany({ where: { leagueId, userId: req.user.id, type } });
+        }
+        else if (typeof teamId === "number") {
+            await prisma.competitionPick.upsert({
+                where: { userId_leagueId_type: { userId: req.user.id, leagueId, type } },
+                create: { userId: req.user.id, leagueId, type, teamExternalId: teamId, teamName: teamName ?? null },
+                update: { teamExternalId: teamId, teamName: teamName ?? null },
+            });
+        }
+    }
+    await upsertTeamPick(enableQuarter, "QUARTER_FINALIST", body.quarterFinalistTeamId, body.quarterFinalistTeamName ?? null);
+    await upsertTeamPick(enableSemi, "SEMI_FINALIST", body.semiFinalistTeamId, body.semiFinalistTeamName ?? null);
+    await upsertTeamPick(enableFinalist, "FINALIST", body.finalistTeamId, body.finalistTeamName ?? null);
     const picks = await prisma.competitionPick.findMany({ where: { leagueId, userId: req.user.id } });
     res.json({ picks });
 });

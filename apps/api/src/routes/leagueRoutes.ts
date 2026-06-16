@@ -27,7 +27,9 @@ leagueRouter.get("/stats", requireAuth, requireLeagueMember, async (req: AuthedR
         pointsOutcome: true,
         pointsSumGoals: true,
         pointsUnderOver: true,
-        match: { select: { matchday: true, status: true } },
+        homeGoals: true,
+        awayGoals: true,
+        match: { select: { matchday: true, status: true, homeScore: true, awayScore: true } },
       },
     }),
     prisma.rule.findUnique({ where: { leagueId } }),
@@ -56,6 +58,35 @@ leagueRouter.get("/stats", requireAuth, requireLeagueMember, async (req: AuthedR
   let topOutcomeHits: null | { userId: string; displayName: string; value: number } = null;
   let topSumGoalsHits: null | { userId: string; displayName: string; value: number } = null;
   let topUnderOverHits: null | { userId: string; displayName: string; value: number } = null;
+
+  const funAgg = new Map<string, { drawExact: number; comeback: number; zeroZero: number; bigExact: number; underOverOnly: number }>();
+  for (const p of preds) {
+    const userId = p.userId;
+    const a = funAgg.get(userId) || { drawExact: 0, comeback: 0, zeroZero: 0, bigExact: 0, underOverOnly: 0 };
+    const ph = Number((p as any).homeGoals ?? NaN);
+    const pa = Number((p as any).awayGoals ?? NaN);
+    const rh = Number((p as any).match?.homeScore ?? NaN);
+    const ra = Number((p as any).match?.awayScore ?? NaN);
+    const exact = Number((p as any).pointsExact ?? 0) > 0;
+    const outcome = Number((p as any).pointsOutcome ?? 0) > 0;
+    const sumGoals = Number((p as any).pointsSumGoals ?? 0) > 0;
+    const underOver = Number((p as any).pointsUnderOver ?? 0) > 0;
+    if (exact && Number.isFinite(rh) && Number.isFinite(ra) && rh === ra) a.drawExact += 1;
+    if (exact && Number.isFinite(ph) && Number.isFinite(pa) && Number.isFinite(rh) && Number.isFinite(ra) && ph !== pa && rh !== ra && Math.sign(ph - pa) !== Math.sign(rh - ra)) a.comeback += 1;
+    if (exact && rh === 0 && ra === 0) a.zeroZero += 1;
+    if (exact && Number.isFinite(rh) && Number.isFinite(ra) && rh + ra >= 4) a.bigExact += 1;
+    if (underOver && !exact && !outcome && !sumGoals) a.underOverOnly += 1;
+    funAgg.set(userId, a);
+  }
+
+  const topFun = (key: keyof { drawExact: number; comeback: number; zeroZero: number; bigExact: number; underOverOnly: number }) => {
+    let best: null | { userId: string; displayName: string; value: number } = null;
+    for (const [userId, a] of funAgg.entries()) {
+      const value = Number((a as any)[key] || 0);
+      if (!best || value > best.value) best = { userId, displayName: nameByUser.get(userId) || "Utente", value };
+    }
+    return best && best.value > 0 ? best : null;
+  };
 
   for (const [userId, a] of userAgg.entries()) {
     const displayName = nameByUser.get(userId) || "Utente";
@@ -168,6 +199,12 @@ leagueRouter.get("/stats", requireAuth, requireLeagueMember, async (req: AuthedR
     topOutcomeHits,
     topSumGoalsHits,
     topUnderOverHits,
+    funStats: [
+      { key: "drawExact", title: "Il re del pari", description: "Più risultati esatti finiti in pareggio", ...(topFun("drawExact") || {}) },
+      { key: "bigExact", title: "Fuochi d'artificio", description: "Più esatti in partite da almeno 4 gol", ...(topFun("bigExact") || {}) },
+      { key: "zeroZero", title: "Il ministro dello 0-0", description: "Più 0-0 presi esatti", ...(topFun("zeroZero") || {}) },
+      { key: "underOverOnly", title: "Salvato dall'U/O", description: "Più volte a punti solo grazie all'Under/Over 2.5", ...(topFun("underOverOnly") || {}) },
+    ].filter((x: any) => x.userId),
 
     features: { underOver25: !!(rules as any)?.enableUnderOver25 },
 

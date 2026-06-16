@@ -258,7 +258,20 @@ export default function UserSummaryPage() {
   }
   const mdSeries = matchdays.map((md) => ({ md, pts: pointsByMatchday.get(md) ?? 0 }));
   const bestMatchday = mdSeries.reduce((acc, it) => (it.pts > acc.pts ? it : acc), mdSeries[0] ?? { md: 1, pts: 0 });
-  const chartSeries = mdSeries.map((s, idx) => ({ label: `G${s.md}`, y: mdSeries.slice(0, idx + 1).reduce((tot, x) => tot + x.pts, 0) }));
+  const matchSeries = safeItems
+    .filter((it) => getStatus(it) === "FINISHED" && !!it?.prediction)
+    .slice()
+    .sort((a, b) => new Date(a?.match?.kickoffAt || 0).getTime() - new Date(b?.match?.kickoffAt || 0).getTime())
+    .map((it, idx) => ({
+      label: `${idx + 1}`,
+      tooltip: `${it?.match?.homeTeam || ""} - ${it?.match?.awayTeam || ""}`,
+      points: Number(it?.points?.total ?? 0),
+    }));
+  const chartSeries = matchSeries.map((s, idx) => ({
+    label: s.label,
+    title: s.tooltip,
+    y: matchSeries.slice(0, idx + 1).reduce((tot, x) => tot + x.points, 0),
+  }));
 
   const renderMiniChart = () => {
     if (chartSeries.length < 2) return <div className="text-xs text-slate-400">Nessun andamento disponibile.</div>;
@@ -440,7 +453,7 @@ export default function UserSummaryPage() {
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-3">
-              <div className="flex items-center justify-between"><div><div className="text-sm font-semibold text-slate-100">Andamento punti</div><div className="text-xs text-slate-400">Totale cumulativo per giornata</div></div><Badge tone="gray">Streak esatti {streakExact}</Badge></div>
+              <div className="flex items-center justify-between"><div><div className="text-sm font-semibold text-slate-100">Andamento punti</div><div className="text-xs text-slate-400">Totale cumulativo per match</div></div><Badge tone="gray">Streak esatti {streakExact}</Badge></div>
               <div className="mt-2 text-slate-100">{renderMiniChart()}</div>
             </div>
             <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-3">

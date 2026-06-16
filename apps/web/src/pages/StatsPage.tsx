@@ -3,7 +3,7 @@ import { api, LeagueStatsResponse } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { useLoading } from "../lib/loading";
 import { Alert, Badge, Button, Card, CardContent, CardHeader, Skeleton } from "../components/ui";
-import { Trophy, Target, CheckCircle2, Sigma, TrendingUp, BarChart3 } from "lucide-react";
+import { Trophy, Target, CheckCircle2, Sigma, TrendingUp, BarChart3, Crown, Flame, Shield, Sparkles } from "lucide-react";
 
 function StatTile({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -99,6 +99,13 @@ export default function StatsPage() {
   const topSumGoals = data.topSumGoalsHits ?? null;
   const topUnderOver = data.topUnderOverHits ?? null;
   const underOverOn = Boolean((data as any)?.features?.underOver25);
+  const funStats = Array.isArray((data as any)?.funStats) ? (data as any).funStats : [];
+  const funIcon = (key: string) => {
+    if (key === "drawExact") return <Crown size={16} aria-hidden="true" />;
+    if (key === "bigExact") return <Flame size={16} aria-hidden="true" />;
+    if (key === "zeroZero") return <Shield size={16} aria-hidden="true" />;
+    return <Sparkles size={16} aria-hidden="true" />;
+  };
 
   return (
     <div className="space-y-6">
@@ -177,6 +184,29 @@ export default function StatsPage() {
             <StatTile label="Media punti per giornata" value={data.avgPointsPerMatchday.toFixed(2)} />
             <StatTile label="Esatti totali (lega)" value={data.exactTotal} />
           </div>
+
+          {funStats.length ? (
+            <div className="mt-4">
+              <div className="mb-2 text-sm font-extrabold text-slate-100">Statistiche da spogliatoio</div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {funStats.map((stat: any) => (
+                  <div key={stat.key} className="rounded-2xl border border-amber-300/20 bg-amber-300/10 p-4 shadow-[0_0_26px_rgba(251,191,36,0.06)]">
+                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wide text-amber-100">
+                      {funIcon(String(stat.key))}
+                      {stat.title}
+                    </div>
+                    <div className="mt-2 flex items-end justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate text-base font-extrabold text-slate-100">{stat.displayName || "—"}</div>
+                        <div className="mt-1 text-xs text-slate-300">{stat.description}</div>
+                      </div>
+                      <div className="shrink-0 rounded-xl bg-black/25 px-2.5 py-1 text-sm font-black text-amber-100 ring-1 ring-amber-200/20">{Number(stat.value || 0)}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           <div className="mt-4 flex flex-wrap gap-2">
             {data.bestMatchday ? (

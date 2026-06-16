@@ -1,6 +1,7 @@
 import { prisma } from "./prisma.js";
 import { ensureLeagueConfig } from "../services/ensureLeagueConfig.js";
 import { decodeLeagueSettings } from "./leagueConfigEncoding.js";
+import { filterPredictableMatches } from "./predictableMatches.js";
 const AUTO_FALLBACK_HOURS = 12;
 function allFinished(matches) {
     return matches.length > 0 && matches.every((m) => m.status === "FINISHED");
@@ -13,10 +14,11 @@ function getMatchdayBounds(matches) {
 }
 async function computeDynamicLockInfo(leagueId, predictionMode, offsetMinutes) {
     const now = new Date();
-    const matches = await prisma.match.findMany({
+    const allMatches = await prisma.match.findMany({
         orderBy: [{ matchday: "asc" }, { kickoffAt: "asc" }],
-        select: { id: true, matchday: true, kickoffAt: true, status: true },
+        select: { id: true, matchday: true, kickoffAt: true, status: true, homeTeam: true, awayTeam: true },
     });
+    const matches = await filterPredictableMatches(allMatches);
     // No matches yet: keep unlocked.
     if (!matches.length) {
         return {
@@ -98,25 +100,51 @@ async function computeDynamicLockInfo(leagueId, predictionMode, offsetMinutes) {
     };
 }
 export async function getLockInfo(leagueId) {
-    // Auto-heal: ensure Setting/Rule exist for the league.
-    await ensureLeagueConfig(leagueId);
-    const setting = await prisma.setting.findUnique({ where: { leagueId } });
-    if (!setting)
-        throw new Error("Missing Setting row for league (unexpected).");
-    const decoded = decodeLeagueSettings(setting.lockUntil);
-    // NEW BEHAVIOR: lock is ALWAYS automatic.
-    // We keep the sentinel encoding only to persist predictionMode + offsetMinutes without DB migrations.
-    // If an older league still has a non-sentinel lockUntil, we treat it as "automatic with defaults".
-    const auto = await computeDynamicLockInfo(leagueId, decoded.predictionMode, decoded.lockOffsetMinutes);
-    const isLocked = setting.isForceLocked || auto.isLocked;
-    return {
-        ...setting,
-        lockUntil: auto.lockUntil,
-        lockedByTime: auto.lockedByTime,
-        isLocked,
-        leagueSettings: decoded,
-        auto,
-    };
+    // Very hot endpoint (/api/lock is frequently polled by the UI).
+    // To avoid exhausting Prisma's connection pool under load, we cache both the
+    // in-flight promise and the last successful result for a short TTL.
+    globalThis.__LOCKINFO_CACHE__ ??= new Map();
+    const cache = globalThis.__LOCKINFO_CACHE__;
+    const now = Date.now();
+    const hit = cache.get(leagueId);
+    if (hit?.value && hit.exp > now)
+        return hit.value;
+    if (hit?.inflight)
+        return hit.inflight;
+    const p = (async () => {
+        // Auto-heal: ensure Setting/Rule exist for the league.
+        await ensureLeagueConfig(leagueId);
+        const setting = await prisma.setting.findUnique({ where: { leagueId } });
+        if (!setting)
+            throw new Error("Missing Setting row for league (unexpected).");
+        const decoded = decodeLeagueSettings(setting.lockUntil);
+        // NEW BEHAVIOR: lock is ALWAYS automatic.
+        // We keep the sentinel encoding only to persist predictionMode + offsetMinutes without DB migrations.
+        // If an older league still has a non-sentinel lockUntil, we treat it as "automatic with defaults".
+        const auto = await computeDynamicLockInfo(leagueId, decoded.predictionMode, decoded.lockOffsetMinutes);
+        const isLocked = setting.isForceLocked || auto.isLocked;
+        const result = {
+            ...setting,
+            lockUntil: auto.lockUntil,
+            lockedByTime: auto.lockedByTime,
+            isLocked,
+            leagueSettings: decoded,
+            auto,
+        };
+        cache.set(leagueId, { value: result, exp: Date.now() + 5_000 }); // 5s TTL
+        return result;
+    })();
+    cache.set(leagueId, { exp: now + 1_000, inflight: p });
+    try {
+        return await p;
+    }
+    finally {
+        const cur = cache.get(leagueId);
+        if (cur?.inflight === p) {
+            // keep last value if it was set, otherwise clear
+            cache.set(leagueId, { value: cur.value, exp: cur.exp ?? 0 });
+        }
+    }
 }
 export async function assertPredictionsEditableForMatches(leagueId, matchIds) {
     const info = await getLockInfo(leagueId);
@@ -140,21 +168,22 @@ export async function assertPredictionsEditableForMatches(leagueId, matchIds) {
         select: { id: true, status: true, matchday: true, kickoffAt: true },
     });
     const lockedSet = new Set((info?.auto?.lockedMatchdays || []).map((x) => Number(x)));
-    const blocked = matches.find((m) => {
-        const md = Number(m.matchday || 1);
-        // Always block once a match has started.
-        if (m.status !== "NOT_STARTED")
-            return true;
-        // If this matchday is currently locked, block.
-        if (lockedSet.has(md))
-            return true;
-        return false;
-    });
-    if (blocked) {
+    // 1) Always block once a match has started.
+    const started = matches.find((m) => m.status !== "NOT_STARTED");
+    if (started) {
+        const msg = "Questa partita è già iniziata o terminata";
+        const err = new Error(msg);
+        err.status = 403;
+        err.payload = { message: msg, isLocked: true, reason: "MATCH_STARTED", matchId: started.id, matchday: Number(started.matchday || 1) };
+        throw err;
+    }
+    // 2) Matchday-by-matchday: if this matchday is currently locked, block.
+    const locked = matches.find((m) => lockedSet.has(Number(m.matchday || 1)));
+    if (locked) {
         const msg = "Pronostici bloccati per la giornata in corso";
         const err = new Error(msg);
         err.status = 403;
-        err.payload = { message: msg, isLocked: true };
+        err.payload = { message: msg, isLocked: true, reason: "MATCHDAY_LOCKED", matchId: locked.id, matchday: Number(locked.matchday || 1) };
         throw err;
     }
 }

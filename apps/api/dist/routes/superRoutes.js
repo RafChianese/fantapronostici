@@ -6,8 +6,220 @@ import { ensureMonetizationConfig, getMonetizationConfig } from "../lib/monetiza
 import { fetchFixtures, searchLeagues } from "../services/apiFootball.js";
 import { env } from "../lib/env.js";
 import { recalcAllScoresForLeague } from "../lib/scoring.js";
+import { ensureLeagueConfig } from "../services/ensureLeagueConfig.js";
+import { fetchCompetitionPlayerOptions, fetchCompetitionTeams } from "../services/footballDataService.js";
 export const superRouter = Router();
 superRouter.use(requireAuth, requireSuperAdmin);
+// --- Global competition outcome (winner + top scorer) ---
+// NOTE: This is GLOBAL across ALL leagues.
+const CompetitionOutcomeSchema = z.object({
+    winnerTeamId: z.number().int().positive().nullable().optional(),
+    winnerTeamName: z.string().trim().min(1).max(200).nullable().optional(),
+    topScorerPlayerId: z.number().int().positive().nullable().optional(),
+    topScorerPlayerName: z.string().trim().min(1).max(200).nullable().optional(),
+    secondTopScorerPlayerId: z.number().int().positive().nullable().optional(),
+    secondTopScorerPlayerName: z.string().trim().min(1).max(200).nullable().optional(),
+    quarterFinalistTeams: z.array(z.object({ id: z.number().int().positive(), name: z.string().trim().min(1).max(200) })).optional(),
+    semiFinalistTeams: z.array(z.object({ id: z.number().int().positive(), name: z.string().trim().min(1).max(200) })).optional(),
+    finalistTeams: z.array(z.object({ id: z.number().int().positive(), name: z.string().trim().min(1).max(200) })).optional(),
+});
+async function applyGlobalCompetitionOutcomeToAllLeagues(args) {
+    const globalSetting = await prisma.superSetting.findFirst({ orderBy: { createdAt: "asc" } }).catch(() => null);
+    const isKnockoutCup = String(globalSetting?.competitionType || "LEAGUE") === "KNOCKOUT_CUP";
+    const leagues = await prisma.league.findMany({ select: { id: true } });
+    for (const l of leagues) {
+        await ensureLeagueConfig(l.id);
+        const rules = await prisma.rule.findUnique({ where: { leagueId: l.id } });
+        if (!rules)
+            continue;
+        const enableWinner = !!rules.enableCompetitionWinner;
+        const enableTop = !!rules.enableCompetitionTopScorer;
+        const quarterIds = (args.quarterFinalistTeams || []).map((t) => t.id).filter((id) => Number.isFinite(id));
+        const semiIds = (args.semiFinalistTeams || []).map((t) => t.id).filter((id) => Number.isFinite(id));
+        const finalistIds = (args.finalistTeams || []).map((t) => t.id).filter((id) => Number.isFinite(id));
+        // Upsert per-league CompetitionOutcome for transparency/consistency.
+        await prisma.competitionOutcome.upsert({
+            where: { leagueId: l.id },
+            create: {
+                leagueId: l.id,
+                provider: "MANUAL",
+                winnerTeamExternalId: args.winnerTeamExternalId ?? null,
+                winnerTeamName: args.winnerTeamName ?? null,
+                topScorerPlayerExternalId: args.topScorerPlayerExternalId ?? null,
+                topScorerPlayerName: args.topScorerPlayerName ?? null,
+                resolvedAt: args.resolvedAt,
+            },
+            update: {
+                provider: "MANUAL",
+                winnerTeamExternalId: args.winnerTeamExternalId ?? null,
+                winnerTeamName: args.winnerTeamName ?? null,
+                topScorerPlayerExternalId: args.topScorerPlayerExternalId ?? null,
+                topScorerPlayerName: args.topScorerPlayerName ?? null,
+                resolvedAt: args.resolvedAt,
+            },
+        });
+        // Apply points to competition picks.
+        const winnerPts = Number(rules.pointsCompetitionWinner ?? 15);
+        const topPts = Number(rules.pointsCompetitionTopScorer ?? 12);
+        if (!enableWinner || !args.winnerTeamExternalId) {
+            await prisma.competitionPick.updateMany({ where: { leagueId: l.id, type: "WINNER" }, data: { pointsAwarded: 0 } });
+        }
+        else {
+            await prisma.competitionPick.updateMany({ where: { leagueId: l.id, type: "WINNER" }, data: { pointsAwarded: 0 } });
+            await prisma.competitionPick.updateMany({
+                where: { leagueId: l.id, type: "WINNER", teamExternalId: args.winnerTeamExternalId },
+                data: { pointsAwarded: winnerPts },
+            });
+        }
+        const validTopIds = [args.topScorerPlayerExternalId, args.secondTopScorerPlayerExternalId].filter((x) => typeof x === "number" && Number.isFinite(x));
+        if (!enableTop || validTopIds.length === 0) {
+            await prisma.competitionPick.updateMany({ where: { leagueId: l.id, type: "TOP_SCORER" }, data: { pointsAwarded: 0 } });
+        }
+        else {
+            await prisma.competitionPick.updateMany({ where: { leagueId: l.id, type: "TOP_SCORER" }, data: { pointsAwarded: 0 } });
+            await prisma.competitionPick.updateMany({
+                where: { leagueId: l.id, type: "TOP_SCORER", playerExternalId: { in: validTopIds } },
+                data: { pointsAwarded: topPts },
+            });
+        }
+        const quarterPts = Number(rules.pointsCompetitionQuarterFinalist ?? 8);
+        const semiPts = Number(rules.pointsCompetitionSemiFinalist ?? 10);
+        const finalistPts = Number(rules.pointsCompetitionFinalist ?? 12);
+        const enableQuarter = isKnockoutCup && !!rules.enableCompetitionQuarterFinalist;
+        const enableSemi = isKnockoutCup && !!rules.enableCompetitionSemiFinalist;
+        const enableFinalist = isKnockoutCup && !!rules.enableCompetitionFinalist;
+        await prisma.competitionPick.updateMany({ where: { leagueId: l.id, type: "QUARTER_FINALIST" }, data: { pointsAwarded: 0 } });
+        if (enableQuarter && quarterIds.length) {
+            await prisma.competitionPick.updateMany({ where: { leagueId: l.id, type: "QUARTER_FINALIST", teamExternalId: { in: quarterIds } }, data: { pointsAwarded: quarterPts } });
+        }
+        await prisma.competitionPick.updateMany({ where: { leagueId: l.id, type: "SEMI_FINALIST" }, data: { pointsAwarded: 0 } });
+        if (enableSemi && semiIds.length) {
+            await prisma.competitionPick.updateMany({ where: { leagueId: l.id, type: "SEMI_FINALIST", teamExternalId: { in: semiIds } }, data: { pointsAwarded: semiPts } });
+        }
+        await prisma.competitionPick.updateMany({ where: { leagueId: l.id, type: "FINALIST" }, data: { pointsAwarded: 0 } });
+        if (enableFinalist && finalistIds.length) {
+            await prisma.competitionPick.updateMany({ where: { leagueId: l.id, type: "FINALIST", teamExternalId: { in: finalistIds } }, data: { pointsAwarded: finalistPts } });
+        }
+        // Optional: recompute matchday awards after competition points change is NOT needed.
+        // Leaderboard totals include CompetitionPick.pointsAwarded via aggregation.
+    }
+}
+function normalizeTeamList(value) {
+    if (!Array.isArray(value))
+        return [];
+    const seen = new Set();
+    const out = [];
+    for (const item of value) {
+        const id = Number(item?.id ?? item?.teamExternalId);
+        const name = String(item?.name ?? item?.teamName ?? "").trim();
+        if (!Number.isFinite(id) || !name || seen.has(id))
+            continue;
+        seen.add(id);
+        out.push({ id, name });
+    }
+    return out;
+}
+superRouter.get("/competition-outcome", async (_req, res) => {
+    await ensureMonetizationConfig();
+    const row = await prisma.superSetting.findFirst({ orderBy: { createdAt: "asc" } });
+    const provider = String(row?.provider || "FOOTBALL_DATA").toUpperCase();
+    const competitionCode = String(row?.footballDataCompetitionCode || "").trim();
+    let teams = [];
+    let players = [];
+    if (provider === "FOOTBALL_DATA" && competitionCode) {
+        try {
+            teams = await fetchCompetitionTeams({ competitionCode });
+        }
+        catch {
+            teams = [];
+        }
+        const fresh = row?.competitionPlayerOptionsFetchedAt
+            ? Date.now() - new Date(row.competitionPlayerOptionsFetchedAt).getTime() < 24 * 60 * 60 * 1000
+            : false;
+        if (fresh && row?.competitionPlayerOptionsJson) {
+            players = Array.isArray(row.competitionPlayerOptionsJson) ? row.competitionPlayerOptionsJson : [];
+        }
+        else {
+            try {
+                const opts = await fetchCompetitionPlayerOptions({ competitionCode });
+                players = opts;
+                if (row?.id) {
+                    await prisma.superSetting.update({
+                        where: { id: row.id },
+                        data: { competitionPlayerOptionsJson: opts, competitionPlayerOptionsFetchedAt: new Date() },
+                    });
+                }
+            }
+            catch {
+                players = [];
+            }
+        }
+    }
+    res.json({
+        outcome: {
+            winner: row?.competitionOutcomeWinnerTeamExternalId
+                ? { teamExternalId: row.competitionOutcomeWinnerTeamExternalId, teamName: row.competitionOutcomeWinnerTeamName ?? null }
+                : null,
+            topScorer: row?.competitionOutcomeTopScorerPlayerExternalId
+                ? { playerExternalId: row.competitionOutcomeTopScorerPlayerExternalId, playerName: row.competitionOutcomeTopScorerPlayerName ?? null }
+                : null,
+            secondTopScorer: row?.competitionOutcomeSecondTopScorerPlayerExternalId
+                ? { playerExternalId: row.competitionOutcomeSecondTopScorerPlayerExternalId, playerName: row.competitionOutcomeSecondTopScorerPlayerName ?? null }
+                : null,
+            quarterFinalists: normalizeTeamList(row?.competitionOutcomeQuarterFinalistTeamsJson),
+            semiFinalists: normalizeTeamList(row?.competitionOutcomeSemiFinalistTeamsJson),
+            finalists: normalizeTeamList(row?.competitionOutcomeFinalistTeamsJson),
+            resolvedAt: row?.competitionOutcomeResolvedAt ? new Date(row.competitionOutcomeResolvedAt).toISOString() : null,
+        },
+        options: {
+            teams: teams
+                .map((t) => ({ id: Number(t.id), name: String(t.shortName || t.name || "").trim(), crest: t.crest ?? null }))
+                .filter((t) => Number.isFinite(t.id) && t.name),
+            scorers: players
+                .map((p) => ({ id: Number(p.id), name: String(p.name || "").trim(), teamName: p.teamName ?? null }))
+                .filter((p) => Number.isFinite(p.id) && p.name),
+        },
+    });
+});
+superRouter.put("/competition-outcome", async (req, res) => {
+    await ensureMonetizationConfig();
+    const existing = await prisma.superSetting.findFirst({ orderBy: { createdAt: "asc" } });
+    if (!existing)
+        return res.status(500).json({ message: "Missing SuperSetting" });
+    const body = CompetitionOutcomeSchema.parse(req.body);
+    const resolvedAt = new Date();
+    // Normalize: if second scorer equals first, drop it.
+    const secondId = body.secondTopScorerPlayerId && body.secondTopScorerPlayerId === body.topScorerPlayerId ? null : body.secondTopScorerPlayerId ?? null;
+    const secondName = secondId ? body.secondTopScorerPlayerName ?? null : null;
+    const updated = await prisma.superSetting.update({
+        where: { id: existing.id },
+        data: {
+            competitionOutcomeWinnerTeamExternalId: body.winnerTeamId ?? null,
+            competitionOutcomeWinnerTeamName: body.winnerTeamName ?? null,
+            competitionOutcomeTopScorerPlayerExternalId: body.topScorerPlayerId ?? null,
+            competitionOutcomeTopScorerPlayerName: body.topScorerPlayerName ?? null,
+            competitionOutcomeSecondTopScorerPlayerExternalId: secondId,
+            competitionOutcomeSecondTopScorerPlayerName: secondName,
+            competitionOutcomeQuarterFinalistTeamsJson: normalizeTeamList(body.quarterFinalistTeams),
+            competitionOutcomeSemiFinalistTeamsJson: normalizeTeamList(body.semiFinalistTeams),
+            competitionOutcomeFinalistTeamsJson: normalizeTeamList(body.finalistTeams),
+            competitionOutcomeResolvedAt: resolvedAt,
+        },
+    });
+    await applyGlobalCompetitionOutcomeToAllLeagues({
+        winnerTeamExternalId: updated.competitionOutcomeWinnerTeamExternalId ?? null,
+        winnerTeamName: updated.competitionOutcomeWinnerTeamName ?? null,
+        topScorerPlayerExternalId: updated.competitionOutcomeTopScorerPlayerExternalId ?? null,
+        topScorerPlayerName: updated.competitionOutcomeTopScorerPlayerName ?? null,
+        secondTopScorerPlayerExternalId: updated.competitionOutcomeSecondTopScorerPlayerExternalId ?? null,
+        secondTopScorerPlayerName: updated.competitionOutcomeSecondTopScorerPlayerName ?? null,
+        quarterFinalistTeams: normalizeTeamList(updated.competitionOutcomeQuarterFinalistTeamsJson),
+        semiFinalistTeams: normalizeTeamList(updated.competitionOutcomeSemiFinalistTeamsJson),
+        finalistTeams: normalizeTeamList(updated.competitionOutcomeFinalistTeamsJson),
+        resolvedAt,
+    });
+    res.json({ ok: true });
+});
 // --- Monetization (Rewarded Ads) ---
 superRouter.get("/monetization", async (_req, res) => {
     await ensureMonetizationConfig();
@@ -60,6 +272,9 @@ superRouter.get("/external-config", async (_req, res) => {
             apiFootballLeagueId: row?.apiFootballLeagueId ?? null,
             apiFootballSeason: row?.apiFootballSeason ?? null,
             apiFootballTimezone: row?.apiFootballTimezone || "Europe/Rome",
+            predictionWindowStart: row?.predictionWindowStart ? new Date(row.predictionWindowStart).toISOString() : null,
+            predictionWindowEnd: row?.predictionWindowEnd ? new Date(row.predictionWindowEnd).toISOString() : null,
+            competitionType: String(row?.competitionType || "LEAGUE"),
             apiFootballKeyPresent: !!env.API_FOOTBALL_KEY?.trim(),
         },
     });
@@ -69,6 +284,9 @@ const ExternalConfigSchema = z.object({
     apiFootballLeagueId: z.number().int().positive().nullable().optional(),
     apiFootballSeason: z.number().int().min(2000).max(2100).nullable().optional(),
     apiFootballTimezone: z.string().min(1).nullable().optional(),
+    predictionWindowStart: z.string().datetime().nullable().optional(),
+    predictionWindowEnd: z.string().datetime().nullable().optional(),
+    competitionType: z.enum(["LEAGUE", "KNOCKOUT_CUP"]).optional(),
 });
 superRouter.put("/external-config", async (req, res) => {
     await ensureMonetizationConfig();
@@ -81,6 +299,9 @@ superRouter.put("/external-config", async (req, res) => {
             ...(patch.apiFootballLeagueId !== undefined ? { apiFootballLeagueId: patch.apiFootballLeagueId } : {}),
             ...(patch.apiFootballSeason !== undefined ? { apiFootballSeason: patch.apiFootballSeason } : {}),
             ...(patch.apiFootballTimezone !== undefined ? { apiFootballTimezone: patch.apiFootballTimezone } : {}),
+            ...(patch.predictionWindowStart !== undefined ? { predictionWindowStart: patch.predictionWindowStart ? new Date(patch.predictionWindowStart) : null } : {}),
+            ...(patch.predictionWindowEnd !== undefined ? { predictionWindowEnd: patch.predictionWindowEnd ? new Date(patch.predictionWindowEnd) : null } : {}),
+            ...(patch.competitionType !== undefined ? { competitionType: patch.competitionType } : {}),
         },
     });
     res.json({
@@ -89,6 +310,9 @@ superRouter.put("/external-config", async (req, res) => {
             apiFootballLeagueId: updated.apiFootballLeagueId ?? null,
             apiFootballSeason: updated.apiFootballSeason ?? null,
             apiFootballTimezone: updated.apiFootballTimezone || "Europe/Rome",
+            predictionWindowStart: updated.predictionWindowStart ? new Date(updated.predictionWindowStart).toISOString() : null,
+            predictionWindowEnd: updated.predictionWindowEnd ? new Date(updated.predictionWindowEnd).toISOString() : null,
+            competitionType: String(updated.competitionType || "LEAGUE"),
             apiFootballKeyPresent: !!env.API_FOOTBALL_KEY?.trim(),
         },
     });

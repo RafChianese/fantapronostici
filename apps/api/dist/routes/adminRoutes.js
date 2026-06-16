@@ -8,7 +8,59 @@ import { clearMatchdayAwardsForLeague } from "../lib/matchdayAwards.js";
 import { runSyncOnce } from "../jobs/syncJob.js";
 import { ensureLeagueConfig } from "../services/ensureLeagueConfig.js";
 import { buildAutoLockSentinel, decodeLeagueSettings } from "../lib/leagueConfigEncoding.js";
+import { filterPredictableMatches } from "../lib/predictableMatches.js";
 export const adminRouter = Router();
+function decimalNumber(value, fallback = 0) {
+    const n = Number(value ?? fallback);
+    return Number.isFinite(n) ? n : fallback;
+}
+function ruleForJson(rule) {
+    if (!rule)
+        return rule;
+    return {
+        ...rule,
+        pointsExact: decimalNumber(rule.pointsExact),
+        pointsOutcome: decimalNumber(rule.pointsOutcome),
+        pointsSumGoals: decimalNumber(rule.pointsSumGoals),
+        pointsUnderOver25: decimalNumber(rule.pointsUnderOver25),
+        pointsScorer: decimalNumber(rule.pointsScorer),
+        pointsCompetitionWinner: decimalNumber(rule.pointsCompetitionWinner),
+        pointsCompetitionTopScorer: decimalNumber(rule.pointsCompetitionTopScorer),
+        pointsCompetitionQuarterFinalist: decimalNumber(rule.pointsCompetitionQuarterFinalist),
+        pointsCompetitionSemiFinalist: decimalNumber(rule.pointsCompetitionSemiFinalist),
+        pointsCompetitionFinalist: decimalNumber(rule.pointsCompetitionFinalist),
+    };
+}
+function csvCell(value) {
+    const raw = value === null || typeof value === "undefined" ? "" : String(value);
+    return `"${raw.replace(/"/g, '""')}"`;
+}
+function csvRow(values) {
+    return values.map(csvCell).join(";");
+}
+function formatPrediction(homeGoals, awayGoals) {
+    if (typeof homeGoals !== "number" || typeof awayGoals !== "number")
+        return "";
+    return `${homeGoals}-${awayGoals}`;
+}
+function formatMatchColumn(match) {
+    const md = typeof match.matchday === "number" ? `G${match.matchday} - ` : "";
+    // Nell'export servono solo squadre e pronostico inserito: la data non va messa nelle colonne.
+    return `${md}${match.homeTeam} - ${match.awayTeam}`;
+}
+function pickLabel(pick) {
+    if (!pick)
+        return "";
+    if (pick.teamName)
+        return pick.teamName;
+    if (pick.playerName)
+        return pick.playerName;
+    if (typeof pick.teamExternalId === "number")
+        return String(pick.teamExternalId);
+    if (typeof pick.playerExternalId === "number")
+        return String(pick.playerExternalId);
+    return "";
+}
 adminRouter.use(requireAuth, requireLeagueAdmin);
 function getLeagueOr400(req, res) {
     const leagueId = resolveLeagueId(req);
@@ -49,10 +101,11 @@ adminRouter.get("/members", async (req, res) => {
             })),
         });
     }
-    const matches = await prisma.match.findMany({
+    const allMatches = await prisma.match.findMany({
         orderBy: [{ matchday: "asc" }, { kickoffAt: "asc" }],
-        select: { id: true, matchday: true, status: true },
+        select: { id: true, matchday: true, status: true, homeTeam: true, awayTeam: true, kickoffAt: true },
     });
+    const matches = await filterPredictableMatches(allMatches);
     const editableMatchIds = matches
         .filter((mx) => mx.status === "NOT_STARTED" && !lockedSet.has(Number(mx.matchday || 1)))
         .map((mx) => String(mx.id));
@@ -91,6 +144,72 @@ adminRouter.get("/members", async (req, res) => {
         }),
     });
 });
+// --- Export pronostici lega: griglia utenti x match + pronostici torneo ---
+adminRouter.get("/exports/predictions.csv", async (req, res) => {
+    const leagueId = getLeagueOr400(req, res);
+    if (!leagueId)
+        return;
+    const [members, rawMatches, predictions, competitionPicks] = await Promise.all([
+        prisma.leagueMember.findMany({
+            where: { leagueId, status: "APPROVED" },
+            include: { user: true },
+            orderBy: [{ createdAt: "asc" }],
+        }),
+        prisma.match.findMany({
+            orderBy: [{ matchday: "asc" }, { kickoffAt: "asc" }],
+            select: { id: true, matchday: true, kickoffAt: true, homeTeam: true, awayTeam: true, status: true },
+        }),
+        prisma.prediction.findMany({
+            where: { leagueId },
+            select: { userId: true, matchId: true, homeGoals: true, awayGoals: true },
+        }),
+        prisma.competitionPick.findMany({
+            where: { leagueId },
+            select: { userId: true, type: true, teamExternalId: true, teamName: true, playerExternalId: true, playerName: true },
+        }),
+    ]);
+    const membersSorted = members.slice().sort((a, b) => String(a.user?.displayName || "").localeCompare(String(b.user?.displayName || ""), "it"));
+    const matches = await filterPredictableMatches(rawMatches);
+    const predictionByUserMatch = new Map();
+    for (const p of predictions) {
+        predictionByUserMatch.set(`${p.userId}::${p.matchId}`, { homeGoals: p.homeGoals, awayGoals: p.awayGoals });
+    }
+    const pickByUserType = new Map();
+    for (const p of competitionPicks) {
+        pickByUserType.set(`${p.userId}::${p.type}`, p);
+    }
+    const header = [
+        "Utente",
+        "Email",
+        ...matches.map((m) => formatMatchColumn(m)),
+        "Quarti",
+        "Semifinale",
+        "Finale",
+        "Vincente",
+        "Capocannoniere",
+    ];
+    const rows = [csvRow(header)];
+    for (const member of membersSorted) {
+        const userId = String(member.userId);
+        rows.push(csvRow([
+            member.user?.displayName || "",
+            member.user?.email || "",
+            ...matches.map((m) => {
+                const pred = predictionByUserMatch.get(`${userId}::${m.id}`);
+                return formatPrediction(pred?.homeGoals, pred?.awayGoals);
+            }),
+            pickLabel(pickByUserType.get(`${userId}::QUARTER_FINALIST`)),
+            pickLabel(pickByUserType.get(`${userId}::SEMI_FINALIST`)),
+            pickLabel(pickByUserType.get(`${userId}::FINALIST`)),
+            pickLabel(pickByUserType.get(`${userId}::WINNER`)),
+            pickLabel(pickByUserType.get(`${userId}::TOP_SCORER`)),
+        ]));
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="pronostici-lega-${today}.csv"`);
+    res.send(`\uFEFF${rows.join("\n")}`);
+});
 const PatchMemberSchema = z.object({
     status: z.enum(["PENDING", "APPROVED", "REJECTED"]).optional(),
     role: z.enum(["MEMBER", "ADMIN"]).optional(),
@@ -128,6 +247,8 @@ adminRouter.get("/rules", async (req, res) => {
         return;
     await ensureLeagueConfig(leagueId);
     const rules = await prisma.rule.findUnique({ where: { leagueId } });
+    const superSetting = await prisma.superSetting.findFirst({ orderBy: { createdAt: "asc" } }).catch(() => null);
+    const competitionType = String(superSetting?.competitionType || "LEAGUE");
     const monetization = await prisma.leagueMonetization.findUnique({
         where: { leagueId },
         include: { prizes: true },
@@ -137,7 +258,8 @@ adminRouter.get("/rules", async (req, res) => {
     // - New additive table is source of truth if present
     if (monetization && rules) {
         const shaped = {
-            ...rules,
+            ...ruleForJson(rules),
+            competitionType,
             entryFeeCents: typeof monetization.entryFeeCents === "number" ? monetization.entryFeeCents : rules.entryFeeCents,
             prizesJson: monetization.prizes?.length
                 ? monetization.prizes
@@ -148,30 +270,40 @@ adminRouter.get("/rules", async (req, res) => {
         };
         return res.json({ rules: shaped });
     }
-    res.json({ rules });
+    res.json({ rules: rules ? { ...ruleForJson(rules), competitionType } : rules });
 });
 const RulesSchema = z.object({
-    pointsExact: z.number().int().min(0).max(50),
-    pointsOutcome: z.number().int().min(0).max(50),
-    pointsSumGoals: z.number().int().min(0).max(50),
+    pointsExact: z.number().min(0).max(50),
+    pointsOutcome: z.number().min(0).max(50),
+    pointsSumGoals: z.number().min(0).max(50),
     enableUnderOver25: z.boolean().optional().default(false),
-    pointsUnderOver25: z.number().int().min(0).max(50).optional().default(1),
+    pointsUnderOver25: z.number().min(0).max(50).optional().default(1),
     enableMatchdayAwards: z.boolean().optional().default(false),
     // Partita Jolly
     enableJolly: z.boolean().optional().default(false),
     jollyMultiplier: z.number().int().min(1).max(10).optional().default(2),
     // Marcatore
     enableScorer: z.boolean().optional().default(false),
-    pointsScorer: z.number().int().min(0).max(50).optional().default(3),
+    pointsScorer: z.number().min(0).max(50).optional().default(3),
     // Pronostici competizione
     enableCompetitionWinner: z.boolean().optional().default(false),
-    pointsCompetitionWinner: z.number().int().min(0).max(200).optional().default(15),
+    pointsCompetitionWinner: z.number().min(0).max(200).optional().default(15),
     enableCompetitionTopScorer: z.boolean().optional().default(false),
-    pointsCompetitionTopScorer: z.number().int().min(0).max(200).optional().default(12),
+    pointsCompetitionTopScorer: z.number().min(0).max(200).optional().default(12),
+    enableCompetitionQuarterFinalist: z.boolean().optional().default(false),
+    pointsCompetitionQuarterFinalist: z.number().min(0).max(200).optional().default(8),
+    enableCompetitionSemiFinalist: z.boolean().optional().default(false),
+    pointsCompetitionSemiFinalist: z.number().min(0).max(200).optional().default(10),
+    enableCompetitionFinalist: z.boolean().optional().default(false),
+    pointsCompetitionFinalist: z.number().min(0).max(200).optional().default(12),
     scoringMode: z.enum(["CUMULATIVE", "BEST_ONLY", "MIXED"]),
     allowOutcomeWithExact: z.boolean(),
     allowSumGoalsWithExact: z.boolean(),
     allowSumGoalsWithOutcome: z.boolean(),
+    // Under/Over cumulability (MIXED)
+    allowUnderOverWithExact: z.boolean().optional().default(true),
+    allowUnderOverWithOutcome: z.boolean().optional().default(true),
+    allowUnderOverWithSumGoals: z.boolean().optional().default(true),
     // Optional monetization
     entryFeeCents: z.number().int().min(0).max(1_000_000_000).optional().nullable(),
     prizesJson: z
@@ -234,7 +366,9 @@ adminRouter.put("/rules", async (req, res) => {
         await clearMatchdayAwardsForLeague(leagueId);
     }
     await recalcAllScoresForLeague(leagueId);
-    res.json({ rules });
+    const superSetting = await prisma.superSetting.findFirst({ orderBy: { createdAt: "asc" } }).catch(() => null);
+    const competitionType = String(superSetting?.competitionType || "LEAGUE");
+    res.json({ rules: rules ? { ...ruleForJson(rules), competitionType } : rules });
 });
 // --- Partita Jolly (matchday selection) ---
 const JollySettingsSchema = z.object({
@@ -429,7 +563,7 @@ adminRouter.get("/leaderboard.csv", async (req, res) => {
     const mapName = new Map(members.map((m) => [m.userId, m.user.displayName]));
     const mapEmail = new Map(members.map((m) => [m.userId, m.user.email]));
     const data = rows
-        .map((r) => ({ userId: r.userId, points: r._sum.totalPoints ?? 0 }))
+        .map((r) => ({ userId: r.userId, points: Number(r._sum.totalPoints ?? 0) }))
         .sort((a, b) => b.points - a.points);
     const csv = ["displayName,email,totalPoints"]
         .concat(data.map((d) => `${JSON.stringify(mapName.get(d.userId) ?? d.userId)},${JSON.stringify(mapEmail.get(d.userId) ?? "")},${d.points}`))

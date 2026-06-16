@@ -262,6 +262,12 @@ export async function runSyncOnce() {
     // --- Competition predictions resolution (best-effort, football-data only) ---
     // If the competition is fully finished, resolve outcome once per league and award points.
     try {
+        // If Super Admin has set a GLOBAL manual outcome, do not auto-resolve via provider.
+        if (superSetting?.competitionOutcomeResolvedAt) {
+            // Manual global resolution is applied immediately on save.
+            // This guard prevents overwriting points/outcome via provider sync.
+            return { ok: true, message: `Synced ${matches.length} matches from football-data.org (${competitionCode}${season ? `/${season}` : ""})` };
+        }
         const allFinished = matches.every((m) => mapFootballDataStatus(String(m.status || "")) === "FINISHED");
         if (allFinished && competitionCode) {
             const leagues = await prisma.league.findMany({
@@ -313,15 +319,15 @@ export async function runSyncOnce() {
                     for (const p of picks) {
                         let pts = 0;
                         if (p.type === "WINNER" && rules.enableCompetitionWinner && winner.teamExternalId && p.teamExternalId === winner.teamExternalId) {
-                            pts = rules.pointsCompetitionWinner ?? 15;
+                            pts = Number(rules.pointsCompetitionWinner ?? 15);
                         }
                         if (p.type === "TOP_SCORER" &&
                             rules.enableCompetitionTopScorer &&
                             topScorer.playerExternalId &&
                             p.playerExternalId === topScorer.playerExternalId) {
-                            pts = rules.pointsCompetitionTopScorer ?? 12;
+                            pts = Number(rules.pointsCompetitionTopScorer ?? 12);
                         }
-                        if ((p.pointsAwarded ?? 0) !== pts) {
+                        if (Number(p.pointsAwarded ?? 0) !== pts) {
                             await prisma.competitionPick.update({ where: { id: p.id }, data: { pointsAwarded: pts } });
                         }
                     }

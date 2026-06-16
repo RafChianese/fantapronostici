@@ -9,6 +9,8 @@ import { apiRouter } from "./routes/index.js";
 import { startScheduler } from "./jobs/syncJob.js";
 import { bootstrapDefaults } from "./bootstrapDefaults.js";
 const app = express();
+// Needed on Render / reverse proxies so req.protocol uses X-Forwarded-Proto.
+app.set("trust proxy", 1);
 app.use(helmet());
 // CORS
 // WEB_ORIGIN can be a comma-separated allowlist.
@@ -50,7 +52,8 @@ const corsOptions = {
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     // IMPORTANT: include custom headers used by the frontend (triggers preflight)
-    allowedHeaders: ["Content-Type", "Authorization", "X-League-Id"],
+    // Note: browsers may send requested headers in lowercase (x-league-id). Be permissive.
+    allowedHeaders: ["Content-Type", "Authorization", "X-League-Id", "x-league-id"],
     optionsSuccessStatus: 204,
 };
 app.use(cors(corsOptions));

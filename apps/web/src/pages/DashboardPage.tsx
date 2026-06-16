@@ -269,12 +269,14 @@ export default function DashboardPage() {
         const exact = Number(it?.points?.exact ?? 0);
         const outcome = Number(it?.points?.outcome ?? 0);
         const sumGoals = Number(it?.points?.sumGoals ?? 0);
-        let tone: "green" | "yellow" | "orange" | "red" | "blue" = "blue";
+        const underOver = Number(it?.points?.underOver ?? 0);
+        let tone: "green" | "yellow" | "orange" | "cyan" | "red" | "blue" = "blue";
         if (status === "IN_PROGRESS") tone = "blue";
         if (status === "FINISHED") {
           if (exact > 0) tone = "green";
           else if (outcome > 0) tone = "yellow";
           else if (sumGoals > 0) tone = "orange";
+          else if (underOver > 0) tone = "cyan";
           else tone = "red";
         }
         return {
@@ -467,9 +469,11 @@ const tournamentMeta = useMemo(() => {
           ? "rgba(251,191,36,0.95)"
           : p.tone === "orange"
             ? "rgba(251,146,60,0.95)"
-            : p.tone === "red"
-              ? "rgba(244,63,94,0.95)"
-              : "rgba(59,130,246,0.85)";
+            : p.tone === "cyan"
+              ? "rgba(34,211,238,0.95)"
+              : p.tone === "red"
+                ? "rgba(244,63,94,0.95)"
+                : "rgba(59,130,246,0.85)";
     const home = p.home.slice(0, 3).toUpperCase();
     const away = p.away.slice(0, 3).toUpperCase();
     const label = p.status === "IN_PROGRESS" ? "LIVE" : Number.isInteger(p.total) ? String(p.total) : p.total.toFixed(1);
@@ -698,6 +702,7 @@ const tournamentMeta = useMemo(() => {
             <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-400" /> Esatto</span>
             <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-400" /> 1X2</span>
             <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-orange-400" /> Somma</span>
+            <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-cyan-300" /> U/O 2.5</span>
             <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-rose-400" /> Zero</span>
             <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-blue-400" /> Live</span>
           </div>

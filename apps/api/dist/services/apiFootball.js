@@ -17,6 +17,16 @@ export async function fetchFixtures(params) {
         status: params.status,
     });
 }
+// Narrow fixtures query for a small date window (saves quota vs fetching all pages)
+export async function fetchFixturesRange(params) {
+    return apiFootballClient.fixtures({
+        league: params.leagueId,
+        season: params.season,
+        timezone: params.timezone ?? "Europe/Rome",
+        from: params.from,
+        to: params.to,
+    });
+}
 export async function fetchFixtureLineups(fixtureId) {
     const rows = (await apiFootballClient.fixtureLineups({ fixture: fixtureId }));
     // Normalize to our shape

@@ -1,5 +1,6 @@
 import { prisma } from "./prisma.js";
 import { recomputeMatchdayAwardsForLeague } from "./matchdayAwards.js";
+import { getPredictionWindow, isPredictableMatch } from "./predictableMatches.js";
 function outcome(home, away) {
     if (home > away)
         return "H";
@@ -7,12 +8,19 @@ function outcome(home, away) {
         return "A";
     return "D";
 }
+function decimalToNumber(value, fallback = 0) {
+    const n = Number(value ?? fallback);
+    return Number.isFinite(n) ? n : fallback;
+}
 function computeAdjustedPoints(params) {
     const { mode } = params;
     let ex = params.pointsExact;
     let out = params.pointsOutcome;
     let sum = params.pointsSumGoals;
     let uo = params.pointsUnderOver;
+    const uoWithExact = params.allowUnderOverWithExact ?? true;
+    const uoWithOutcome = params.allowUnderOverWithOutcome ?? true;
+    const uoWithSum = params.allowUnderOverWithSumGoals ?? true;
     if (mode === "CUMULATIVE") {
         return { pointsExact: ex, pointsOutcome: out, pointsSumGoals: sum, pointsUnderOver: uo, totalPoints: ex + out + sum + uo };
     }
@@ -30,17 +38,20 @@ function computeAdjustedPoints(params) {
         return { pointsExact: 0, pointsOutcome: 0, pointsSumGoals: 0, pointsUnderOver: uo, totalPoints: uo };
     }
     // MIXED: allow fine-grained cumulability between categories.
-    // Under/Over (if enabled) is always cumulative with the effective categories.
+    // Under/Over (if enabled) is NOT always cumulative: it respects per-category flags.
     if (ex > 0) {
         out = out > 0 && params.allowOutcomeWithExact ? out : 0;
         sum = sum > 0 && params.allowSumGoalsWithExact ? sum : 0;
+        uo = uo > 0 && uoWithExact ? uo : 0;
         return { pointsExact: ex, pointsOutcome: out, pointsSumGoals: sum, pointsUnderOver: uo, totalPoints: ex + out + sum + uo };
     }
     if (out > 0) {
         sum = sum > 0 && params.allowSumGoalsWithOutcome ? sum : 0;
+        uo = uo > 0 && uoWithOutcome ? uo : 0;
         return { pointsExact: 0, pointsOutcome: out, pointsSumGoals: sum, pointsUnderOver: uo, totalPoints: out + sum + uo };
     }
     if (sum > 0) {
+        uo = uo > 0 && uoWithSum ? uo : 0;
         return { pointsExact: 0, pointsOutcome: 0, pointsSumGoals: sum, pointsUnderOver: uo, totalPoints: sum + uo };
     }
     // Under/Over only
@@ -87,6 +98,7 @@ export async function recalcAllScoresForLeague(leagueId) {
         prisma.matchdayJolly.findMany({ where: { leagueId } }),
         prisma.scorerPick.findMany({ where: { leagueId } }),
     ]);
+    const predictionWindow = await getPredictionWindow();
     const matchById = new Map(matches.map((m) => [m.id, m]));
     const jollyByMatchId = new Set(jollyRows.map((r) => String(r.matchId)));
     const scorerByUserMatch = new Map();
@@ -95,22 +107,22 @@ export async function recalcAllScoresForLeague(leagueId) {
     const updates = [];
     for (const p of predictions) {
         const m = matchById.get(p.matchId);
-        if (!m || m.status !== "FINISHED" || m.homeScore === null || m.awayScore === null) {
+        if (!m || !isPredictableMatch(m, predictionWindow) || m.status !== "FINISHED" || m.homeScore === null || m.awayScore === null) {
             updates.push({ id: p.id, pointsExact: 0, pointsOutcome: 0, pointsSumGoals: 0, pointsUnderOver: 0, pointsScorer: 0, totalPoints: 0 });
             continue;
         }
         let pointsExact = 0, pointsOutcome = 0, pointsSumGoals = 0, pointsUnderOver = 0;
         if (p.homeGoals === m.homeScore && p.awayGoals === m.awayScore)
-            pointsExact = rules.pointsExact;
+            pointsExact = decimalToNumber(rules.pointsExact);
         if (outcome(p.homeGoals, p.awayGoals) === outcome(m.homeScore, m.awayScore))
-            pointsOutcome = rules.pointsOutcome;
+            pointsOutcome = decimalToNumber(rules.pointsOutcome);
         if (p.homeGoals + p.awayGoals === m.homeScore + m.awayScore)
-            pointsSumGoals = rules.pointsSumGoals;
+            pointsSumGoals = decimalToNumber(rules.pointsSumGoals);
         if (rules.enableUnderOver25) {
             const predOver = p.homeGoals + p.awayGoals > 2;
             const realOver = m.homeScore + m.awayScore > 2;
             if (predOver === realOver)
-                pointsUnderOver = rules.pointsUnderOver25;
+                pointsUnderOver = decimalToNumber(rules.pointsUnderOver25);
         }
         const adjustedBase = computeAdjustedPoints({
             mode: rules.scoringMode,
@@ -121,9 +133,12 @@ export async function recalcAllScoresForLeague(leagueId) {
             allowOutcomeWithExact: rules.allowOutcomeWithExact,
             allowSumGoalsWithExact: rules.allowSumGoalsWithExact,
             allowSumGoalsWithOutcome: rules.allowSumGoalsWithOutcome,
+            allowUnderOverWithExact: rules.allowUnderOverWithExact,
+            allowUnderOverWithOutcome: rules.allowUnderOverWithOutcome,
+            allowUnderOverWithSumGoals: rules.allowUnderOverWithSumGoals,
         });
         const sel = scorerByUserMatch.get(`${p.userId}:${p.matchId}`) || null;
-        const pointsScorer = rules.enableScorer && scorerHit(m, sel) ? rules.pointsScorer : 0;
+        const pointsScorer = rules.enableScorer && scorerHit(m, sel) ? decimalToNumber(rules.pointsScorer) : 0;
         const adjusted = { ...adjustedBase, pointsScorer, totalPoints: adjustedBase.totalPoints + pointsScorer };
         const withJolly = rules.enableJolly && jollyByMatchId.has(String(m.id)) ? applyJollyMultiplier(adjusted, rules.jollyMultiplier) : adjusted;
         updates.push({ id: p.id, ...withJolly });
@@ -150,6 +165,14 @@ export async function recalcScoresForMatchForLeague(leagueId, matchId) {
     ]);
     if (!match)
         return;
+    const predictionWindow = await getPredictionWindow();
+    if (!isPredictableMatch(match, predictionWindow)) {
+        await prisma.prediction.updateMany({
+            where: { leagueId, matchId },
+            data: { pointsExact: 0, pointsOutcome: 0, pointsSumGoals: 0, pointsUnderOver: 0, pointsScorer: 0, totalPoints: 0 },
+        });
+        return;
+    }
     const updates = [];
     const picks = await prisma.scorerPick.findMany({ where: { leagueId, matchId } });
     const scorerByUser = new Map();
@@ -162,16 +185,16 @@ export async function recalcScoresForMatchForLeague(leagueId, matchId) {
         }
         let pointsExact = 0, pointsOutcome = 0, pointsSumGoals = 0, pointsUnderOver = 0;
         if (p.homeGoals === match.homeScore && p.awayGoals === match.awayScore)
-            pointsExact = rules.pointsExact;
+            pointsExact = decimalToNumber(rules.pointsExact);
         if (outcome(p.homeGoals, p.awayGoals) === outcome(match.homeScore, match.awayScore))
-            pointsOutcome = rules.pointsOutcome;
+            pointsOutcome = decimalToNumber(rules.pointsOutcome);
         if (p.homeGoals + p.awayGoals === match.homeScore + match.awayScore)
-            pointsSumGoals = rules.pointsSumGoals;
+            pointsSumGoals = decimalToNumber(rules.pointsSumGoals);
         if (rules.enableUnderOver25) {
             const predOver = p.homeGoals + p.awayGoals > 2;
             const realOver = match.homeScore + match.awayScore > 2;
             if (predOver === realOver)
-                pointsUnderOver = rules.pointsUnderOver25;
+                pointsUnderOver = decimalToNumber(rules.pointsUnderOver25);
         }
         const adjustedBase = computeAdjustedPoints({
             mode: rules.scoringMode,
@@ -182,9 +205,12 @@ export async function recalcScoresForMatchForLeague(leagueId, matchId) {
             allowOutcomeWithExact: rules.allowOutcomeWithExact,
             allowSumGoalsWithExact: rules.allowSumGoalsWithExact,
             allowSumGoalsWithOutcome: rules.allowSumGoalsWithOutcome,
+            allowUnderOverWithExact: rules.allowUnderOverWithExact,
+            allowUnderOverWithOutcome: rules.allowUnderOverWithOutcome,
+            allowUnderOverWithSumGoals: rules.allowUnderOverWithSumGoals,
         });
         const sel = scorerByUser.get(String(p.userId)) || null;
-        const pointsScorer = rules.enableScorer && scorerHit(match, sel) ? rules.pointsScorer : 0;
+        const pointsScorer = rules.enableScorer && scorerHit(match, sel) ? decimalToNumber(rules.pointsScorer) : 0;
         const adjusted = { ...adjustedBase, pointsScorer, totalPoints: adjustedBase.totalPoints + pointsScorer };
         const withJolly = rules.enableJolly && !!jollyRow ? applyJollyMultiplier(adjusted, rules.jollyMultiplier) : adjusted;
         updates.push({ id: p.id, ...withJolly });
