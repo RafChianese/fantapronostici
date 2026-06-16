@@ -403,7 +403,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             {desktopMenuOpen ? (
               <div
                 role="menu"
-                className="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-2xl tm-glass-sheet"
+                className="tm-desktop-dropdown w-56 overflow-hidden rounded-2xl tm-glass-sheet"
               >
                 <div className="p-2">
                   <NavItem to="/leaderboard" onClick={() => setDesktopMenuOpen(false)}>
@@ -602,7 +602,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Mobile bottom nav (main sections only) */}
       {mobileMainTabsVisible ? (
-        <nav className="fixed bottom-0 left-0 right-0 z-20 border-t border-cyan-100/15 tm-glass-sheet md:hidden">
+        <nav className="tm-mobile-bottom-nav border-t border-cyan-100/15 tm-glass-sheet md:hidden">
           <div
             data-tour="bottom-tabs"
             className="mx-auto flex max-w-6xl items-stretch gap-1 px-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3"
