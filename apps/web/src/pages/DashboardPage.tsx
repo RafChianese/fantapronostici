@@ -249,6 +249,46 @@ export default function DashboardPage() {
     });
   }, [pillMatchdays, byMatchday]);
 
+  const recentMatchPills = useMemo(() => {
+    return (items || [])
+      .filter((it: any) => {
+        const status = it?.match?.status || it?.status;
+        return status === "FINISHED" || status === "IN_PROGRESS";
+      })
+      .slice()
+      .sort((a: any, b: any) => {
+        const ak = new Date(a?.match?.kickoffAt || a?.kickoffAt || 0).getTime();
+        const bk = new Date(b?.match?.kickoffAt || b?.kickoffAt || 0).getTime();
+        return bk - ak;
+      })
+      .slice(0, 10)
+      .map((it: any) => {
+        const status = String(it?.match?.status || it?.status || "NOT_STARTED");
+        const total = Number(it?.points?.total ?? 0);
+        const exact = Number(it?.points?.exact ?? 0);
+        const outcome = Number(it?.points?.outcome ?? 0);
+        const sumGoals = Number(it?.points?.sumGoals ?? 0);
+        let tone: "green" | "yellow" | "orange" | "red" | "blue" = "blue";
+        if (status === "IN_PROGRESS") tone = "blue";
+        if (status === "FINISHED") {
+          if (exact > 0) tone = "green";
+          else if (outcome > 0) tone = "yellow";
+          else if (sumGoals > 0) tone = "orange";
+          else tone = "red";
+        }
+        return {
+          id: String(it?.match?.id ?? it?.matchId ?? ""),
+          md: Number(it?.match?.matchday ?? it?.matchday ?? 0),
+          home: String(it?.match?.homeTeam ?? it?.homeTeam ?? ""),
+          away: String(it?.match?.awayTeam ?? it?.awayTeam ?? ""),
+          status,
+          total,
+          tone,
+        };
+      })
+      .filter((x: any) => x.id);
+  }, [items]);
+
   const allMatchesMeta = useMemo(() => {
     const seen = new Set<string>();
     let predicted = 0;
@@ -403,6 +443,39 @@ const tournamentMeta = useMemo(() => {
         <div className="relative z-[1] text-center">
           <div className="text-[10px] sm:text-[11px] font-bold text-slate-300">G{p.md}</div>
           <div className={`mt-0.5 text-[15px] sm:text-base font-extrabold ${p.status === "IN_PROGRESS" ? "text-rose-200" : "text-slate-100"}`}>{label}</div>
+        </div>
+      </Link>
+    );
+  };
+
+
+  const MatchOrb = ({ p }: { p: { id: string; md: number; home: string; away: string; status: string; total: number; tone: string } }) => {
+    const ringColor =
+      p.tone === "green"
+        ? "rgba(16,185,129,0.95)"
+        : p.tone === "yellow"
+          ? "rgba(251,191,36,0.95)"
+          : p.tone === "orange"
+            ? "rgba(251,146,60,0.95)"
+            : p.tone === "red"
+              ? "rgba(244,63,94,0.95)"
+              : "rgba(59,130,246,0.85)";
+    const home = p.home.slice(0, 3).toUpperCase();
+    const away = p.away.slice(0, 3).toUpperCase();
+    const label = p.status === "IN_PROGRESS" ? "LIVE" : Number.isInteger(p.total) ? String(p.total) : p.total.toFixed(1);
+    return (
+      <Link
+        to={p.md ? `/predictions?md=${p.md}` : "/predictions"}
+        className="group relative grid h-[58px] w-[58px] shrink-0 place-items-center rounded-full border border-white/10 bg-white/5 transition hover:-translate-y-0.5 hover:bg-white/10 sm:h-[70px] sm:w-[70px]"
+        style={{ boxShadow: `0 12px 38px rgba(0,0,0,0.35), inset 0 0 0 2px ${ringColor}` }}
+        title={`${p.home} - ${p.away}`}
+        aria-label={`${p.home} contro ${p.away}`}
+      >
+        <div className="absolute inset-[5px] rounded-full bg-[radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.16),rgba(255,255,255,0.04)_48%,rgba(0,0,0,0.28))]" />
+        <div className="relative z-[1] text-center leading-none">
+          <div className="text-[9px] font-black tracking-tight text-slate-200 sm:text-[10px]">{home}</div>
+          <div className={`my-1 text-[13px] font-extrabold sm:text-[15px] ${p.status === "IN_PROGRESS" ? "text-blue-100" : "text-white"}`}>{label}</div>
+          <div className="text-[9px] font-black tracking-tight text-slate-200 sm:text-[10px]">{away}</div>
         </div>
       </Link>
     );
@@ -581,6 +654,29 @@ const tournamentMeta = useMemo(() => {
           ) : (
             <div className="text-sm text-slate-300">Nessuna giornata disponibile.</div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Ultime partite */}
+      <Card>
+        <CardHeader title="Ultime partite" subtitle="Esito del tuo pronostico sugli ultimi match" />
+        <CardContent>
+          {recentMatchPills.length ? (
+            <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
+              {recentMatchPills.map((p) => (
+                <MatchOrb key={p.id} p={p as any} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-sm text-slate-300">Nessuna partita giocata o live disponibile.</div>
+          )}
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-slate-300">
+            <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-400" /> Esatto</span>
+            <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-400" /> 1X2</span>
+            <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-orange-400" /> Somma</span>
+            <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-rose-400" /> Zero</span>
+            <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-blue-400" /> Live</span>
+          </div>
         </CardContent>
       </Card>
 
