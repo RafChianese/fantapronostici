@@ -73,7 +73,7 @@ export type LiveLeaderboardRow = {
   rankDelta: number;
 };
 
-export type LiveResponse = { matches: LiveMatch[]; liveLeaderboard?: LiveLeaderboardRow[] };
+export type LiveResponse = { matches: LiveMatch[]; liveLeaderboard?: LiveLeaderboardRow[]; prizeCount?: number };
 export type CalendarParticipant = {
   userId: string;
   displayName: string;

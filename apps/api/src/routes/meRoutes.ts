@@ -196,7 +196,7 @@ meRouter.get("/live", requireAuth, requireLeagueMember, async (req: AuthedReques
 
   await ensureLeagueConfig(leagueId);
 
-  const [rules, liveMatches, members, jollyRows, allLeaguePredictions, competitionPoints] = await Promise.all([
+  const [rules, liveMatches, members, jollyRows, allLeaguePredictions, competitionPoints, monetization] = await Promise.all([
     prisma.rule.findUnique({ where: { leagueId } }),
     prisma.match.findMany({
       where: { status: "IN_PROGRESS" },
@@ -227,6 +227,7 @@ meRouter.get("/live", requireAuth, requireLeagueMember, async (req: AuthedReques
       where: { leagueId },
       _sum: { pointsAwarded: true },
     }),
+    prisma.leagueMonetization.findUnique({ where: { leagueId }, include: { prizes: true } }),
   ]);
 
   if (!rules) return res.status(500).json({ message: "Missing rules for league" });
@@ -323,7 +324,9 @@ meRouter.get("/live", requireAuth, requireLeagueMember, async (req: AuthedReques
       rankDelta: row.officialRank ? row.officialRank - (index + 1) : 0,
     }));
 
-  res.json({ matches, liveLeaderboard });
+  const prizeCount = Array.isArray((monetization as any)?.prizes) && (monetization as any).prizes.length > 0 ? (monetization as any).prizes.length : 3;
+
+  res.json({ matches, liveLeaderboard, prizeCount });
 });
 
 function decimalNumber(value: unknown, fallback = 0): number {

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
@@ -6,7 +6,7 @@ import { useLock } from "../lib/lock";
 import { AchievementsStrip } from "../components/Achievements";
 import { UserAvatar } from "../components/Avatar";
 import { AnimatedNumber } from "../components/AnimatedNumber";
-import { Badge, Button, Card, CardContent, CardHeader, Skeleton } from "../components/ui";
+import { Badge, Button, Card, CardContent, CardHeader, Skeleton, Spinner } from "../components/ui";
 
 type LeaderRow = { userId: string; totalPoints: number; displayName?: string | null };
 
@@ -195,6 +195,7 @@ export default function DashboardPage() {
   }, [matchdays, byMatchday, isMatchdayLocked]);
 
   const canInsert = !!nextEditableMatchday && !lock?.isLocked;
+  const recentMatchesScrollRef = useRef<HTMLDivElement | null>(null);
 
   const myPosition = useMemo(() => {
     if (!user?.id) return null;
@@ -259,9 +260,9 @@ export default function DashboardPage() {
       .sort((a: any, b: any) => {
         const ak = new Date(a?.match?.kickoffAt || a?.kickoffAt || 0).getTime();
         const bk = new Date(b?.match?.kickoffAt || b?.kickoffAt || 0).getTime();
-        return bk - ak;
+        return ak - bk;
       })
-      .slice(0, 10)
+      .slice(-10)
       .map((it: any) => {
         const status = String(it?.match?.status || it?.status || "NOT_STARTED");
         const total = Number(it?.points?.total ?? 0);
@@ -288,6 +289,15 @@ export default function DashboardPage() {
       })
       .filter((x: any) => x.id);
   }, [items]);
+
+  useEffect(() => {
+    const el = recentMatchesScrollRef.current;
+    if (!el || recentMatchPills.length === 0) return;
+    const frame = window.requestAnimationFrame(() => {
+      el.scrollLeft = el.scrollWidth;
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [recentMatchPills.length]);
 
   const allMatchesMeta = useMemo(() => {
     const seen = new Set<string>();
@@ -481,6 +491,20 @@ const tournamentMeta = useMemo(() => {
     );
   };
 
+  if (loading && !summary && leader.length === 0 && matches.length === 0) {
+    return (
+      <div className="mx-auto flex min-h-[55vh] w-full max-w-2xl items-center justify-center px-4">
+        <div className="tm-glass flex flex-col items-center gap-4 rounded-3xl px-8 py-7 text-center">
+          <Spinner />
+          <div>
+            <div className="text-sm font-extrabold text-slate-100">Caricamento home</div>
+            <div className="mt-1 text-xs text-slate-300">Sto recuperando classifica, pronostici e partite.</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto w-full max-w-2xl space-y-4">
       {approved.length > 1 ? (
@@ -662,7 +686,7 @@ const tournamentMeta = useMemo(() => {
         <CardHeader title="Ultime partite" subtitle="Esito del tuo pronostico sugli ultimi match" />
         <CardContent>
           {recentMatchPills.length ? (
-            <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
+            <div ref={recentMatchesScrollRef} className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
               {recentMatchPills.map((p) => (
                 <MatchOrb key={p.id} p={p as any} />
               ))}

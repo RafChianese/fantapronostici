@@ -69,6 +69,7 @@ export default function LivePage() {
   const { activeLeagueId } = useAuth();
   const [matches, setMatches] = useState<LiveMatch[]>([]);
   const [leaderboard, setLeaderboard] = useState<LiveLeaderboardRow[]>([]);
+  const [prizeCount, setPrizeCount] = useState(3);
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [tab, setTab] = useState<"MATCHES" | "LEADERBOARD">("MATCHES");
   const [loading, setLoading] = useState(true);
@@ -90,6 +91,7 @@ export default function LivePage() {
         const live = Array.isArray(data?.matches) ? data.matches : [];
         setMatches(live);
         setLeaderboard(Array.isArray(data?.liveLeaderboard) ? data.liveLeaderboard : []);
+        setPrizeCount(Number(data?.prizeCount || 0) > 0 ? Number(data.prizeCount) : 3);
         setSelectedMatchId((prev) => {
           if (prev && live.some((m) => m.id === prev)) return prev;
           return live[0]?.id ?? null;
@@ -98,6 +100,7 @@ export default function LivePage() {
       .catch((e: any) => {
         setMatches([]);
         setLeaderboard([]);
+        setPrizeCount(3);
         setSelectedMatchId(null);
         setError(e?.message || "Errore nel caricamento del live");
       })
@@ -138,59 +141,53 @@ export default function LivePage() {
           </CardContent>
         </Card>
       ) : tab === "LEADERBOARD" ? (
-        <Card>
-          <CardHeader
-            title="Classifica live"
-            subtitle="Somma della classifica ufficiale più i punti provvisori dei match in corso. Può cambiare fino al fischio finale."
-          />
-          <CardContent>
-            {leaderboard.length === 0 ? (
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300">
-                Classifica live non disponibile. Appena ci saranno dati live, comparirà qui.
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {leaderboard.map((row) => {
-                  const isMoving = Number(row.rankDelta || 0) !== 0;
-                  return (
-                    <div
-                      key={row.userId}
-                      className={`rounded-3xl border p-3 transition ${
-                        row.liveRank <= 3
-                          ? "border-yellow-200/30 bg-yellow-300/10 shadow-[0_0_35px_rgba(250,204,21,0.10)]"
-                          : isMoving
-                          ? "border-sky-300/20 bg-sky-400/10"
-                          : "border-white/10 bg-white/5"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex min-w-0 items-center gap-3">
-                          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-2xl border border-white/10 bg-slate-950/60 text-sm font-black text-white">
-                            {row.liveRank}
-                          </div>
-                          <UserAvatar avatarId={row.avatarId || null} mode="full" size={42} />
-                          <div className="min-w-0">
-                            <div className="truncate text-sm font-extrabold text-slate-100">{row.displayName}</div>
-                            <div className="mt-0.5 text-xs text-slate-400">
-                              Ufficiale: <b className="text-slate-200">{fmtPoints(row.officialPoints)}</b>
-                              {" · "}
-                              Live: <b className={Number(row.liveDelta) >= 0 ? "text-emerald-200" : "text-rose-200"}>{Number(row.liveDelta) >= 0 ? "+" : ""}{fmtPoints(row.liveDelta)}</b>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="shrink-0 text-right">
-                          <div className="text-xl font-black text-white">{fmtPoints(row.liveTotalPoints)}</div>
-                          <div className="mt-1 flex justify-end"><RankDelta value={Number(row.rankDelta || 0)} /></div>
+        leaderboard.length === 0 ? (
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300">
+            Classifica live non disponibile. Appena ci saranno dati live, comparirà qui.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {leaderboard.map((row) => {
+              const isMoving = Number(row.rankDelta || 0) !== 0;
+              const isPrizePosition = row.liveRank <= prizeCount;
+              const medal = isPrizePosition ? (row.liveRank === 1 ? "🥇" : row.liveRank === 2 ? "🥈" : row.liveRank === 3 ? "🥉" : "🏅") : null;
+              return (
+                <div
+                  key={row.userId}
+                  className={`rounded-3xl border p-3 transition ${
+                    isPrizePosition
+                      ? "border-yellow-200/30 bg-yellow-300/10 shadow-[0_0_35px_rgba(250,204,21,0.10)]"
+                      : isMoving
+                      ? "border-sky-300/20 bg-sky-400/10"
+                      : "border-white/10 bg-white/5"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-2xl border text-sm font-black ${isPrizePosition ? "border-yellow-200/30 bg-yellow-300/10 text-yellow-50" : "border-white/10 bg-slate-950/60 text-white"}`}>
+                        {medal || row.liveRank}
+                      </div>
+                      <UserAvatar avatarId={row.avatarId || null} mode="full" size={42} />
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-extrabold text-slate-100">{row.displayName}</div>
+                        <div className="mt-0.5 text-xs text-slate-300">
+                          Ufficiale: <b className="text-slate-100">{fmtPoints(row.officialPoints)}</b>
+                          {" · "}
+                          Live: <b className={Number(row.liveDelta) >= 0 ? "text-emerald-200" : "text-rose-200"}>{Number(row.liveDelta) >= 0 ? "+" : ""}{fmtPoints(row.liveDelta)}</b>
                         </div>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+
+                    <div className="shrink-0 text-right">
+                      <div className="text-xl font-black text-white">{fmtPoints(row.liveTotalPoints)}</div>
+                      <div className="mt-1 flex justify-end"><RankDelta value={Number(row.rankDelta || 0)} /></div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )
       ) : matches.length === 0 ? (
         <Card>
           <CardHeader title="Nessuna partita live" subtitle="Al momento non ci sono match in corso." />
