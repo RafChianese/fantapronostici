@@ -47,9 +47,9 @@ export default function RegisterPage() {
             <Input label="Conferma password" type="password" value={password2} onChange={(e) => setPassword2(e.target.value)} placeholder="Ripeti la password" />
 
             <div className="text-xs text-orange-50/60">
-              La password deve avere almeno <span className={pwdOk ? "font-semibold text-emerald-200" : "font-semibold text-slate-700"}>8 caratteri</span>.
+              La password deve avere almeno <span className={pwdOk ? "font-semibold text-amber-200" : "font-semibold text-slate-700"}>8 caratteri</span>.
               {password2 ? (
-                <span className={pwdMatch ? "ml-2 text-emerald-200" : "ml-2 text-rose-200"}>
+                <span className={pwdMatch ? "ml-2 text-amber-200" : "ml-2 text-rose-200"}>
                   {pwdMatch ? "✓ Le password coincidono" : "Le password non coincidono"}
                 </span>
               ) : null}

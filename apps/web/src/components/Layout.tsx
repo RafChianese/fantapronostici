@@ -16,7 +16,7 @@ function Icon({
   name: "dashboard" | "leaderboard" | "predictions" | "leagues" | "menu" | "live" | "calendar";
   active?: boolean;
 }) {
-  const stroke = active ? (name === "live" ? "#34d399" : "#f3c969") : "rgba(255,250,240,0.68)"; // premium football active / muted
+  const stroke = active ? (name === "live" ? "#d6b35a" : "#d6b35a") : "rgba(255,250,240,0.68)"; // premium football active / muted
   const common = {
     width: 22,
     height: 22,
@@ -126,7 +126,7 @@ function NavItem({
       data-tour={tourId}
       className={({ isActive }) =>
         `block w-full rounded-xl px-3 py-2 text-left text-sm font-medium transition-colors ${
-          isActive ? "bg-lime-300/15 text-orange-50 border border-amber-200/20" : "text-orange-50/85 hover:bg-white/[0.075]"
+          isActive ? "bg-amber-300/12 text-slate-50 border border-amber-200/20" : "text-slate-50/85 hover:bg-white/[0.07]"
         }`
       }
     >
@@ -327,14 +327,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <Icon name="menu" active />
               </button>
             ) : (
-              <div className="hidden h-10 w-10 rounded-2xl bg-gradient-to-br from-lime-300 via-emerald-400 to-amber-300 md:block" />
+              <div className="hidden h-10 w-10 rounded-2xl bg-gradient-to-br from-amber-200 via-amber-400 to-slate-500 md:block" />
             )}
 
             <Link to={user ? "/" : "/login"} className="min-w-0">
               <div className="truncate text-base font-extrabold leading-tight text-white">{leagueTitle}</div>
               {inviteCode ? (
                 <div className="mt-1 flex flex-wrap items-center gap-2">
-                  <span data-tour="invite-code" className="rounded-full border border-amber-100/15 bg-white/[0.055] px-2 py-0.5 text-xs font-medium text-orange-50/85">
+                  <span data-tour="invite-code" className="rounded-full border border-amber-100/15 bg-white/[0.055] px-2 py-0.5 text-xs font-medium text-slate-50/85">
                     Codice invito: <span className="font-semibold">{inviteCode}</span>
                   </span>
                   <button
@@ -349,7 +349,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   </button>
                 </div>
               ) : (
-                <div className="mt-1 text-xs text-orange-50/60">Fase a gironi</div>
+                <div className="mt-1 text-xs text-slate-50/60">Fase a gironi</div>
               )}
             </Link>
           </div>
@@ -359,7 +359,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <NavLink
             to="/"
             className={({ isActive }) =>
-              `rounded-2xl px-3 py-2 text-sm font-semibold transition-colors ${isActive ? "bg-white/[0.075] text-white" : "text-orange-50/85 hover:bg-white/[0.055]"}`
+              `rounded-2xl px-3 py-2 text-sm font-semibold transition-colors ${isActive ? "bg-white/[0.075] text-white" : "text-slate-50/85 hover:bg-white/[0.055]"}`
             }
           >
             Home
@@ -370,7 +370,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               to="/admin"
               data-tour="admin-dashboard-link"
               className={({ isActive }) =>
-                `rounded-2xl px-3 py-2 text-sm font-semibold transition-colors ${isActive ? "bg-white/[0.075] text-white" : "text-orange-50/85 hover:bg-white/[0.055]"}`
+                `rounded-2xl px-3 py-2 text-sm font-semibold transition-colors ${isActive ? "bg-white/[0.075] text-white" : "text-slate-50/85 hover:bg-white/[0.055]"}`
               }
             >
               Area admin
@@ -381,7 +381,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <NavLink
               to="/super"
               className={({ isActive }) =>
-                `rounded-2xl px-3 py-2 text-sm font-semibold transition-colors ${isActive ? "bg-white/[0.075] text-white" : "text-orange-50/85 hover:bg-white/[0.055]"}`
+                `rounded-2xl px-3 py-2 text-sm font-semibold transition-colors ${isActive ? "bg-white/[0.075] text-white" : "text-slate-50/85 hover:bg-white/[0.055]"}`
               }
             >
               Area superAdmin
@@ -392,12 +392,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <button
               type="button"
               onClick={() => setDesktopMenuOpen((v) => !v)}
-              className="inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-sm font-semibold text-orange-50/85 hover:bg-white/[0.055]"
+              className="inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-sm font-semibold text-slate-50/85 hover:bg-white/[0.055]"
               aria-haspopup="menu"
               aria-expanded={desktopMenuOpen ? "true" : "false"}
             >
               Menu
-              <span className="text-orange-50/60">▾</span>
+              <span className="text-slate-50/60">▾</span>
             </button>
 
             {desktopMenuOpen ? (
@@ -456,7 +456,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     </select>
                   </div>
                 ) : null}
-                <div className="hidden items-center gap-2 text-sm text-orange-50/85 md:flex">
+                <div className="hidden items-center gap-2 text-sm text-slate-50/85 md:flex">
                   <UserAvatar avatarId={(user as any).avatarId || null} mode="full" size={44} className="shadow-sm" />
                   <span>Ciao, {user.displayName}</span>
                 </div>
@@ -495,11 +495,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div className="absolute left-0 top-0 h-full w-[82%] max-w-sm tm-glass-sheet shadow-xl border-r border-amber-100/15">
             <div className="border-b border-amber-100/15 p-4">
               <div className="text-sm font-semibold text-white">{user.displayName}</div>
-              <div className="text-xs text-orange-50/60">{user.email}</div>
+              <div className="text-xs text-slate-50/60">{user.email}</div>
 
               {approved.length > 1 ? (
                 <div className="mt-3">
-                  <div className="text-xs text-orange-50/60">Cambia lega</div>
+                  <div className="text-xs text-slate-50/60">Cambia lega</div>
                   <select
                     className="mt-1 w-full rounded-xl border border-amber-100/15 bg-[#07150f]/80 px-3 py-2 text-sm text-white"
                     value={activeMembership?.league.id || ""}
@@ -520,7 +520,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
             <div className="p-3">
               <div className="flex flex-col gap-2">
-                <div className="px-3 pt-1 text-xs font-semibold uppercase tracking-wide text-orange-50/60">Principale</div>
+                <div className="px-3 pt-1 text-xs font-semibold uppercase tracking-wide text-slate-50/60">Principale</div>
 
                 {/* Main sections (same as bottom tabs) */}
                 <NavItem to="/" icon={<Home size={18} />} onClick={() => setDrawerOpen(false)}>
@@ -540,7 +540,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   </>
                 ) : null}
 
-                <div className="mt-1 px-3 pt-1 text-xs font-semibold uppercase tracking-wide text-orange-50/60">Altro</div>
+                <div className="mt-1 px-3 pt-1 text-xs font-semibold uppercase tracking-wide text-slate-50/60">Altro</div>
                 {isLeagueAdmin || isSuperAdmin ? (
                   <NavItem to="/admin" icon={<Shield size={18} />} onClick={() => setDrawerOpen(false)}>
                     Area admin
@@ -570,7 +570,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <div className="mt-3 border-t border-amber-100/15 pt-3">
                   <button
                     type="button"
-                    className="w-full rounded-xl px-3 py-2 text-left text-sm font-medium text-orange-50/85 hover:bg-white/[0.055]"
+                    className="w-full rounded-xl px-3 py-2 text-left text-sm font-medium text-slate-50/85 hover:bg-white/[0.055]"
                     onClick={() => {
                       logout();
                       setDrawerOpen(false);
@@ -614,7 +614,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               data-tour="tab-leaderboard"
               className={({ isActive }) =>
                 `flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-semibold ${
-                  isActive ? "bg-lime-300/15 text-orange-50" : "text-orange-50/70 hover:bg-white/[0.055]"
+                  isActive ? "bg-amber-300/12 text-slate-50" : "text-slate-50/70 hover:bg-white/[0.055]"
                 }`
               }
             >
@@ -630,7 +630,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               data-tour="tab-predictions"
               className={({ isActive }) =>
                 `flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-semibold ${
-                  isActive ? "bg-lime-300/15 text-orange-50" : "text-orange-50/70 hover:bg-white/[0.055]"
+                  isActive ? "bg-amber-300/12 text-slate-50" : "text-slate-50/70 hover:bg-white/[0.055]"
                 }`
               }
             >
@@ -647,7 +647,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               data-tour="tab-dashboard"
               className={({ isActive }) =>
                 `flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-semibold ${
-                  isActive ? "bg-lime-300/15 text-orange-50" : "text-orange-50/70 hover:bg-white/[0.055]"
+                  isActive ? "bg-amber-300/12 text-slate-50" : "text-slate-50/70 hover:bg-white/[0.055]"
                 }`
               }
             >
@@ -664,7 +664,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               data-tour="tab-leagues"
               className={({ isActive }) =>
                 `flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-semibold ${
-                  isActive ? "bg-lime-300/15 text-orange-50" : "text-orange-50/70 hover:bg-white/[0.055]"
+                  isActive ? "bg-amber-300/12 text-slate-50" : "text-slate-50/70 hover:bg-white/[0.055]"
                 }`
               }
             >
@@ -680,7 +680,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               data-tour="tab-calendar"
               className={({ isActive }) =>
                 `flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-semibold ${
-                  isActive ? "bg-amber-300/15 text-amber-100" : "text-orange-50/70 hover:bg-white/[0.055]"
+                  isActive ? "bg-amber-300/15 text-amber-100" : "text-slate-50/70 hover:bg-white/[0.055]"
                 }`
               }
             >
@@ -696,7 +696,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               data-tour="tab-live"
               className={({ isActive }) =>
                 `flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-semibold ${
-                  isActive ? "bg-emerald-500/15 text-emerald-200" : "text-orange-50/70 hover:bg-white/[0.055]"
+                  isActive ? "bg-amber-400/12 text-amber-200" : "text-slate-50/70 hover:bg-white/[0.055]"
                 }`
               }
             >

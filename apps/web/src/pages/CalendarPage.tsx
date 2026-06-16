@@ -34,7 +34,7 @@ function TeamLogo({ src, name }: { src?: string | null; name: string }) {
 
 function StatusBadge({ status }: { status: CalendarMatch["status"] }) {
   if (status === "IN_PROGRESS") {
-    return <span className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-2 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-emerald-200">Live</span>;
+    return <span className="rounded-full border border-amber-300/20 bg-amber-400/10 px-2 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-amber-200">Live</span>;
   }
   if (status === "FINISHED") {
     return <span className="rounded-full border border-slate-300/20 bg-slate-400/10 px-2 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-orange-50/85">Terminata</span>;

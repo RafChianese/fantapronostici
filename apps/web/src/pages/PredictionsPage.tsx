@@ -608,7 +608,7 @@ export default function PredictionsPage() {
     }
 
     const Icon = ({ type }: { type: string }) => {
-      if (type === "GOAL") return <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/15 text-xs">⚽</span>;
+      if (type === "GOAL") return <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-400/12 text-xs">⚽</span>;
       if (type === "CARD") return <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-500/15 text-xs">🟨</span>;
       if (type === "SUBSTITUTION") return <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-sky-500/15 text-xs">🔁</span>;
       return <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/[0.075] text-xs">•</span>;
@@ -1244,10 +1244,10 @@ export default function PredictionsPage() {
                     const statusCardClass = currentMatch.status === "FINISHED"
                       ? "border border-slate-400/25 bg-[linear-gradient(180deg,rgba(148,163,184,0.18),rgba(15,23,42,0.48))] shadow-[0_18px_40px_rgba(15,23,42,0.25)]"
                       : currentMatch.status === "IN_PROGRESS"
-                      ? "border border-emerald-300/30 bg-[linear-gradient(180deg,rgba(16,185,129,0.20),rgba(15,23,42,0.45))] shadow-[0_18px_40px_rgba(6,95,70,0.22)]"
+                      ? "border border-amber-300/30 bg-[linear-gradient(180deg,rgba(214,179,90,0.16),rgba(15,23,42,0.45))] shadow-[0_18px_40px_rgba(15,23,42,0.28)]"
                       : "border border-sky-300/25 bg-[linear-gradient(180deg,rgba(56,189,248,0.18),rgba(15,23,42,0.45))] shadow-[0_18px_40px_rgba(14,116,144,0.16)]";
                     const currentCardClass = exactHitCurrent
-                      ? "border border-emerald-300/35 bg-[linear-gradient(180deg,rgba(16,185,129,0.24),rgba(15,23,42,0.42))] shadow-[0_0_0_1px_rgba(16,185,129,0.14),0_18px_40px_rgba(6,95,70,0.30)]"
+                      ? "border border-amber-300/35 bg-[linear-gradient(180deg,rgba(214,179,90,0.20),rgba(15,23,42,0.42))] shadow-[0_0_0_1px_rgba(214,179,90,0.12),0_18px_40px_rgba(15,23,42,0.34)]"
                       : currentMatch.isJolly
                       ? "border border-amber-300/30 bg-[linear-gradient(180deg,rgba(251,191,36,0.20),rgba(15,23,42,0.45))] shadow-[0_0_0_1px_rgba(251,191,36,0.15),0_18px_40px_rgba(120,53,15,0.35)]"
                       : statusCardClass;
@@ -1297,7 +1297,7 @@ export default function PredictionsPage() {
                               Bloccata
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-2 rounded-xl border border-emerald-300/30 bg-emerald-400/10 px-3 py-2 text-xs font-semibold text-emerald-100">
+                            <span className="inline-flex items-center gap-2 rounded-xl border border-amber-300/30 bg-amber-400/10 px-3 py-2 text-xs font-semibold text-amber-100">
                               ⏳ Modificabile
                             </span>
                           )}
@@ -1479,7 +1479,7 @@ export default function PredictionsPage() {
                               Salvataggio…
                             </span>
                           ) : saveHint ? (
-                            <span className="inline-flex items-center gap-2 rounded-xl border border-emerald-300/20 bg-emerald-400/10 px-3 py-2">
+                            <span className="inline-flex items-center gap-2 rounded-xl border border-amber-300/20 bg-amber-400/10 px-3 py-2">
                               <Save className="h-4 w-4" aria-hidden="true" />
                               {saveHint}
                             </span>
@@ -1489,7 +1489,7 @@ export default function PredictionsPage() {
                       </div>
 
                       {currentMatch.status === "FINISHED" && currentPred ? (
-                        <div className={`mt-4 rounded-2xl border px-3 py-3 text-sm ${exactHitCurrent ? "border-emerald-300/30 bg-emerald-400/10" : hasMatchPointsCurrent ? "border-sky-300/20 bg-sky-400/10" : "border-amber-100/15 bg-white/[0.055]"}`}>
+                        <div className={`mt-4 rounded-2xl border px-3 py-3 text-sm ${exactHitCurrent ? "border-amber-300/30 bg-amber-400/10" : hasMatchPointsCurrent ? "border-sky-300/20 bg-sky-400/10" : "border-amber-100/15 bg-white/[0.055]"}`}>
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <div>
                               <div className="text-xs uppercase tracking-wide text-orange-50/70">Punti ottenuti</div>
@@ -1498,7 +1498,7 @@ export default function PredictionsPage() {
                               </div>
                             </div>
                             {exactHitCurrent ? (
-                              <span className="inline-flex items-center gap-2 rounded-xl border border-emerald-300/30 bg-emerald-400/10 px-3 py-2 text-xs font-semibold text-emerald-100">
+                              <span className="inline-flex items-center gap-2 rounded-xl border border-amber-300/30 bg-amber-400/10 px-3 py-2 text-xs font-semibold text-amber-100">
                                 ✅ Risultato esatto preso
                               </span>
                             ) : null}
@@ -1582,7 +1582,7 @@ export default function PredictionsPage() {
               Terminata
             </span>
           ) : matchdayStatus === "IN_PROGRESS" ? (
-            <span className="inline-flex items-center gap-2 rounded-xl border border-emerald-300/25 bg-emerald-400/10 px-3 py-2 text-sm font-semibold text-emerald-100">
+            <span className="inline-flex items-center gap-2 rounded-xl border border-amber-300/25 bg-amber-400/10 px-3 py-2 text-sm font-semibold text-amber-100">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <circle cx="12" cy="12" r="10" />
                 <path d="M10 8l6 4-6 4V8z" />
@@ -1603,7 +1603,7 @@ export default function PredictionsPage() {
           matchdayStatus === "FINISHED"
             ? "border-slate-500/25 bg-slate-500/10"
             : matchdayStatus === "IN_PROGRESS"
-            ? "border-emerald-400/25 bg-emerald-400/10"
+            ? "border-amber-400/25 bg-amber-400/10"
             : "border-sky-400/25 bg-sky-400/10";
 
         return (
@@ -1631,7 +1631,7 @@ export default function PredictionsPage() {
                     {matchdayStatus === "FINISHED" ? (
                       <span className="text-white font-semibold text-base">Tutte le partite sono terminate.</span>
                     ) : matchdayStatus === "IN_PROGRESS" ? (
-                      <span className="text-emerald-100 font-semibold text-base">Partite in corso.</span>
+                      <span className="text-amber-100 font-semibold text-base">Partite in corso.</span>
                     ) : (
                       <span className="text-sky-100 font-semibold text-base">Partite non ancora iniziate.</span>
                     )}
@@ -1700,7 +1700,7 @@ export default function PredictionsPage() {
                       m.status === "FINISHED"
                         ? "border-slate-400/25 bg-slate-400/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
                         : m.status === "IN_PROGRESS"
-                        ? "border-emerald-300/30 bg-emerald-400/12 shadow-[0_0_28px_rgba(16,185,129,0.08)]"
+                        ? "border-amber-300/30 bg-amber-400/12 shadow-[0_0_28px_rgba(214,179,90,0.08)]"
                         : "border-sky-300/25 bg-sky-400/12 shadow-[0_0_28px_rgba(56,189,248,0.06)]"
                     }`}>
                       <div className="flex items-center justify-between gap-2">
@@ -1806,7 +1806,7 @@ export default function PredictionsPage() {
                         <button
                           type="button"
                           onClick={() => openDetail(m.id)}
-                          className="mt-2 inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-500/15"
+                          className="mt-2 inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-slate-900 hover:bg-amber-400/12"
                           title="Seleziona marcatore"
                         >
                           ⚽ Seleziona marcatore
@@ -2020,7 +2020,7 @@ export default function PredictionsPage() {
                               const hit = Number.isFinite(pid) ? scorers.some((x: any) => Number(x?.id) === pid) : false;
                               if (detailData?.match?.status !== "FINISHED") return null;
                               return hit ? (
-                                <span className="ml-2 inline-flex items-center rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-extrabold text-emerald-800">+{detailData.pointsScorer} punti</span>
+                                <span className="ml-2 inline-flex items-center rounded-full bg-amber-400/12 px-2 py-0.5 text-[11px] font-extrabold text-slate-900">+{detailData.pointsScorer} punti</span>
                               ) : (
                                 <span className="ml-2 inline-flex items-center rounded-full bg-white/[0.075] px-2 py-0.5 text-[11px] font-semibold text-orange-50/60">0 punti</span>
                               );

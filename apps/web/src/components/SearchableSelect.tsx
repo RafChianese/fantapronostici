@@ -130,14 +130,14 @@ export function SearchableSelect({
                     onChange={(e) => setQuery(e.target.value)}
                     autoFocus
                     placeholder="Cerca…"
-                    className="w-full rounded-xl border border-amber-100/20 bg-slate-900 px-3 py-2 text-sm text-white placeholder:text-orange-50/60 outline-none focus:ring-2 focus:ring-lime-300/30"
+                    className="w-full rounded-xl border border-amber-100/20 bg-slate-900 px-3 py-2 text-sm text-white placeholder:text-orange-50/60 outline-none focus:ring-2 focus:ring-amber-300/30"
                   />
                 </div>
 
                 <div className="overflow-auto p-1" style={{ maxHeight: panel.maxHeight }}>
                   <button
                     type="button"
-                    className={`w-full rounded-xl px-3 py-2 text-left text-sm text-white hover:bg-emerald-900/55 ${value === "" ? "bg-emerald-900/65" : ""}`}
+                    className={`w-full rounded-xl px-3 py-2 text-left text-sm text-white hover:bg-slate-800 ${value === "" ? "bg-slate-700" : ""}`}
                     onClick={() => {
                       onChange("");
                       setOpen(false);
@@ -149,7 +149,7 @@ export function SearchableSelect({
                     <button
                       key={o.value}
                       type="button"
-                      className={`w-full rounded-xl px-3 py-2 text-left text-sm text-white hover:bg-emerald-900/55 ${o.value === value ? "bg-emerald-900/55" : ""}`}
+                      className={`w-full rounded-xl px-3 py-2 text-left text-sm text-white hover:bg-slate-800 ${o.value === value ? "bg-slate-800" : ""}`}
                       onClick={() => {
                         onChange(o.value);
                         setOpen(false);

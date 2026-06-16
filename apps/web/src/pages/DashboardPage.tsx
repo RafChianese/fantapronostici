@@ -699,7 +699,7 @@ const tournamentMeta = useMemo(() => {
             <div className="text-sm text-orange-50/70">Nessuna partita giocata o live disponibile.</div>
           )}
           <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-orange-50/70">
-            <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-400" /> Esatto</span>
+            <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-400" /> Esatto</span>
             <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-400" /> 1X2</span>
             <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-orange-400" /> Somma</span>
             <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-300" /> U/O 2.5</span>

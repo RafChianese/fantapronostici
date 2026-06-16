@@ -50,7 +50,7 @@ function LiveTabs({ tab, setTab }: { tab: "MATCHES" | "LEADERBOARD"; setTab: (ta
 function RankDelta({ value }: { value: number }) {
   if (value > 0) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300/20 bg-emerald-400/10 px-2 py-0.5 text-xs font-black text-emerald-200">
+      <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/20 bg-amber-400/10 px-2 py-0.5 text-xs font-black text-amber-200">
         <TrendingUp size={13} /> +{value}
       </span>
     );
@@ -173,7 +173,7 @@ export default function LivePage() {
                         <div className="mt-0.5 text-xs text-orange-50/70">
                           Ufficiale: <b className="text-white">{fmtPoints(row.officialPoints)}</b>
                           {" · "}
-                          Live: <b className={Number(row.liveDelta) >= 0 ? "text-emerald-200" : "text-rose-200"}>{Number(row.liveDelta) >= 0 ? "+" : ""}{fmtPoints(row.liveDelta)}</b>
+                          Live: <b className={Number(row.liveDelta) >= 0 ? "text-amber-200" : "text-rose-200"}>{Number(row.liveDelta) >= 0 ? "+" : ""}{fmtPoints(row.liveDelta)}</b>
                         </div>
                       </div>
                     </div>
@@ -211,7 +211,7 @@ export default function LivePage() {
                 >
                   <div className="mb-3 flex items-center justify-between gap-2">
                     <Badge>Giornata {match.matchday}</Badge>
-                    <span className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-2 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-emerald-200">
+                    <span className="rounded-full border border-amber-300/20 bg-amber-400/10 px-2 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-amber-200">
                       LIVE
                     </span>
                   </div>

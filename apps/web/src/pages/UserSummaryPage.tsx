@@ -478,7 +478,7 @@ export default function UserSummaryPage() {
                 const value = meta.valueKey === "playerName" ? pick.playerName : pick.teamName;
                 const points = Number(pick.pointsAwarded ?? 0);
                 return (
-                  <div key={pick.type} className={`rounded-2xl border p-4 ${points > 0 ? "border-emerald-500/30 bg-emerald-500/10" : "border-amber-100/15 bg-[#07150f]/80"}`}>
+                  <div key={pick.type} className={`rounded-2xl border p-4 ${points > 0 ? "border-amber-400/25 bg-amber-400/10" : "border-amber-100/15 bg-[#07150f]/80"}`}>
                     <div className="text-[11px] font-bold uppercase tracking-wide text-orange-50/60">{meta.label}</div>
                     <div className="mt-2 text-base font-extrabold text-white">{value || "—"}</div>
                     <div className="mt-2 inline-flex rounded-full border border-amber-100/15 bg-black/20 px-2 py-0.5 text-xs font-bold text-orange-50/85">
@@ -537,7 +537,7 @@ export default function UserSummaryPage() {
                   const exactHit = Number(it?.points?.exact ?? 0) > 0;
                   const status = getStatus(it);
                   const shell = exactHit
-                    ? "border-emerald-500/35 bg-emerald-500/10"
+                    ? "border-amber-400/30 bg-amber-400/10"
                     : pts > 0
                     ? "border-sky-500/25 bg-sky-500/10"
                     : "border-amber-100/15 bg-[#07150f]/80";
@@ -551,7 +551,7 @@ export default function UserSummaryPage() {
                         </div>
                         <div className="flex items-center gap-2">
                           <Badge tone={exactHit ? "green" : pts > 0 ? "green" : "gray"}>{pts} pt</Badge>
-                          {exactHit ? <span className="text-xs font-semibold text-emerald-300">Pronostico esatto ✅</span> : null}
+                          {exactHit ? <span className="text-xs font-semibold text-amber-300">Pronostico esatto ✅</span> : null}
                         </div>
                       </div>
 

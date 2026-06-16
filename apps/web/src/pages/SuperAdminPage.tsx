@@ -124,7 +124,7 @@ function MultiTeamSelect({
               type="checkbox"
               checked={selectedSet.has(team.id)}
               onChange={() => toggle(team.id)}
-              className="h-4 w-4 accent-emerald-500"
+              className="h-4 w-4 accent-amber-500"
             />
             <span>{team.name}</span>
           </label>
