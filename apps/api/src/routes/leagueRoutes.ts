@@ -8,6 +8,19 @@ export const leagueRouter = Router();
 type Winner = { userId: string; displayName: string; value: number };
 type FunRecord = Record<string, number> & { predictedCount: number; predictedGoals: number };
 
+
+async function getLeagueFinalizationSafe(leagueId: string) {
+  const delegate = (prisma as any).leagueFinalization;
+  if (!delegate?.findUnique) return null;
+  try {
+    return await delegate.findUnique({ where: { leagueId } });
+  } catch (error: any) {
+    // Deploy-safe fallback: if the migration was not applied yet, keep user pages alive.
+    if (["P2021", "P2022"].includes(error?.code)) return null;
+    throw error;
+  }
+}
+
 function outcome(h: number, a: number) {
   return h > a ? "H" : h < a ? "A" : "D";
 }
@@ -279,7 +292,7 @@ leagueRouter.get("/stats", requireAuth, requireLeagueMember, async (req: AuthedR
 leagueRouter.get("/final-result", requireAuth, requireLeagueMember, async (req: AuthedRequest, res) => {
   const leagueId = resolveLeagueId(req);
   if (!leagueId) return res.status(400).json({ message: "Missing leagueId" });
-  const finalization = await (prisma as any).leagueFinalization.findUnique({ where: { leagueId } });
+  const finalization = await getLeagueFinalizationSafe(leagueId);
   const { rows, monetization } = await computeLeaderboardRows(leagueId);
   const prizes = ((monetization as any)?.prizes || []).slice().sort((a: any, b: any) => Number(a.position) - Number(b.position));
   const prizeCount = prizes.length ? Math.max(...prizes.map((p: any) => Number(p.position || 0))) : 1;

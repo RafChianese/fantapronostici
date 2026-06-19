@@ -66,6 +66,28 @@ function pickLabel(pick: { teamName?: string | null; playerName?: string | null;
 
 adminRouter.use(requireAuth, requireLeagueAdmin);
 
+
+async function getLeagueFinalizationSafe(leagueId: string) {
+  const delegate = (prisma as any).leagueFinalization;
+  if (!delegate?.findUnique) return null;
+  try {
+    return await delegate.findUnique({ where: { leagueId } });
+  } catch (error: any) {
+    // Deploy-safe fallback: if the migration was not applied yet, do not crash admin pages.
+    if (["P2021", "P2022"].includes(error?.code)) return null;
+    throw error;
+  }
+}
+
+function getLeagueFinalizationDelegateOr503(res: any) {
+  const delegate = (prisma as any).leagueFinalization;
+  if (!delegate?.findUnique || !delegate?.upsert || !delegate?.deleteMany) {
+    res.status(503).json({ message: "Funzione fine torneo non ancora disponibile: esegui prisma generate/migrate sullo schema apps/api/prisma." });
+    return null;
+  }
+  return delegate;
+}
+
 function getLeagueOr400(req: any, res: any): string | null {
   const leagueId = resolveLeagueId(req);
   if (!leagueId) {
@@ -585,7 +607,7 @@ adminRouter.get("/tournament/final-result", async (req, res) => {
   const leagueId = getLeagueOr400(req, res);
   if (!leagueId) return;
 
-  const finalization = await (prisma as any).leagueFinalization.findUnique({ where: { leagueId } });
+  const finalization = await getLeagueFinalizationSafe(leagueId);
   const leaderboardRes: any = { rows: [] };
 
   const [members, predictions, competition, rules, settings, monetization] = await Promise.all([
@@ -654,7 +676,9 @@ adminRouter.post("/tournament/finalize", async (req: AuthedRequest, res) => {
     create: { leagueId, lockUntil: new Date(), isForceLocked: true },
     update: { isForceLocked: true },
   });
-  const row = await (prisma as any).leagueFinalization.upsert({
+  const finalizationDelegate = getLeagueFinalizationDelegateOr503(res);
+  if (!finalizationDelegate) return;
+  const row = await finalizationDelegate.upsert({
     where: { leagueId },
     create: { leagueId, finalizedByUserId: req.user?.id || null, message: typeof req.body?.message === "string" ? req.body.message : null },
     update: { finalizedAt: new Date(), finalizedByUserId: req.user?.id || null, message: typeof req.body?.message === "string" ? req.body.message : null },
@@ -665,7 +689,9 @@ adminRouter.post("/tournament/finalize", async (req: AuthedRequest, res) => {
 adminRouter.post("/tournament/reopen", async (req, res) => {
   const leagueId = getLeagueOr400(req, res);
   if (!leagueId) return;
-  await (prisma as any).leagueFinalization.deleteMany({ where: { leagueId } });
+  const finalizationDelegate = getLeagueFinalizationDelegateOr503(res);
+  if (!finalizationDelegate) return;
+  await finalizationDelegate.deleteMany({ where: { leagueId } });
   const settings = await prisma.setting.update({ where: { leagueId }, data: { isForceLocked: false } }).catch(() => null);
   res.json({ finalized: false, settings });
 });
