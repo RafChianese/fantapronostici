@@ -3,7 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { api, RegolamentoConfigResponse } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { generateRegolamentoTemplate } from "../lib/regolamento";
-import { Alert, Button, Card, CardContent, CardHeader, Spinner } from "../components/ui";
+import {
+  Alert,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  Spinner,
+} from "../components/ui";
 
 export default function RegolamentoPage() {
   const nav = useNavigate();
@@ -22,7 +29,8 @@ export default function RegolamentoPage() {
         const res = await api.regolamentoConfig();
         if (!cancelled) setData(res);
       } catch (e: any) {
-        if (!cancelled) setError(e?.message || "Errore nel caricamento del regolamento");
+        if (!cancelled)
+          setError(e?.message || "Errore nel caricamento del regolamento");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -46,10 +54,16 @@ export default function RegolamentoPage() {
     return generateRegolamentoTemplate(data.rules, data.settings);
   }, [data]);
 
+  const leagueName = data?.league?.name || "Lega selezionata";
+  const leagueCode = data?.league?.code ? ` (${data.league.code})` : "";
+
   if (!activeLeagueId) {
     return (
       <Card>
-        <CardHeader title="Regolamento" subtitle="Seleziona una lega per visualizzare il regolamento." />
+        <CardHeader
+          title="Regolamento"
+          subtitle="Seleziona una lega per visualizzare il regolamento."
+        />
         <CardContent className="space-y-4">
           <Alert>Non hai ancora selezionato una lega attiva.</Alert>
           <Button onClick={() => nav("/onboarding")}>Vai alle leghe</Button>
@@ -63,9 +77,17 @@ export default function RegolamentoPage() {
       <Card>
         <CardHeader
           title="Regolamento"
-          subtitle={data?.league ? `Lega: ${data.league.name} (${data.league.code})` : ""}
+          subtitle={data?.league ? `Lega: ${leagueName}${leagueCode}` : ""}
           right={
-            <Button variant="secondary" onClick={() => api.regolamentoConfig().then(setData).catch((e: any) => setError(e?.message || "Errore"))}>
+            <Button
+              variant="secondary"
+              onClick={() =>
+                api
+                  .regolamentoConfig()
+                  .then(setData)
+                  .catch((e: any) => setError(e?.message || "Errore"))
+              }
+            >
               Aggiorna
             </Button>
           }
@@ -83,7 +105,9 @@ export default function RegolamentoPage() {
           {!loading && !error && doc ? (
             <div className="space-y-6">
               <div className="space-y-2">
-                <div className="text-xl font-semibold text-white">{doc.title}</div>
+                <div className="text-xl font-semibold text-white">
+                  {doc.title} · {leagueName}
+                </div>
                 {doc.intro.map((p, idx) => (
                   <p key={idx} className="text-sm text-cyan-50/70">
                     {p}
@@ -92,32 +116,52 @@ export default function RegolamentoPage() {
               </div>
 
               {/* Quota & Premi */}
-              {data?.monetization && (Number(data.monetization.entryFeeCents || 0) > 0 || (data.monetization.prizes || []).length > 0) ? (
+              {data?.monetization &&
+              (Number(data.monetization.entryFeeCents || 0) > 0 ||
+                (data.monetization.prizes || []).length > 0) ? (
                 <section className="space-y-3 rounded-2xl border border-cyan-100/15 bg-cyan-950/45 p-4">
-                  <h3 className="text-base font-semibold text-white">Quota & Premi</h3>
+                  <h3 className="text-base font-semibold text-white">
+                    Quota & Premi
+                  </h3>
 
                   {Number(data.monetization.entryFeeCents || 0) > 0 ? (
                     <div className="flex items-center justify-between rounded-xl bg-cyan-100/5 px-3 py-2 ring-1 ring-slate-800/70">
                       <div>
-                        <div className="text-xs font-semibold text-cyan-100/60">Quota di partecipazione</div>
-                        <div className="text-sm font-semibold text-white">Importo per partecipante</div>
+                        <div className="text-xs font-semibold text-cyan-100/60">
+                          Quota di partecipazione
+                        </div>
+                        <div className="text-sm font-semibold text-white">
+                          Importo per partecipante
+                        </div>
                       </div>
                       <div className="text-lg font-extrabold text-white">
-                        €{(Number(data.monetization.entryFeeCents) / 100).toFixed(0)}
+                        €
+                        {(
+                          Number(data.monetization.entryFeeCents) / 100
+                        ).toFixed(0)}
                       </div>
                     </div>
                   ) : null}
 
                   {(data.monetization.prizes || []).length > 0 ? (
                     <div className="space-y-2">
-                      <div className="text-xs font-semibold text-cyan-100/60">Premi</div>
+                      <div className="text-xs font-semibold text-cyan-100/60">
+                        Premi
+                      </div>
                       <div className="space-y-2">
                         {[...data.monetization.prizes]
                           .sort((a, b) => a.position - b.position)
                           .map((p) => (
-                            <div key={p.position} className="flex items-center justify-between rounded-xl border border-cyan-100/15 bg-cyan-100/5 px-3 py-2">
-                              <div className="text-sm font-semibold text-white">Posizione {p.position}</div>
-                              <div className="text-sm font-extrabold text-white">€{(Number(p.amountCents) / 100).toFixed(0)}</div>
+                            <div
+                              key={p.position}
+                              className="flex items-center justify-between rounded-xl border border-cyan-100/15 bg-cyan-100/5 px-3 py-2"
+                            >
+                              <div className="text-sm font-semibold text-white">
+                                Posizione {p.position}
+                              </div>
+                              <div className="text-sm font-extrabold text-white">
+                                €{(Number(p.amountCents) / 100).toFixed(0)}
+                              </div>
                             </div>
                           ))}
                       </div>
@@ -128,7 +172,9 @@ export default function RegolamentoPage() {
 
               {doc.sections.map((s) => (
                 <section key={s.title} className="space-y-2">
-                  <h3 className="text-base font-semibold text-white">{s.title}</h3>
+                  <h3 className="text-base font-semibold text-white">
+                    {s.title}
+                  </h3>
                   {s.paragraphs?.map((p, idx) => (
                     <p key={idx} className="text-sm text-cyan-50/70">
                       {p}
@@ -146,7 +192,9 @@ export default function RegolamentoPage() {
             </div>
           ) : null}
 
-          {!loading && !error && !doc ? <Alert>Nessun dato disponibile.</Alert> : null}
+          {!loading && !error && !doc ? (
+            <Alert>Nessun dato disponibile.</Alert>
+          ) : null}
         </CardContent>
       </Card>
     </div>

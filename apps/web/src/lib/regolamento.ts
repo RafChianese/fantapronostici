@@ -31,7 +31,6 @@ export function formatDateTimeIt(iso: string): string {
   }).format(d);
 }
 
-
 type DecodedLockConfig = {
   mode: "LEGACY_MANUAL" | "AUTO";
   predictionMode: "TOURNAMENT_PRE" | "MATCHDAY_BY_MATCHDAY";
@@ -46,12 +45,19 @@ type DecodedLockConfig = {
  *    - day 2 => TOURNAMENT_PRE
  *    - hour/minute => lockOffsetMinutes (hour*60 + minute), clamped 0..120
  */
-export function decodeLockConfigFromLockUntil(lockUntilIso: string): DecodedLockConfig {
+export function decodeLockConfigFromLockUntil(
+  lockUntilIso: string,
+): DecodedLockConfig {
   const d = new Date(lockUntilIso);
   if (Number.isNaN(d.getTime()) || d.getUTCFullYear() !== 2099) {
-    return { mode: "LEGACY_MANUAL", predictionMode: "MATCHDAY_BY_MATCHDAY", lockOffsetMinutes: 30 };
+    return {
+      mode: "LEGACY_MANUAL",
+      predictionMode: "MATCHDAY_BY_MATCHDAY",
+      lockOffsetMinutes: 30,
+    };
   }
-  const predictionMode = d.getUTCDate() === 2 ? "TOURNAMENT_PRE" : "MATCHDAY_BY_MATCHDAY";
+  const predictionMode =
+    d.getUTCDate() === 2 ? "TOURNAMENT_PRE" : "MATCHDAY_BY_MATCHDAY";
   const mins = d.getUTCHours() * 60 + d.getUTCMinutes();
   const lockOffsetMinutes = Math.max(0, Math.min(120, mins));
   return { mode: "AUTO", predictionMode, lockOffsetMinutes };
@@ -65,26 +71,72 @@ function lockOffsetLabel(mins: number): string {
   return `${mins} minuti`;
 }
 
+function competitionTypeLabel(type?: LeagueRules["competitionType"]): string {
+  return type === "KNOCKOUT_CUP"
+    ? "Coppa a eliminazione diretta"
+    : "Campionato / classifica generale";
+}
+
+function euroLabel(cents: number): string {
+  return (Number(cents || 0) / 100).toFixed(2).replace(".00", "") + "€";
+}
+
 function mixedCombos(r: LeagueRules): string[] {
   const combos: string[] = [];
-  // Base categories are always available.
-  // MIXED decides which can stack with which.
-  if (r.allowOutcomeWithExact) combos.push("Esatto + 1X2");
-  if (r.allowSumGoalsWithExact) combos.push("Esatto + Somma gol");
-  if (r.allowSumGoalsWithOutcome) combos.push("1X2 + Somma gol");
-  // If all three are true, all can stack together.
-  if (r.allowOutcomeWithExact && r.allowSumGoalsWithExact && r.allowSumGoalsWithOutcome) {
-    combos.push("Esatto + 1X2 + Somma gol");
+  if (r.allowOutcomeWithExact) combos.push("Risultato esatto + Esito 1X2");
+  if (r.allowSumGoalsWithExact) combos.push("Risultato esatto + Somma gol");
+  if (r.allowSumGoalsWithOutcome) combos.push("Esito 1X2 + Somma gol");
+  if (
+    r.allowOutcomeWithExact &&
+    r.allowSumGoalsWithExact &&
+    r.allowSumGoalsWithOutcome
+  ) {
+    combos.push("Risultato esatto + Esito 1X2 + Somma gol");
   }
+
+  if (r.enableUnderOver25) {
+    if (r.allowUnderOverWithExact)
+      combos.push("Under/Over 2.5 + Risultato esatto");
+    if (r.allowUnderOverWithOutcome) combos.push("Under/Over 2.5 + Esito 1X2");
+    if (r.allowUnderOverWithSumGoals) combos.push("Under/Over 2.5 + Somma gol");
+    if (
+      !r.allowUnderOverWithExact &&
+      !r.allowUnderOverWithOutcome &&
+      !r.allowUnderOverWithSumGoals
+    ) {
+      combos.push(
+        "Under/Over 2.5 attivo ma non cumulabile con le altre categorie nella modalità mista",
+      );
+    }
+  }
+
   if (combos.length === 0) {
-    combos.push("Nessuna combinazione: viene preso solo il punteggio migliore tra le categorie disponibili");
+    combos.push(
+      "Nessuna combinazione cumulabile: viene assegnato solo il punteggio migliore tra le categorie prese",
+    );
   }
   return combos;
 }
 
-export function generateRegolamentoTemplate(rules: LeagueRules, settings: LeagueSettings): RegolamentoDoc {
+export function generateRegolamentoTemplate(
+  rules: LeagueRules,
+  settings: LeagueSettings,
+): RegolamentoDoc {
   const decodedLock = decodeLockConfigFromLockUntil(settings.lockUntil);
   const lockUntil = formatDateTimeIt(settings.lockUntil);
+
+  const competitionType = rules.competitionType || "LEAGUE";
+  const isKnockoutCup = competitionType === "KNOCKOUT_CUP";
+
+  const competitionTypeSection: RegolamentoSection = {
+    title: "Tipologia competizione",
+    paragraphs: [
+      `Questa lega è configurata come: ${competitionTypeLabel(competitionType)}.`,
+      isKnockoutCup
+        ? "Sono quindi disponibili anche le opzioni legate alle fasi finali, se abilitate dall'admin: quarti, semifinaliste e finaliste."
+        : "La competizione segue una classifica generale: sono disponibili i pronostici torneo base abilitati dall'admin, come vincitore e capocannoniere.",
+    ],
+  };
 
   const pointsBullets = [
     `Risultato esatto: +${rules.pointsExact} punti`,
@@ -104,29 +156,31 @@ export function generateRegolamentoTemplate(rules: LeagueRules, settings: League
 
   if (rules.scoringMode === "CUMULATIVE") {
     scoringModeSection.paragraphs!.push(
-      "La lega usa la modalità Cumulativa: tutte le categorie attive si sommano tra loro per ogni partita."
+      "La lega usa la modalità Cumulativa: tutte le categorie attive si sommano tra loro per ogni partita.",
     );
     scoringModeSection.bullets!.push(
-      "Esempio: Esatto + 1X2 + Somma gol (+ Under/Over se attivo)"
+      "Esempio: Esatto + 1X2 + Somma gol (+ Under/Over se attivo)",
     );
   } else if (rules.scoringMode === "BEST_ONLY") {
     scoringModeSection.paragraphs!.push(
-      "La lega usa la modalità Solo migliore: per ogni partita viene assegnato solo il punteggio più alto tra le categorie disponibili."
+      "La lega usa la modalità Solo migliore: per ogni partita viene assegnato solo il punteggio più alto tra le categorie disponibili.",
     );
     scoringModeSection.bullets!.push(
-      "Esempio: se prendi sia 1X2 che Somma gol, conta solo la categoria con più punti"
+      "Esempio: se prendi sia 1X2 che Somma gol, conta solo la categoria con più punti",
     );
   } else {
     scoringModeSection.paragraphs!.push(
-      "La lega usa la modalità Mista: alcune categorie possono sommarsi tra loro, in base alle combinazioni abilitate dall'admin."
+      "La lega usa la modalità Mista: alcune categorie possono sommarsi tra loro, in base alle combinazioni abilitate dall'admin.",
     );
     scoringModeSection.paragraphs!.push(
-      "Le combinazioni consentite in questa lega sono:"
+      "Le combinazioni consentite in questa lega sono:",
     );
     scoringModeSection.bullets!.push(...mixedCombos(rules));
-    scoringModeSection.paragraphs!.push(
-      "Nota: l'eventuale Under/Over 2.5 (se attivo) segue la stessa logica della modalità scelta per le categorie principali." 
-    );
+    if (rules.enableUnderOver25) {
+      scoringModeSection.paragraphs!.push(
+        "Per Under/Over 2.5 sono riportate sotto anche le combinazioni specifiche selezionate dall'admin.",
+      );
+    }
   }
 
   const underOverSection: RegolamentoSection = rules.enableUnderOver25
@@ -148,13 +202,16 @@ export function generateRegolamentoTemplate(rules: LeagueRules, settings: League
         paragraphs: [
           "È attivo il premio simbolico per la miglior giornata: a fine giornata viene registrato il partecipante con più punti in quella giornata.",
         ],
-        bullets: ["Il premio è puramente celebrativo (badge/record) e non modifica il calcolo dei punti."],
+        bullets: [
+          "Il premio è puramente celebrativo (badge/record) e non modifica il calcolo dei punti.",
+        ],
       }
     : {
         title: "Premio miglior giornata 🥇",
-        paragraphs: ["In questa lega il premio miglior giornata non è previsto."],
+        paragraphs: [
+          "In questa lega il premio miglior giornata non è previsto.",
+        ],
       };
-
 
   const jollySection: RegolamentoSection = (rules as any).enableJolly
     ? {
@@ -176,35 +233,71 @@ export function generateRegolamentoTemplate(rules: LeagueRules, settings: League
           "È attivo il pronostico ‘Marcatore’: se è disponibile la lista giocatori del match, puoi selezionare un giocatore che segnerà almeno un gol.",
           "La selezione è modificabile solo finché la partita non è iniziata e la finestra di lock lo consente.",
         ],
-        bullets: [`Punteggio bonus: +${Number((rules as any).pointsScorer ?? 3) || 3} punti`],
+        bullets: [
+          `Punteggio bonus: +${Number((rules as any).pointsScorer ?? 3) || 3} punti`,
+        ],
       }
     : {
         title: "Marcatore ⚽",
         paragraphs: ["In questa lega la regola ‘Marcatore’ non è attiva."],
       };
 
-  const competitionSection: RegolamentoSection = (rules as any).enableCompetitionWinner || (rules as any).enableCompetitionTopScorer
+  const competitionPickBullets: string[] = [];
+  if ((rules as any).enableCompetitionQuarterFinalist && isKnockoutCup) {
+    competitionPickBullets.push(
+      `Squadre qualificate ai quarti: +${Number((rules as any).pointsCompetitionQuarterFinalist ?? 8) || 8} punti per ogni scelta corretta`,
+    );
+  }
+  if ((rules as any).enableCompetitionSemiFinalist && isKnockoutCup) {
+    competitionPickBullets.push(
+      `Squadre qualificate alle semifinali: +${Number((rules as any).pointsCompetitionSemiFinalist ?? 10) || 10} punti per ogni scelta corretta`,
+    );
+  }
+  if ((rules as any).enableCompetitionFinalist && isKnockoutCup) {
+    competitionPickBullets.push(
+      `Squadre finaliste: +${Number((rules as any).pointsCompetitionFinalist ?? 12) || 12} punti per ogni scelta corretta`,
+    );
+  }
+  if ((rules as any).enableCompetitionWinner) {
+    competitionPickBullets.push(
+      `Vincitore competizione: +${Number((rules as any).pointsCompetitionWinner ?? 15) || 15} punti`,
+    );
+  }
+  if ((rules as any).enableCompetitionTopScorer) {
+    competitionPickBullets.push(
+      `Capocannoniere competizione: +${Number((rules as any).pointsCompetitionTopScorer ?? 12) || 12} punti`,
+    );
+  }
+
+  const competitionSection: RegolamentoSection = competitionPickBullets.length
     ? {
-        title: "Pronostici competizione 🏆",
+        title: "Pronostici torneo 🏆",
         paragraphs: [
-          "Sono attivi uno o più pronostici extra legati alla competizione.",
+          "Sono attivi i pronostici extra sulla competizione. I punti vengono assegnati quando gli esiti ufficiali vengono valorizzati dal SuperAdmin/admin secondo le regole della lega.",
           (settings as any).competitionPredictionsDeadline
             ? `Le scelte sono modificabili fino a: ${formatDateTimeIt(String((settings as any).competitionPredictionsDeadline))}.`
-            : "Le scelte sono modificabili fino all'inizio della competizione (deadline automatica).",
+            : "Le scelte sono modificabili fino alla deadline configurata o, in assenza di una deadline esplicita, fino al blocco previsto dall'applicativo.",
         ],
-        bullets: [
-          ...( (rules as any).enableCompetitionWinner ? [`Vincitore competizione: +${Number((rules as any).pointsCompetitionWinner ?? 15) || 15} punti`] : [] ),
-          ...( (rules as any).enableCompetitionTopScorer ? [`Capocannoniere competizione: +${Number((rules as any).pointsCompetitionTopScorer ?? 12) || 12} punti`] : [] ),
-        ],
+        bullets: competitionPickBullets,
       }
     : {
-        title: "Pronostici competizione 🏆",
-        paragraphs: ["In questa lega i pronostici competizione (vincitore/capocannoniere) non sono attivi."],
+        title: "Pronostici torneo 🏆",
+        paragraphs: [
+          "In questa lega non sono attivi pronostici torneo extra.",
+          isKnockoutCup
+            ? "La competizione è una coppa a eliminazione, ma l'admin non ha abilitato punteggi extra per quarti, semifinali, finaliste, vincitore o capocannoniere."
+            : "La competizione è configurata come campionato/classifica generale e l'admin non ha abilitato vincitore o capocannoniere.",
+        ],
       };
 
   const monetizationSection: RegolamentoSection | null = (() => {
-    const feeCents = typeof (rules as any).entryFeeCents === "number" ? (rules as any).entryFeeCents : null;
-    const prizes = Array.isArray((rules as any).prizesJson) ? (rules as any).prizesJson : null;
+    const feeCents =
+      typeof (rules as any).entryFeeCents === "number"
+        ? (rules as any).entryFeeCents
+        : null;
+    const prizes = Array.isArray((rules as any).prizesJson)
+      ? (rules as any).prizesJson
+      : null;
 
     if (!feeCents && (!prizes || prizes.length === 0)) return null;
 
@@ -212,8 +305,9 @@ export function generateRegolamentoTemplate(rules: LeagueRules, settings: League
     const bullets: string[] = [];
 
     if (feeCents) {
-      const feeEuro = (feeCents / 100).toFixed(2).replace(".00", "");
-      paragraphs.push(`La quota di partecipazione è pari a ${feeEuro}€.`);
+      paragraphs.push(
+        `La quota di partecipazione è pari a ${euroLabel(feeCents)}.`,
+      );
     } else {
       paragraphs.push("Non è prevista una quota di partecipazione.");
     }
@@ -224,8 +318,9 @@ export function generateRegolamentoTemplate(rules: LeagueRules, settings: League
         .slice()
         .sort((a: any, b: any) => Number(a.position) - Number(b.position))
         .forEach((p: any) => {
-          const euro = (Number(p.amountCents || 0) / 100).toFixed(2).replace(".00", "");
-          bullets.push(`${p.position}° posto: ${euro}€`);
+          bullets.push(
+            `${p.position}° posto: ${euroLabel(Number(p.amountCents || 0))}`,
+          );
         });
     }
 
@@ -251,7 +346,11 @@ export function generateRegolamentoTemplate(rules: LeagueRules, settings: League
     ],
   };
 
-  const tieBreakers = [settings.tieBreak1, settings.tieBreak2, settings.tieBreak3].map(criterionLabel);
+  const tieBreakers = [
+    settings.tieBreak1,
+    settings.tieBreak2,
+    settings.tieBreak3,
+  ].map(criterionLabel);
 
   const rankingSection: RegolamentoSection = {
     title: "Classifica e spareggi",
@@ -268,9 +367,12 @@ export function generateRegolamentoTemplate(rules: LeagueRules, settings: League
       "Se l'admin aggiorna punteggi o impostazioni, questa pagina si aggiorna di conseguenza.",
     ],
     sections: [
+      competitionTypeSection,
       {
         title: "Come si fanno i punti",
-        paragraphs: ["Per ogni partita puoi ottenere punti in base alle categorie attive:"],
+        paragraphs: [
+          "Per ogni partita puoi ottenere punti in base alle categorie attive:",
+        ],
         bullets: pointsBullets,
       },
       scoringModeSection,

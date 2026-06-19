@@ -211,83 +211,105 @@ function FunStatInfoButton({ stat }: { stat: FunStat }) {
   const winners = Array.isArray(stat.winners) ? stat.winners.slice(0, 5) : [];
 
   return (
-    <div className="relative shrink-0">
+    <>
       <button
         type="button"
         aria-label={`Info statistica ${stat.title}`}
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        onBlur={() => window.setTimeout(() => setOpen(false), 140)}
-        className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-amber-200/25 bg-black/25 text-amber-100 transition hover:bg-amber-200/15"
+        className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-amber-200/35 bg-slate-950 text-amber-100 shadow-sm transition hover:bg-amber-200/15"
       >
         <HelpCircle size={15} aria-hidden="true" />
       </button>
       {open ? (
-        <div className="absolute right-0 z-30 mt-2 w-[min(82vw,22rem)] rounded-2xl border border-amber-200/25 bg-slate-950/98 p-4 text-left shadow-2xl shadow-black/50 backdrop-blur-xl">
-          <div className="flex items-start gap-2">
-            <Info
-              className="mt-0.5 h-4 w-4 shrink-0 text-amber-200"
-              aria-hidden="true"
-            />
-            <div>
-              <div className="text-sm font-black text-white">{stat.title}</div>
-              <div className="mt-1 text-xs leading-relaxed text-cyan-50/70">
-                {info?.whyItMatters ||
-                  stat.description ||
-                  "Statistica calcolata sui pronostici della lega."}
-              </div>
-            </div>
-          </div>
-          <div className="mt-3 rounded-xl border border-cyan-100/10 bg-white/[0.04] p-3">
-            <div className="text-[11px] font-black uppercase tracking-wide text-cyan-100/60">
-              Come nasce
-            </div>
-            <div className="mt-1 text-xs leading-relaxed text-cyan-50/80">
-              {info?.formula || stat.formula || stat.description}
-            </div>
-          </div>
-          {info?.examples?.length ? (
-            <div className="mt-3">
-              <div className="text-[11px] font-black uppercase tracking-wide text-cyan-100/60">
-                Esempi
-              </div>
-              <div className="mt-1 flex flex-wrap gap-1.5">
-                {info.examples.map((example) => (
-                  <span
-                    key={example}
-                    className="rounded-full border border-cyan-100/10 bg-cyan-100/5 px-2 py-1 text-[11px] text-cyan-50/75"
-                  >
-                    {example}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ) : null}
-          {winners.length ? (
-            <div className="mt-3">
-              <div className="text-[11px] font-black uppercase tracking-wide text-cyan-100/60">
-                Podio statistica
-              </div>
-              <div className="mt-1 space-y-1.5">
-                {winners.map((winner, idx) => (
-                  <div
-                    key={`${winner.userId || winner.displayName}-${idx}`}
-                    className="flex items-center justify-between gap-3 rounded-xl bg-black/20 px-2.5 py-2 text-xs"
-                  >
-                    <span className="min-w-0 truncate text-cyan-50/85">
-                      {podiumMedal(idx)} {winner.displayName}
-                    </span>
-                    <span className="shrink-0 font-black text-amber-100">
-                      {winner.value}
-                    </span>
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/55 px-4 py-6 backdrop-blur-sm"
+          onMouseDown={() => setOpen(false)}
+          role="presentation"
+        >
+          <div
+            className="max-h-[82vh] w-full max-w-md overflow-y-auto rounded-3xl border border-amber-200/30 bg-slate-950 p-4 text-left shadow-2xl shadow-black/70 ring-1 ring-black/70"
+            onMouseDown={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Dettaglio statistica ${stat.title}`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-2">
+                <Info
+                  className="mt-0.5 h-4 w-4 shrink-0 text-amber-200"
+                  aria-hidden="true"
+                />
+                <div>
+                  <div className="text-sm font-black text-white">
+                    {stat.title}
                   </div>
-                ))}
+                  <div className="mt-1 text-xs leading-relaxed text-cyan-50/75">
+                    {info?.whyItMatters ||
+                      stat.description ||
+                      "Statistica calcolata sui pronostici della lega."}
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="rounded-full border border-cyan-100/15 bg-cyan-100/10 px-2 py-1 text-xs font-black text-white hover:bg-cyan-100/20"
+                onClick={() => setOpen(false)}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="mt-3 rounded-2xl border border-cyan-100/10 bg-slate-900 p-3">
+              <div className="text-[11px] font-black uppercase tracking-wide text-cyan-100/65">
+                Come nasce
+              </div>
+              <div className="mt-1 text-xs leading-relaxed text-cyan-50/85">
+                {info?.formula || stat.formula || stat.description}
               </div>
             </div>
-          ) : null}
+            {info?.examples?.length ? (
+              <div className="mt-3">
+                <div className="text-[11px] font-black uppercase tracking-wide text-cyan-100/65">
+                  Esempi
+                </div>
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  {info.examples.map((example) => (
+                    <span
+                      key={example}
+                      className="rounded-full border border-cyan-100/15 bg-slate-900 px-2 py-1 text-[11px] text-cyan-50/80"
+                    >
+                      {example}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            {winners.length ? (
+              <div className="mt-3">
+                <div className="text-[11px] font-black uppercase tracking-wide text-cyan-100/65">
+                  Podio statistica
+                </div>
+                <div className="mt-1 space-y-1.5">
+                  {winners.map((winner, idx) => (
+                    <div
+                      key={`${winner.userId || winner.displayName}-${idx}`}
+                      className="flex items-center justify-between gap-3 rounded-xl bg-slate-900 px-2.5 py-2 text-xs"
+                    >
+                      <span className="min-w-0 truncate text-cyan-50/90">
+                        {podiumMedal(idx)} {winner.displayName}
+                      </span>
+                      <span className="shrink-0 font-black text-amber-100">
+                        {winner.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
         </div>
       ) : null}
-    </div>
+    </>
   );
 }
 
@@ -323,26 +345,6 @@ function FunStatCard({ stat, icon }: { stat: FunStat; icon: React.ReactNode }) {
           {formatStatValue(stat)}
         </div>
       </div>
-    </div>
-  );
-}
-
-function ExperienceIdea({
-  icon,
-  title,
-  text,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  text: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-cyan-100/15 bg-cyan-950/30 p-4">
-      <div className="flex items-center gap-2 text-sm font-black text-white">
-        {icon}
-        {title}
-      </div>
-      <div className="mt-1 text-xs leading-relaxed text-cyan-50/65">{text}</div>
     </div>
   );
 }
@@ -870,51 +872,6 @@ export default function StatsPage() {
       {data.engagement ? (
         <EngagementPanel engagement={data.engagement} />
       ) : null}
-
-      <Card>
-        <CardHeader
-          title="Idee per rendere la lega più viva"
-          subtitle="Piccoli innesti di gamification che aumentano sfottò, rivalità e voglia di rientrare nell'app."
-        />
-        <CardContent>
-          <div className="grid gap-3 md:grid-cols-3">
-            <ExperienceIdea
-              icon={
-                <Medal
-                  size={16}
-                  className="text-amber-200"
-                  aria-hidden="true"
-                />
-              }
-              title="Badge stagionali"
-              text="Sblocchi automatici come Primo esatto, Re dei pareggi, Catenacciaro, Rimonta della giornata e Striscia positiva."
-            />
-            <ExperienceIdea
-              icon={
-                <Swords
-                  size={16}
-                  className="text-rose-200"
-                  aria-hidden="true"
-                />
-              }
-              title="Rivalità 1vs1"
-              text="Mostra la nemesi dell'utente: chi gli sta davanti di pochi punti, chi lo supera spesso o chi ha più risultati esatti."
-            />
-            <ExperienceIdea
-              icon={
-                <Activity
-                  size={16}
-                  className="text-cyan-200"
-                  aria-hidden="true"
-                />
-              }
-              title="Timeline lega"
-              text="Feed leggero con eventi tipo Raffaele entra in top 3, Antonio prende un esatto, Nicola perde il podio."
-            />
-          </div>
-        </CardContent>
-      </Card>
-
       {section === "distribution" ? (
         <Card>
           <CardHeader
