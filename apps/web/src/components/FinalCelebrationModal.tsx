@@ -39,7 +39,12 @@ export function FinalCelebrationModal({
       setOpen(true);
       return;
     }
-    const seen = localStorage.getItem(storageKey);
+    let seen = false;
+    try {
+      seen = localStorage.getItem(storageKey) === "1";
+    } catch {
+      seen = false;
+    }
     if (!seen) setOpen(true);
   }, [result?.finalized, myWinner?.userId, storageKey, forceOpen]);
 
@@ -47,7 +52,11 @@ export function FinalCelebrationModal({
 
   const prize = formatPrize(myWinner.prizeAmountCents);
   const close = () => {
-    if (storageKey) localStorage.setItem(storageKey, "1");
+    try {
+      if (storageKey) localStorage.setItem(storageKey, "1");
+    } catch {
+      // ignore storage errors in mobile WebView/private mode
+    }
     setOpen(false);
     onClose?.();
   };

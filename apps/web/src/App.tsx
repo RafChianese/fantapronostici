@@ -22,6 +22,7 @@ import RegolamentoPage from "./pages/RegolamentoPage";
 import LivePage from "./pages/LivePage";
 import CalendarPage from "./pages/CalendarPage";
 import { setToken } from "./lib/api";
+import { AppErrorBoundary } from "./components/AppErrorBoundary";
 
 function HashTokenBootstrapper() {
   const loc = useLocation();
@@ -131,6 +132,7 @@ export default function App() {
         <ToastProvider>
           <LockProvider>
             <Layout>
+            <AppErrorBoundary>
             <HashTokenBootstrapper />
             <Routes>
           <Route path="/login" element={<LoginPage />} />
@@ -252,6 +254,7 @@ export default function App() {
 
           <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
+            </AppErrorBoundary>
             </Layout>
           </LockProvider>
         </ToastProvider>

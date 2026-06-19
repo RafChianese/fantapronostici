@@ -273,3 +273,32 @@ select {
   10% { opacity: 1; }
   100% { transform: translate3d(24px, 115vh, 0) rotate(720deg); opacity: 0.1; }
 }
+
+/* Mobile WebView safety: keep decorative background behind the app content. */
+.tm-app-bg {
+  min-height: 100dvh;
+  isolation: isolate;
+}
+
+.tm-app-bg::before {
+  z-index: 0;
+}
+
+.tm-app-bg > header,
+.tm-app-bg > main,
+.tm-app-bg > nav {
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 767px) {
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
+  .tm-app-bg {
+    background-attachment: scroll;
+  }
+}

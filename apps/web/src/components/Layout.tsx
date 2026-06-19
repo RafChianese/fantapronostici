@@ -162,6 +162,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const isSuperAdmin = user?.globalRole === "SUPER_ADMIN";
 
   const mobileMainTabsVisible = !!user && !!activeMembership;
+  const isNarrowViewport = () => {
+    try {
+      return window.matchMedia?.("(max-width: 767px)")?.matches || window.innerWidth < 768;
+    } catch {
+      return false;
+    }
+  };
   const leagueTitle = activeMembership?.league?.name || "Fanta Pronostici";
   const inviteCode = activeMembership?.league?.code || "";
 
@@ -245,6 +252,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!user) {
+      setShowTour(null);
+      return;
+    }
+
+    if (isNarrowViewport()) {
       setShowTour(null);
       return;
     }
@@ -587,7 +599,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       ) : null}
 
       {/* Page body */}
-      <main className={`relative mx-auto max-w-6xl px-4 py-6 ${mobileMainTabsVisible ? "pb-24 md:pb-6" : ""}`}>
+      <main className={`relative z-[1] mx-auto max-w-6xl px-4 py-6 ${mobileMainTabsVisible ? "pb-24 md:pb-6" : ""}`}>
         {switchingLeague ? (
           <div className="absolute inset-0 z-20 flex items-start justify-center bg-cyan-950/35 pt-6 backdrop-blur-sm">
             <div className="flex items-center gap-3 rounded-2xl border border-cyan-100/15 bg-cyan-950/45 px-4 py-3 shadow-sm">
