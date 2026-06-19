@@ -42,7 +42,7 @@ export function AchievementsStrip({
       {achievements.map((a, i) => (
         <Badge
           key={i}
-          className="bg-amber-400/12 text-amber-200 px-3 py-1 rounded-full text-xs"
+          className="bg-emerald-500/15 text-emerald-200 px-3 py-1 rounded-full text-xs"
         >
           {a.label}
         </Badge>

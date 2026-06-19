@@ -43,7 +43,7 @@ export default function RulesPage() {
           {loading ? (
             <div className="flex items-center gap-3 p-4">
               <Spinner />
-              <div className="text-sm text-orange-50/70">Caricamento regolamento…</div>
+              <div className="text-sm text-cyan-50/70">Caricamento regolamento…</div>
             </div>
           ) : error ? (
             <div className="p-4">
@@ -55,7 +55,7 @@ export default function RulesPage() {
           ) : (
             <div className="p-4">
               {data?.league?.name ? (
-                <div className="mb-3 text-xs text-orange-50/60">Lega: {data.league.name}</div>
+                <div className="mb-3 text-xs text-cyan-100/60">Lega: {data.league.name}</div>
               ) : null}
               <pre className="whitespace-pre-wrap break-words text-sm leading-6 text-white">
                 {data?.regulation?.markdown || "Regolamento non disponibile"}
@@ -65,7 +65,7 @@ export default function RulesPage() {
         </Card>
       </div>
 
-      <div className="mt-3 text-xs text-orange-50/60">
+      <div className="mt-3 text-xs text-cyan-100/60">
         Il regolamento è generato automaticamente in base alle regole configurate dall’amministratore della lega.
       </div>
     </div>

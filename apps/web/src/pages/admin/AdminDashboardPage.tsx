@@ -1,8 +1,16 @@
 import React, { useEffect, useState } from "react";
-import { api, saveBlob } from "../../lib/api";
+import { api, saveBlob, FinalResultResponse } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { useLoading } from "../../lib/loading";
-import { Alert, Badge, Button, Card, CardContent, CardHeader, Input } from "../../components/ui";
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  Input,
+} from "../../components/ui";
 
 type Tab = "members" | "rules" | "customize";
 
@@ -12,16 +20,28 @@ export default function AdminDashboardPage() {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader title="Area admin" subtitle="Gestisci partecipanti e impostazioni" />
+        <CardHeader
+          title="Area admin"
+          subtitle="Gestisci partecipanti e impostazioni"
+        />
         <CardContent>
           <div data-tour="admin-tabs" className="flex flex-wrap gap-2">
-            <Button variant={tab === "members" ? "primary" : "ghost"} onClick={() => setTab("members")}>
+            <Button
+              variant={tab === "members" ? "primary" : "ghost"}
+              onClick={() => setTab("members")}
+            >
               Partecipanti
             </Button>
-            <Button variant={tab === "rules" ? "primary" : "ghost"} onClick={() => setTab("rules")}>
+            <Button
+              variant={tab === "rules" ? "primary" : "ghost"}
+              onClick={() => setTab("rules")}
+            >
               Regole & Lock
             </Button>
-            <Button variant={tab === "customize" ? "primary" : "ghost"} onClick={() => setTab("customize")}>
+            <Button
+              variant={tab === "customize" ? "primary" : "ghost"}
+              onClick={() => setTab("customize")}
+            >
               Personalizza
             </Button>
           </div>
@@ -30,7 +50,9 @@ export default function AdminDashboardPage() {
 
       {tab === "members" ? <MembersTab /> : null}
       {tab === "rules" ? <RulesTab /> : null}
-      {tab === "customize" ? <CustomizeTab goToRules={() => setTab("rules")} /> : null}
+      {tab === "customize" ? (
+        <CustomizeTab goToRules={() => setTab("rules")} />
+      ) : null}
     </div>
   );
 }
@@ -48,7 +70,9 @@ function CustomizeTab({ goToRules }: { goToRules: () => void }) {
   const { memberships, activeLeagueId, refreshMe } = useAuth();
   const { show, hide } = useLoading();
 
-  const activeMembership = memberships.find((m) => m.league?.id === activeLeagueId) as any;
+  const activeMembership = memberships.find(
+    (m) => m.league?.id === activeLeagueId,
+  ) as any;
   const league = activeMembership?.league;
 
   const [name, setName] = useState<string>(league?.name || "");
@@ -61,7 +85,8 @@ function CustomizeTab({ goToRules }: { goToRules: () => void }) {
     setName(league?.name || "");
   }, [league?.name]);
 
-  const logoSrc = league?.branding?.logoUrl || league?.branding?.logoDataUrl || null;
+  const logoSrc =
+    league?.branding?.logoUrl || league?.branding?.logoDataUrl || null;
 
   async function uploadLogo(file: File) {
     if (!league?.id) return;
@@ -104,7 +129,10 @@ function CustomizeTab({ goToRules }: { goToRules: () => void }) {
 
   return (
     <Card>
-      <CardHeader title="Personalizza la lega" subtitle="Logo e informazioni principali" />
+      <CardHeader
+        title="Personalizza la lega"
+        subtitle="Logo e informazioni principali"
+      />
       <CardContent className="space-y-6">
         {err ? <Alert tone="danger">{err}</Alert> : null}
         {ok ? <Alert tone="success">{ok}</Alert> : null}
@@ -112,12 +140,18 @@ function CustomizeTab({ goToRules }: { goToRules: () => void }) {
         <div className="flex flex-col items-center gap-3">
           <div className="relative">
             <div
-              className={`h-32 w-32 rounded-full border border-amber-100/15 bg-white/[0.075] overflow-hidden flex items-center justify-center ${logoBusy ? "opacity-70" : ""}`}
+              className={`h-32 w-32 rounded-full border border-cyan-100/15 bg-cyan-100/10 overflow-hidden flex items-center justify-center ${logoBusy ? "opacity-70" : ""}`}
             >
               {logoSrc ? (
-                <img src={logoSrc} alt="Logo lega" className="h-full w-full object-cover" />
+                <img
+                  src={logoSrc}
+                  alt="Logo lega"
+                  className="h-full w-full object-cover"
+                />
               ) : (
-                <div className="text-orange-50/60 font-semibold text-2xl">{(league.name || "L").slice(0, 2).toUpperCase()}</div>
+                <div className="text-cyan-100/60 font-semibold text-2xl">
+                  {(league.name || "L").slice(0, 2).toUpperCase()}
+                </div>
               )}
             </div>
 
@@ -139,19 +173,50 @@ function CustomizeTab({ goToRules }: { goToRules: () => void }) {
             <label
               htmlFor="league-logo-input"
               title={logoSrc ? "Modifica logo" : "Carica logo"}
-              className={`absolute -right-2 bottom-3 h-10 w-10 rounded-full border border-amber-100/15 bg-[#07150f]/90 shadow-sm flex items-center justify-center cursor-pointer hover:shadow transition ${logoBusy ? "pointer-events-none opacity-60" : ""}`}
+              className={`absolute -right-2 bottom-3 h-10 w-10 rounded-full border border-cyan-100/15 bg-cyan-950/45 shadow-sm flex items-center justify-center cursor-pointer hover:shadow transition ${logoBusy ? "pointer-events-none opacity-60" : ""}`}
             >
               {logoSrc ? (
                 // pencil
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 20h9" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                  <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M12 20h9"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5Z"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinejoin="round"
+                  />
                 </svg>
               ) : (
                 // camera
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M9 4L7.5 6H5a3 3 0 0 0-3 3v8a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3V9a3 3 0 0 0-3-3h-2.5L15 4H9Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
-                  <path d="M12 18a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" stroke="currentColor" strokeWidth="1.8"/>
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M9 4L7.5 6H5a3 3 0 0 0-3 3v8a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3V9a3 3 0 0 0-3-3h-2.5L15 4H9Z"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M12 18a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                  />
                 </svg>
               )}
             </label>
@@ -162,22 +227,43 @@ function CustomizeTab({ goToRules }: { goToRules: () => void }) {
                 type="button"
                 title="Rimuovi logo"
                 onClick={removeLogo}
-                className={`absolute -left-2 bottom-3 h-10 w-10 rounded-full border border-amber-100/15 bg-[#07150f]/90 shadow-sm flex items-center justify-center hover:shadow transition ${logoBusy ? "pointer-events-none opacity-60" : ""}`}
+                className={`absolute -left-2 bottom-3 h-10 w-10 rounded-full border border-cyan-100/15 bg-cyan-950/45 shadow-sm flex items-center justify-center hover:shadow transition ${logoBusy ? "pointer-events-none opacity-60" : ""}`}
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M6 6l12 12M18 6L6 18"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
                 </svg>
               </button>
             ) : null}
           </div>
-          <div className="text-xs text-orange-50/60">PNG/JPG/WebP • max ~1.5MB • salvataggio automatico</div>
+          <div className="text-xs text-cyan-100/60">
+            PNG/JPG/WebP • max ~1.5MB • salvataggio automatico
+          </div>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-          <Input label="Nome lega" value={name} onChange={(e) => setName(e.target.value)} />
+          <Input
+            label="Nome lega"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
           <Button
             className="sm:mb-[2px]"
-            disabled={savingName || name.trim().length < 2 || name.trim() === league.name}
+            disabled={
+              savingName ||
+              name.trim().length < 2 ||
+              name.trim() === league.name
+            }
             onClick={async () => {
               setErr("");
               setOk("");
@@ -217,7 +303,9 @@ function MembersTab() {
   const [items, setItems] = useState<any[]>([]);
   const [exporting, setExporting] = useState(false);
 
-  const approvedAdminsCount = items.filter((m) => m.status === "APPROVED" && m.role === "ADMIN").length;
+  const approvedAdminsCount = items.filter(
+    (m) => m.status === "APPROVED" && m.role === "ADMIN",
+  ).length;
 
   async function exportPredictions() {
     setErr("");
@@ -225,7 +313,10 @@ function MembersTab() {
     show();
     try {
       const blob = await api.adminExportPredictionsCsv();
-      saveBlob(blob, `pronostici-lega-${new Date().toISOString().slice(0, 10)}.csv`);
+      saveBlob(
+        blob,
+        `pronostici-lega-${new Date().toISOString().slice(0, 10)}.csv`,
+      );
     } catch (e: any) {
       setErr(e?.message || "Errore durante l'esportazione dei pronostici");
     } finally {
@@ -257,133 +348,165 @@ function MembersTab() {
 
   return (
     <Card>
-      <CardHeader title="Partecipanti della lega" subtitle="Approva richieste, assegna admin ed esporta i pronostici" />
+      <CardHeader
+        title="Partecipanti della lega"
+        subtitle="Approva richieste, assegna admin ed esporta i pronostici"
+      />
       <CardContent>
         {err ? <Alert tone="danger">{err}</Alert> : null}
-        <div className="mb-4 flex flex-col gap-2 rounded-xl border border-amber-100/15 bg-white/[0.055] p-4 md:flex-row md:items-center md:justify-between">
+        <div className="mb-4 flex flex-col gap-2 rounded-xl border border-cyan-100/15 bg-cyan-100/5 p-4 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="font-semibold text-white">Export pronostici</div>
-            <div className="text-sm text-orange-50/60">Scarica una griglia CSV apribile con Excel: utenti sulle righe, match e pronostici torneo sulle colonne.</div>
+            <div className="text-sm text-cyan-100/60">
+              Scarica una griglia CSV apribile con Excel: utenti sulle righe,
+              match e pronostici torneo sulle colonne.
+            </div>
           </div>
-          <Button variant="primary" onClick={exportPredictions} disabled={exporting}>
+          <Button
+            variant="primary"
+            onClick={exportPredictions}
+            disabled={exporting}
+          >
             {exporting ? "Esporto..." : "Esporta CSV"}
           </Button>
         </div>
         <div className="space-y-2">
-          {items.map((m) => (
+          {items.map((m) =>
             (() => {
               const isSelf = !!user && m.user?.id === user.id;
-              const isOnlyAdminSelf = isSelf && m.status === "APPROVED" && m.role === "ADMIN" && approvedAdminsCount === 1;
+              const isOnlyAdminSelf =
+                isSelf &&
+                m.status === "APPROVED" &&
+                m.role === "ADMIN" &&
+                approvedAdminsCount === 1;
               return (
-            <div
-              key={m.id}
-              className="flex flex-col gap-2 rounded-xl border border-amber-100/15 p-4 md:flex-row md:items-center md:justify-between"
-            >
-              <div>
-                <div className="flex items-center gap-2">
-                  <div className="font-medium">{m.user.displayName}</div>
-                  {m.status === "APPROVED" ? (
-                    m.predictionCheck?.required ? (
-                      m.predictionCheck.complete ? (
-                        <span className="inline-flex items-center justify-center rounded-full bg-amber-400/12 px-2 py-0.5 text-xs font-extrabold text-amber-200" title="Ha inserito tutti i pronostici delle giornate pronosticabili">
-                          ✔
-                        </span>
+                <div
+                  key={m.id}
+                  className="flex flex-col gap-2 rounded-xl border border-cyan-100/15 p-4 md:flex-row md:items-center md:justify-between"
+                >
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <div className="font-medium">{m.user.displayName}</div>
+                      {m.status === "APPROVED" ? (
+                        m.predictionCheck?.required ? (
+                          m.predictionCheck.complete ? (
+                            <span
+                              className="inline-flex items-center justify-center rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-extrabold text-emerald-200"
+                              title="Ha inserito tutti i pronostici delle giornate pronosticabili"
+                            >
+                              ✔
+                            </span>
+                          ) : (
+                            <span
+                              className="inline-flex items-center justify-center rounded-full bg-rose-500/15 px-2 py-0.5 text-xs font-extrabold text-rose-200"
+                              title={`Pronostici mancanti: ${m.predictionCheck.missing}`}
+                            >
+                              ⚠
+                            </span>
+                          )
+                        ) : (
+                          <span
+                            className="inline-flex items-center justify-center rounded-full bg-cyan-100/10 px-2 py-0.5 text-xs font-extrabold text-cyan-100/60"
+                            title="Nessuna giornata pronosticabile al momento"
+                          >
+                            —
+                          </span>
+                        )
+                      ) : null}
+                    </div>
+                    <div className="text-xs text-cyan-100/60">
+                      {m.user.email}
+                    </div>
+                    <div className="mt-1 flex gap-2">
+                      <Badge>{m.status}</Badge>
+                      <Badge>{m.role}</Badge>
+                    </div>
+                    {m.status === "APPROVED" ? (
+                      m.predictionCheck?.required ? (
+                        !m.predictionCheck.complete ? (
+                          <div className="mt-1 text-xs font-semibold text-rose-200">
+                            Mancano {m.predictionCheck.missing} pronostici (su{" "}
+                            {m.predictionCheck.required})
+                          </div>
+                        ) : (
+                          <div className="mt-1 text-xs font-semibold text-emerald-200">
+                            Pronostici completi ({m.predictionCheck.done}/
+                            {m.predictionCheck.required})
+                          </div>
+                        )
                       ) : (
-                        <span className="inline-flex items-center justify-center rounded-full bg-rose-500/15 px-2 py-0.5 text-xs font-extrabold text-rose-200" title={`Pronostici mancanti: ${m.predictionCheck.missing}`}>
-                          ⚠
-                        </span>
+                        <div className="mt-1 text-xs font-semibold text-cyan-100/60">
+                          Nessuna giornata pronosticabile
+                        </div>
                       )
-                    ) : (
-                      <span className="inline-flex items-center justify-center rounded-full bg-white/[0.075] px-2 py-0.5 text-xs font-extrabold text-orange-50/60" title="Nessuna giornata pronosticabile al momento">
-                        —
-                      </span>
-                    )
-                  ) : null}
-                </div>
-                <div className="text-xs text-orange-50/60">{m.user.email}</div>
-                <div className="mt-1 flex gap-2">
-                  <Badge>{m.status}</Badge>
-                  <Badge>{m.role}</Badge>
-                </div>
-                {m.status === "APPROVED" ? (
-                  m.predictionCheck?.required ? (
-                    !m.predictionCheck.complete ? (
-                      <div className="mt-1 text-xs font-semibold text-rose-200">
-                        Mancano {m.predictionCheck.missing} pronostici (su {m.predictionCheck.required})
-                      </div>
-                    ) : (
-                      <div className="mt-1 text-xs font-semibold text-amber-200">
-                        Pronostici completi ({m.predictionCheck.done}/{m.predictionCheck.required})
-                      </div>
-                    )
-                  ) : (
-                    <div className="mt-1 text-xs font-semibold text-orange-50/60">Nessuna giornata pronosticabile</div>
-                  )
-                ) : null}
-              </div>
+                    ) : null}
+                  </div>
 
-              <div className="flex flex-wrap gap-2">
-                {m.status !== "APPROVED" ? (
-                  <Button
-                    onClick={async () => {
-                      await api.adminPatchMember(m.id, { status: "APPROVED" });
-                      load();
-                    }}
-                  >
-                    Approva
-                  </Button>
-                ) : null}
-
-                {!isOnlyAdminSelf && m.status !== "REJECTED" ? (
-                  <Button
-                    variant="ghost"
-                    onClick={async () => {
-                      await api.adminPatchMember(m.id, { status: "REJECTED" });
-                      load();
-                    }}
-                  >
-                    Rifiuta
-                  </Button>
-                ) : null}
-
-                {m.role !== "ADMIN" ? (
-                  <Button
-                    variant="ghost"
-                    onClick={async () => {
-                      await api.adminPatchMember(m.id, { role: "ADMIN" });
-                      load();
-                    }}
-                  >
-                    Rendi Admin
-                  </Button>
-                ) : (
-                  !isOnlyAdminSelf ? (
-                    <Button
-                      variant="ghost"
-                      onClick={async () => {
-                        try {
-                          await api.adminPatchMember(m.id, { role: "MEMBER" });
+                  <div className="flex flex-wrap gap-2">
+                    {m.status !== "APPROVED" ? (
+                      <Button
+                        onClick={async () => {
+                          await api.adminPatchMember(m.id, {
+                            status: "APPROVED",
+                          });
                           load();
-                        } catch (e: any) {
-                          setErr(e?.message || "Modifica non possibile");
-                        }
-                      }}
-                    >
-                      Rendi Member
-                    </Button>
-                  ) : null
-                )}
-              </div>
-            </div>
+                        }}
+                      >
+                        Approva
+                      </Button>
+                    ) : null}
+
+                    {!isOnlyAdminSelf && m.status !== "REJECTED" ? (
+                      <Button
+                        variant="ghost"
+                        onClick={async () => {
+                          await api.adminPatchMember(m.id, {
+                            status: "REJECTED",
+                          });
+                          load();
+                        }}
+                      >
+                        Rifiuta
+                      </Button>
+                    ) : null}
+
+                    {m.role !== "ADMIN" ? (
+                      <Button
+                        variant="ghost"
+                        onClick={async () => {
+                          await api.adminPatchMember(m.id, { role: "ADMIN" });
+                          load();
+                        }}
+                      >
+                        Rendi Admin
+                      </Button>
+                    ) : !isOnlyAdminSelf ? (
+                      <Button
+                        variant="ghost"
+                        onClick={async () => {
+                          try {
+                            await api.adminPatchMember(m.id, {
+                              role: "MEMBER",
+                            });
+                            load();
+                          } catch (e: any) {
+                            setErr(e?.message || "Modifica non possibile");
+                          }
+                        }}
+                      >
+                        Rendi Member
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
               );
-            })()
-          ))}
+            })(),
+          )}
         </div>
       </CardContent>
     </Card>
   );
 }
-
 
 function RulesTab() {
   const { show, hide } = useLoading();
@@ -394,13 +517,22 @@ function RulesTab() {
   const [settings, setSettings] = useState<any>(null);
   const [matches, setMatches] = useState<any[]>([]);
   const [jolly, setJolly] = useState<any>(null);
+  const [finalResult, setFinalResult] = useState<FinalResultResponse | null>(
+    null,
+  );
 
   async function load() {
     show();
     setLoading(true);
     setErr("");
     try {
-      const [r1, r2, r3, r4] = await Promise.all([api.adminRules(), api.adminSettings(), api.matches(), api.adminJolly()]);
+      const [r1, r2, r3, r4, r5] = await Promise.all([
+        api.adminRules(),
+        api.adminSettings(),
+        api.matches(),
+        api.adminJolly(),
+        api.adminTournamentFinalResult().catch(() => null),
+      ]);
       // TEMP: disable scorer picks (paid lineup API not available).
       setRules({
         ...(r1.rules || {}),
@@ -409,6 +541,7 @@ function RulesTab() {
       setSettings(r2.settings);
       setMatches(r3.matches || []);
       setJolly(r4);
+      if (r5) setFinalResult(r5 as FinalResultResponse);
     } catch (e: any) {
       setErr(e?.message || "Errore");
     } finally {
@@ -424,11 +557,14 @@ function RulesTab() {
 
   if (loading) return null;
 
-  const prizes: any[] = Array.isArray(rules?.prizesJson) ? rules.prizesJson : [];
+  const prizes: any[] = Array.isArray(rules?.prizesJson)
+    ? rules.prizesJson
+    : [];
 
   const entryFeeEuro = (() => {
     const cents = rules?.entryFeeCents;
-    if (typeof cents !== "number" || !Number.isFinite(cents) || cents <= 0) return "";
+    if (typeof cents !== "number" || !Number.isFinite(cents) || cents <= 0)
+      return "";
     return String(Math.round(cents / 100));
   })();
 
@@ -443,34 +579,52 @@ function RulesTab() {
           <CardHeader title="Regole" subtitle="Punteggi e opzioni della lega" />
           <CardContent className="space-y-5">
             {/* Base scoring */}
-            <Section title="Punteggi base" hint="Imposta i punti assegnati per risultato esatto, esito (1X2) e somma gol. Questi valori vengono usati per calcolare la classifica.">
+            <Section
+              title="Punteggi base"
+              hint="Imposta i punti assegnati per risultato esatto, esito (1X2) e somma gol. Questi valori vengono usati per calcolare la classifica."
+            >
               <div className="grid gap-3 sm:grid-cols-3">
                 <Input
                   label="Esatto"
                   type="number"
                   step="0.5"
                   value={String(rules?.pointsExact ?? 0)}
-                  onChange={(e) => setRules({ ...rules, pointsExact: Number(e.target.value) })}
+                  onChange={(e) =>
+                    setRules({ ...rules, pointsExact: Number(e.target.value) })
+                  }
                 />
                 <Input
                   label="Esito (1X2)"
                   type="number"
                   step="0.5"
                   value={String(rules?.pointsOutcome ?? 0)}
-                  onChange={(e) => setRules({ ...rules, pointsOutcome: Number(e.target.value) })}
+                  onChange={(e) =>
+                    setRules({
+                      ...rules,
+                      pointsOutcome: Number(e.target.value),
+                    })
+                  }
                 />
                 <Input
                   label="Somma gol"
                   type="number"
                   step="0.5"
                   value={String(rules?.pointsSumGoals ?? 0)}
-                  onChange={(e) => setRules({ ...rules, pointsSumGoals: Number(e.target.value) })}
+                  onChange={(e) =>
+                    setRules({
+                      ...rules,
+                      pointsSumGoals: Number(e.target.value),
+                    })
+                  }
                 />
               </div>
             </Section>
 
             {/* Extra features */}
-            <Section title="Funzioni extra" hint="Attiva opzioni aggiuntive come Under/Over 2.5 e premio giornata. Puoi anche impostare i punti relativi.">
+            <Section
+              title="Funzioni extra"
+              hint="Attiva opzioni aggiuntive come Under/Over 2.5 e premio giornata. Puoi anche impostare i punti relativi."
+            >
               <div className="space-y-3">
                 <SwitchRow
                   label="Abilita Under/Over 2.5"
@@ -485,7 +639,12 @@ function RulesTab() {
                     step="0.5"
                     disabled={!rules?.enableUnderOver25}
                     value={String(rules?.pointsUnderOver25 ?? 1)}
-                    onChange={(e) => setRules({ ...rules, pointsUnderOver25: Number(e.target.value) })}
+                    onChange={(e) =>
+                      setRules({
+                        ...rules,
+                        pointsUnderOver25: Number(e.target.value),
+                      })
+                    }
                   />
                 </div>
 
@@ -493,7 +652,9 @@ function RulesTab() {
                   label="Abilita premio giornata (🥇)"
                   hint="Assegna un badge/premio a chi ottiene il punteggio migliore nella singola giornata (se abilitato)."
                   checked={!!rules?.enableMatchdayAwards}
-                  onChange={(v) => setRules({ ...rules, enableMatchdayAwards: v })}
+                  onChange={(v) =>
+                    setRules({ ...rules, enableMatchdayAwards: v })
+                  }
                 />
 
                 <SwitchRow
@@ -508,7 +669,12 @@ function RulesTab() {
                     type="number"
                     disabled={!rules?.enableJolly}
                     value={String(rules?.jollyMultiplier ?? 2)}
-                    onChange={(e) => setRules({ ...rules, jollyMultiplier: Number(e.target.value) })}
+                    onChange={(e) =>
+                      setRules({
+                        ...rules,
+                        jollyMultiplier: Number(e.target.value),
+                      })
+                    }
                   />
                 </div>
 
@@ -540,16 +706,25 @@ function RulesTab() {
                   label="Pronostico: Vincitore competizione (🏆)"
                   hint="Permette agli utenti di scegliere la squadra vincitrice della competizione entro la deadline."
                   checked={!!(rules as any)?.enableCompetitionWinner}
-                  onChange={(v) => setRules({ ...(rules as any), enableCompetitionWinner: v })}
+                  onChange={(v) =>
+                    setRules({ ...(rules as any), enableCompetitionWinner: v })
+                  }
                 />
                 <div className="pl-1">
                   <Input
                     label="Punti Vincitore competizione"
                     type="number"
                     step="0.5"
-                    disabled={!((rules as any)?.enableCompetitionWinner)}
-                    value={String((rules as any)?.pointsCompetitionWinner ?? 15)}
-                    onChange={(e) => setRules({ ...(rules as any), pointsCompetitionWinner: Number(e.target.value) })}
+                    disabled={!(rules as any)?.enableCompetitionWinner}
+                    value={String(
+                      (rules as any)?.pointsCompetitionWinner ?? 15,
+                    )}
+                    onChange={(e) =>
+                      setRules({
+                        ...(rules as any),
+                        pointsCompetitionWinner: Number(e.target.value),
+                      })
+                    }
                   />
                 </div>
 
@@ -557,144 +732,260 @@ function RulesTab() {
                   label="Pronostico: Capocannoniere competizione (🥅)"
                   hint="Permette agli utenti di scegliere il capocannoniere finale entro la deadline."
                   checked={!!(rules as any)?.enableCompetitionTopScorer}
-                  onChange={(v) => setRules({ ...(rules as any), enableCompetitionTopScorer: v })}
+                  onChange={(v) =>
+                    setRules({
+                      ...(rules as any),
+                      enableCompetitionTopScorer: v,
+                    })
+                  }
                 />
                 <div className="pl-1">
                   <Input
                     label="Punti Capocannoniere competizione"
                     type="number"
                     step="0.5"
-                    disabled={!((rules as any)?.enableCompetitionTopScorer)}
-                    value={String((rules as any)?.pointsCompetitionTopScorer ?? 12)}
-                    onChange={(e) => setRules({ ...(rules as any), pointsCompetitionTopScorer: Number(e.target.value) })}
+                    disabled={!(rules as any)?.enableCompetitionTopScorer}
+                    value={String(
+                      (rules as any)?.pointsCompetitionTopScorer ?? 12,
+                    )}
+                    onChange={(e) =>
+                      setRules({
+                        ...(rules as any),
+                        pointsCompetitionTopScorer: Number(e.target.value),
+                      })
+                    }
                   />
                 </div>
 
                 {(rules as any)?.competitionType === "KNOCKOUT_CUP" ? (
                   <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-3 space-y-3">
-                    <div className="text-sm font-extrabold text-amber-100">Pronostici fasi eliminatorie</div>
-                    <div className="text-xs text-orange-50/60">Disponibile solo per competizioni configurate dal SuperAdmin come coppa/fasi a eliminazione.</div>
+                    <div className="text-sm font-extrabold text-amber-100">
+                      Pronostici fasi eliminatorie
+                    </div>
+                    <div className="text-xs text-cyan-100/60">
+                      Disponibile solo per competizioni configurate dal
+                      SuperAdmin come coppa/fasi a eliminazione.
+                    </div>
                     <SwitchRow
                       label="Pronostico: squadra che arriva ai quarti"
                       hint="L'utente sceglie una squadra tra quelle disponibili. Può essere la stessa scelta anche per semifinale/finale."
-                      checked={!!(rules as any)?.enableCompetitionQuarterFinalist}
-                      onChange={(v) => setRules({ ...(rules as any), enableCompetitionQuarterFinalist: v })}
+                      checked={
+                        !!(rules as any)?.enableCompetitionQuarterFinalist
+                      }
+                      onChange={(v) =>
+                        setRules({
+                          ...(rules as any),
+                          enableCompetitionQuarterFinalist: v,
+                        })
+                      }
                     />
                     <Input
                       label="Punti qualificata ai quarti"
                       type="number"
                       step="0.5"
-                      disabled={!((rules as any)?.enableCompetitionQuarterFinalist)}
-                      value={String((rules as any)?.pointsCompetitionQuarterFinalist ?? 8)}
-                      onChange={(e) => setRules({ ...(rules as any), pointsCompetitionQuarterFinalist: Number(e.target.value) })}
+                      disabled={
+                        !(rules as any)?.enableCompetitionQuarterFinalist
+                      }
+                      value={String(
+                        (rules as any)?.pointsCompetitionQuarterFinalist ?? 8,
+                      )}
+                      onChange={(e) =>
+                        setRules({
+                          ...(rules as any),
+                          pointsCompetitionQuarterFinalist: Number(
+                            e.target.value,
+                          ),
+                        })
+                      }
                     />
                     <SwitchRow
                       label="Pronostico: squadra che arriva in semifinale"
                       checked={!!(rules as any)?.enableCompetitionSemiFinalist}
-                      onChange={(v) => setRules({ ...(rules as any), enableCompetitionSemiFinalist: v })}
+                      onChange={(v) =>
+                        setRules({
+                          ...(rules as any),
+                          enableCompetitionSemiFinalist: v,
+                        })
+                      }
                     />
                     <Input
                       label="Punti qualificata in semifinale"
                       type="number"
                       step="0.5"
-                      disabled={!((rules as any)?.enableCompetitionSemiFinalist)}
-                      value={String((rules as any)?.pointsCompetitionSemiFinalist ?? 10)}
-                      onChange={(e) => setRules({ ...(rules as any), pointsCompetitionSemiFinalist: Number(e.target.value) })}
+                      disabled={!(rules as any)?.enableCompetitionSemiFinalist}
+                      value={String(
+                        (rules as any)?.pointsCompetitionSemiFinalist ?? 10,
+                      )}
+                      onChange={(e) =>
+                        setRules({
+                          ...(rules as any),
+                          pointsCompetitionSemiFinalist: Number(e.target.value),
+                        })
+                      }
                     />
                     <SwitchRow
                       label="Pronostico: squadra che arriva in finale"
                       checked={!!(rules as any)?.enableCompetitionFinalist}
-                      onChange={(v) => setRules({ ...(rules as any), enableCompetitionFinalist: v })}
+                      onChange={(v) =>
+                        setRules({
+                          ...(rules as any),
+                          enableCompetitionFinalist: v,
+                        })
+                      }
                     />
                     <Input
                       label="Punti finalista"
                       type="number"
                       step="0.5"
-                      disabled={!((rules as any)?.enableCompetitionFinalist)}
-                      value={String((rules as any)?.pointsCompetitionFinalist ?? 12)}
-                      onChange={(e) => setRules({ ...(rules as any), pointsCompetitionFinalist: Number(e.target.value) })}
+                      disabled={!(rules as any)?.enableCompetitionFinalist}
+                      value={String(
+                        (rules as any)?.pointsCompetitionFinalist ?? 12,
+                      )}
+                      onChange={(e) =>
+                        setRules({
+                          ...(rules as any),
+                          pointsCompetitionFinalist: Number(e.target.value),
+                        })
+                      }
                     />
                   </div>
                 ) : (
-                  <div className="rounded-2xl border border-amber-100/15 bg-white/[0.055] p-3 text-xs text-orange-50/60">
-                    I pronostici su quarti, semifinali e finale sono disponibili solo se il SuperAdmin imposta la competizione come coppa con fasi a eliminazione.
+                  <div className="rounded-2xl border border-cyan-100/15 bg-cyan-100/5 p-3 text-xs text-cyan-100/60">
+                    I pronostici su quarti, semifinali e finale sono disponibili
+                    solo se il SuperAdmin imposta la competizione come coppa con
+                    fasi a eliminazione.
                   </div>
                 )}
-
-
               </div>
             </Section>
 
             {/* Scoring mode */}
-            <Section title="Modalità punteggio" hint="Scegli come combinare i punteggi (cumulativo, solo il migliore, oppure misto configurabile).">
+            <Section
+              title="Modalità punteggio"
+              hint="Scegli come combinare i punteggi (cumulativo, solo il migliore, oppure misto configurabile)."
+            >
               <div className="space-y-3">
                 <select
-                  className="w-full rounded-xl border border-amber-100/15 bg-[#07150f]/90 px-3 py-2 text-sm"
+                  className="w-full rounded-xl border border-cyan-100/15 bg-cyan-950/45 px-3 py-2 text-sm"
                   value={rules?.scoringMode || "CUMULATIVE"}
-                  onChange={(e) => setRules({ ...rules, scoringMode: e.target.value })}
+                  onChange={(e) =>
+                    setRules({ ...rules, scoringMode: e.target.value })
+                  }
                 >
-                  <option value="CUMULATIVE">Cumulativo (Esatto + 1X2 + SommaGol)</option>
+                  <option value="CUMULATIVE">
+                    Cumulativo (Esatto + 1X2 + SommaGol)
+                  </option>
                   <option value="BEST_ONLY">Solo punteggio più alto</option>
                   <option value="MIXED">Misto (configurabile)</option>
                 </select>
 
-                <div className="rounded-2xl border border-amber-100/15 bg-white/[0.055] p-3 text-xs text-orange-50/60">
+                <div className="rounded-2xl border border-cyan-100/15 bg-cyan-100/5 p-3 text-xs text-cyan-100/60">
                   {rules?.scoringMode === "CUMULATIVE" ? (
-                    <span>In modalità <b className="text-orange-50/85">Cumulativo</b> ogni categoria corretta si somma. Se Under/Over 2.5 è attivo, si somma sempre anche lui.</span>
+                    <span>
+                      In modalità <b className="text-cyan-50/85">Cumulativo</b>{" "}
+                      ogni categoria corretta si somma. Se Under/Over 2.5 è
+                      attivo, si somma sempre anche lui.
+                    </span>
                   ) : rules?.scoringMode === "BEST_ONLY" ? (
-                    <span>In modalità <b className="text-orange-50/85">Solo punteggio più alto</b> viene conteggiata una sola categoria: in caso di parità la priorità è <b className="text-orange-50/85">Esatto → 1X2 → Somma gol → U/O 2.5</b>.</span>
+                    <span>
+                      In modalità{" "}
+                      <b className="text-cyan-50/85">Solo punteggio più alto</b>{" "}
+                      viene conteggiata una sola categoria: in caso di parità la
+                      priorità è{" "}
+                      <b className="text-cyan-50/85">
+                        Esatto → 1X2 → Somma gol → U/O 2.5
+                      </b>
+                      .
+                    </span>
                   ) : (
-                    <span>In modalità <b className="text-orange-50/85">Mista</b> puoi decidere quali categorie si sommano. Le opzioni sotto governano anche quando <b className="text-orange-50/85">U/O 2.5</b> si aggiunge a Esatto, 1X2 o Somma gol.</span>
+                    <span>
+                      In modalità <b className="text-cyan-50/85">Mista</b> puoi
+                      decidere quali categorie si sommano. Le opzioni sotto
+                      governano anche quando{" "}
+                      <b className="text-cyan-50/85">U/O 2.5</b> si aggiunge a
+                      Esatto, 1X2 o Somma gol.
+                    </span>
                   )}
                 </div>
 
                 {rules?.scoringMode === "MIXED" ? (
-                  <div className="rounded-2xl border border-amber-100/15 p-4 space-y-3">
+                  <div className="rounded-2xl border border-cyan-100/15 p-4 space-y-3">
                     <div className="text-sm font-semibold text-white flex items-center gap-2">
-                      Regole modalità mista <HelpHint text="Definisci quali punti si sommano quando prendi un risultato esatto o un esito (1X2). Under/Over 2.5 resta configurabile con i tre flag dedicati qui sotto." />
+                      Regole modalità mista{" "}
+                      <HelpHint text="Definisci quali punti si sommano quando prendi un risultato esatto o un esito (1X2). Under/Over 2.5 resta configurabile con i tre flag dedicati qui sotto." />
                     </div>
                     <SwitchRow
                       label="Se prendo Esatto sommo anche 1X2"
                       checked={!!rules?.allowOutcomeWithExact}
-                      onChange={(v) => setRules({ ...rules, allowOutcomeWithExact: v })}
+                      onChange={(v) =>
+                        setRules({ ...rules, allowOutcomeWithExact: v })
+                      }
                     />
                     <SwitchRow
                       label="Se prendo Esatto sommo anche Somma gol"
                       checked={!!rules?.allowSumGoalsWithExact}
-                      onChange={(v) => setRules({ ...rules, allowSumGoalsWithExact: v })}
+                      onChange={(v) =>
+                        setRules({ ...rules, allowSumGoalsWithExact: v })
+                      }
                     />
                     <SwitchRow
                       label="Se prendo 1X2 sommo anche Somma gol"
                       checked={!!rules?.allowSumGoalsWithOutcome}
-                      onChange={(v) => setRules({ ...rules, allowSumGoalsWithOutcome: v })}
+                      onChange={(v) =>
+                        setRules({ ...rules, allowSumGoalsWithOutcome: v })
+                      }
                     />
 
                     {rules?.enableUnderOver25 ? (
-                      <div className="mt-2 rounded-xl border border-amber-100/15 bg-white/[0.055] p-3 space-y-2">
-                        <div className="text-xs font-semibold uppercase tracking-wide text-orange-50/60">
+                      <div className="mt-2 rounded-xl border border-cyan-100/15 bg-cyan-100/5 p-3 space-y-2">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-cyan-100/60">
                           Under/Over 2.5 in modalità mista
                         </div>
-                        <div className="text-xs text-orange-50/60">
-                          Scegli quando i punti <b>U/O 2.5</b> si sommano al punteggio principale (Esatto / 1X2 / Somma gol).
+                        <div className="text-xs text-cyan-100/60">
+                          Scegli quando i punti <b>U/O 2.5</b> si sommano al
+                          punteggio principale (Esatto / 1X2 / Somma gol).
                         </div>
                         <SwitchRow
                           label="Somma U/O 2.5 con Esatto"
-                          checked={(rules as any)?.allowUnderOverWithExact !== false}
-                          onChange={(v) => setRules({ ...(rules as any), allowUnderOverWithExact: v })}
+                          checked={
+                            (rules as any)?.allowUnderOverWithExact !== false
+                          }
+                          onChange={(v) =>
+                            setRules({
+                              ...(rules as any),
+                              allowUnderOverWithExact: v,
+                            })
+                          }
                         />
                         <SwitchRow
                           label="Somma U/O 2.5 con 1X2"
-                          checked={(rules as any)?.allowUnderOverWithOutcome !== false}
-                          onChange={(v) => setRules({ ...(rules as any), allowUnderOverWithOutcome: v })}
+                          checked={
+                            (rules as any)?.allowUnderOverWithOutcome !== false
+                          }
+                          onChange={(v) =>
+                            setRules({
+                              ...(rules as any),
+                              allowUnderOverWithOutcome: v,
+                            })
+                          }
                         />
                         <SwitchRow
                           label="Somma U/O 2.5 con Somma gol"
-                          checked={(rules as any)?.allowUnderOverWithSumGoals !== false}
-                          onChange={(v) => setRules({ ...(rules as any), allowUnderOverWithSumGoals: v })}
+                          checked={
+                            (rules as any)?.allowUnderOverWithSumGoals !== false
+                          }
+                          onChange={(v) =>
+                            setRules({
+                              ...(rules as any),
+                              allowUnderOverWithSumGoals: v,
+                            })
+                          }
                         />
                       </div>
                     ) : (
-                      <div className="text-xs text-orange-50/60">(Attiva Under/Over 2.5 per configurare queste opzioni.)</div>
+                      <div className="text-xs text-cyan-100/60">
+                        (Attiva Under/Over 2.5 per configurare queste opzioni.)
+                      </div>
                     )}
                   </div>
                 ) : null}
@@ -719,27 +1010,53 @@ function RulesTab() {
                       jollyMultiplier: Number(rules.jollyMultiplier ?? 2),
                       enableScorer: !!(rules as any).enableScorer,
                       pointsScorer: Number((rules as any).pointsScorer ?? 3),
-                      enableCompetitionWinner: !!(rules as any).enableCompetitionWinner,
-                      pointsCompetitionWinner: Number((rules as any).pointsCompetitionWinner ?? 15),
-                      enableCompetitionTopScorer: !!(rules as any).enableCompetitionTopScorer,
-                      pointsCompetitionTopScorer: Number((rules as any).pointsCompetitionTopScorer ?? 12),
-                      enableCompetitionQuarterFinalist: (rules as any)?.competitionType === "KNOCKOUT_CUP" && !!(rules as any).enableCompetitionQuarterFinalist,
-                      pointsCompetitionQuarterFinalist: Number((rules as any).pointsCompetitionQuarterFinalist ?? 8),
-                      enableCompetitionSemiFinalist: (rules as any)?.competitionType === "KNOCKOUT_CUP" && !!(rules as any).enableCompetitionSemiFinalist,
-                      pointsCompetitionSemiFinalist: Number((rules as any).pointsCompetitionSemiFinalist ?? 10),
-                      enableCompetitionFinalist: (rules as any)?.competitionType === "KNOCKOUT_CUP" && !!(rules as any).enableCompetitionFinalist,
-                      pointsCompetitionFinalist: Number((rules as any).pointsCompetitionFinalist ?? 12),
+                      enableCompetitionWinner: !!(rules as any)
+                        .enableCompetitionWinner,
+                      pointsCompetitionWinner: Number(
+                        (rules as any).pointsCompetitionWinner ?? 15,
+                      ),
+                      enableCompetitionTopScorer: !!(rules as any)
+                        .enableCompetitionTopScorer,
+                      pointsCompetitionTopScorer: Number(
+                        (rules as any).pointsCompetitionTopScorer ?? 12,
+                      ),
+                      enableCompetitionQuarterFinalist:
+                        (rules as any)?.competitionType === "KNOCKOUT_CUP" &&
+                        !!(rules as any).enableCompetitionQuarterFinalist,
+                      pointsCompetitionQuarterFinalist: Number(
+                        (rules as any).pointsCompetitionQuarterFinalist ?? 8,
+                      ),
+                      enableCompetitionSemiFinalist:
+                        (rules as any)?.competitionType === "KNOCKOUT_CUP" &&
+                        !!(rules as any).enableCompetitionSemiFinalist,
+                      pointsCompetitionSemiFinalist: Number(
+                        (rules as any).pointsCompetitionSemiFinalist ?? 10,
+                      ),
+                      enableCompetitionFinalist:
+                        (rules as any)?.competitionType === "KNOCKOUT_CUP" &&
+                        !!(rules as any).enableCompetitionFinalist,
+                      pointsCompetitionFinalist: Number(
+                        (rules as any).pointsCompetitionFinalist ?? 12,
+                      ),
                       scoringMode: rules.scoringMode,
                       allowOutcomeWithExact: !!rules.allowOutcomeWithExact,
                       allowSumGoalsWithExact: !!rules.allowSumGoalsWithExact,
-                      allowSumGoalsWithOutcome: !!rules.allowSumGoalsWithOutcome,
+                      allowSumGoalsWithOutcome:
+                        !!rules.allowSumGoalsWithOutcome,
 
                       // Under/Over cumulability (MIXED)
-                      allowUnderOverWithExact: (rules as any).allowUnderOverWithExact !== false,
-                      allowUnderOverWithOutcome: (rules as any).allowUnderOverWithOutcome !== false,
-                      allowUnderOverWithSumGoals: (rules as any).allowUnderOverWithSumGoals !== false,
-                      ...(typeof rules.entryFeeCents === "number" ? { entryFeeCents: Number(rules.entryFeeCents) } : { entryFeeCents: null }),
-                      prizesJson: Array.isArray(rules.prizesJson) ? rules.prizesJson : null,
+                      allowUnderOverWithExact:
+                        (rules as any).allowUnderOverWithExact !== false,
+                      allowUnderOverWithOutcome:
+                        (rules as any).allowUnderOverWithOutcome !== false,
+                      allowUnderOverWithSumGoals:
+                        (rules as any).allowUnderOverWithSumGoals !== false,
+                      ...(typeof rules.entryFeeCents === "number"
+                        ? { entryFeeCents: Number(rules.entryFeeCents) }
+                        : { entryFeeCents: null }),
+                      prizesJson: Array.isArray(rules.prizesJson)
+                        ? rules.prizesJson
+                        : null,
                     });
                     setOk("Regole salvate. Punteggi ricalcolati.");
                   } catch (e: any) {
@@ -751,7 +1068,9 @@ function RulesTab() {
               >
                 Salva regole
               </Button>
-              <span className="text-xs text-orange-50/60">Le modifiche ricalcolano la classifica.</span>
+              <span className="text-xs text-cyan-100/60">
+                Le modifiche ricalcolano la classifica.
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -760,10 +1079,14 @@ function RulesTab() {
         <div className="space-y-6">
           {/* Monetization */}
           <Card>
-            <CardHeader title="Quota & premi" subtitle="Opzionale (visibile nel regolamento)" />
+            <CardHeader
+              title="Quota & premi"
+              subtitle="Opzionale (visibile nel regolamento)"
+            />
             <CardContent className="space-y-4">
-              <div className="text-sm text-orange-50/70 flex items-center gap-2">
-                Impostazioni facoltative <HelpHint text="Se lasci vuoto, nel regolamento non verrà mostrata alcuna quota/premio." />
+              <div className="text-sm text-cyan-50/70 flex items-center gap-2">
+                Impostazioni facoltative{" "}
+                <HelpHint text="Se lasci vuoto, nel regolamento non verrà mostrata alcuna quota/premio." />
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
@@ -776,13 +1099,20 @@ function RulesTab() {
                     const v = e.target.value.trim();
                     if (!v) return setRules({ ...rules, entryFeeCents: null });
                     const cents = Math.max(0, Math.round(Number(v) * 100));
-                    setRules({ ...rules, entryFeeCents: Number.isFinite(cents) ? cents : null });
+                    setRules({
+                      ...rules,
+                      entryFeeCents: Number.isFinite(cents) ? cents : null,
+                    });
                   }}
                 />
-                <div className="rounded-xl border border-amber-100/15 p-3">
-                  <div className="text-xs text-orange-50/60">Posizioni a premio</div>
+                <div className="rounded-xl border border-cyan-100/15 p-3">
+                  <div className="text-xs text-cyan-100/60">
+                    Posizioni a premio
+                  </div>
                   <div className="text-sm font-semibold">{prizes.length}</div>
-                  <div className="text-xs text-orange-50/60 mt-1">Aggiungi/rimuovi sotto</div>
+                  <div className="text-xs text-cyan-100/60 mt-1">
+                    Aggiungi/rimuovi sotto
+                  </div>
                 </div>
               </div>
 
@@ -793,13 +1123,20 @@ function RulesTab() {
                       <Input
                         label={`${p.position}° posto (€)`}
                         type="number"
-                        value={String(Math.round(Number(p.amountCents || 0) / 100))}
+                        value={String(
+                          Math.round(Number(p.amountCents || 0) / 100),
+                        )}
                         placeholder={p.position === 1 ? "Es. 200" : ""}
                         onChange={(e) => {
                           const v = e.target.value.trim();
-                          const cents = v ? Math.max(0, Math.round(Number(v) * 100)) : 0;
+                          const cents = v
+                            ? Math.max(0, Math.round(Number(v) * 100))
+                            : 0;
                           const next = [...prizes];
-                          next[idx] = { ...next[idx], amountCents: Number.isFinite(cents) ? cents : 0 };
+                          next[idx] = {
+                            ...next[idx],
+                            amountCents: Number.isFinite(cents) ? cents : 0,
+                          };
                           setRules({ ...rules, prizesJson: next });
                         }}
                       />
@@ -807,19 +1144,47 @@ function RulesTab() {
 
                     <button
                       type="button"
-                      className="mb-[6px] h-10 w-10 rounded-xl border border-amber-100/15 bg-[#07150f]/90 hover:shadow-sm transition flex items-center justify-center"
+                      className="mb-[6px] h-10 w-10 rounded-xl border border-cyan-100/15 bg-cyan-950/45 hover:shadow-sm transition flex items-center justify-center"
                       title="Rimuovi premio"
                       onClick={() => {
-                        const next = prizes.filter((_, i) => i !== idx).map((x, i) => ({ ...x, position: i + 1 }));
+                        const next = prizes
+                          .filter((_, i) => i !== idx)
+                          .map((x, i) => ({ ...x, position: i + 1 }));
                         setRules({ ...rules, prizesJson: next });
                       }}
                     >
                       {/* trash */}
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M3 6h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                        <path d="M8 6V4h8v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                        <path d="M7 6l1 14h8l1-14" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
-                        <path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M3 6h18"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                        />
+                        <path
+                          d="M8 6V4h8v2"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                        />
+                        <path
+                          d="M7 6l1 14h8l1-14"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinejoin="round"
+                        />
+                        <path
+                          d="M10 11v6M14 11v6"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                        />
                       </svg>
                     </button>
                   </div>
@@ -838,7 +1203,7 @@ function RulesTab() {
                 </Button>
               </div>
 
-              <div className="text-xs text-orange-50/60">
+              <div className="text-xs text-cyan-100/60">
                 Suggerimento: imposta importi in € (l'app salva in centesimi).
               </div>
             </CardContent>
@@ -846,15 +1211,26 @@ function RulesTab() {
 
           {/* Jolly */}
           <Card>
-            <CardHeader title="Partita Jolly ⭐" subtitle="Seleziona la partita per giornata (opzionale)" />
+            <CardHeader
+              title="Partita Jolly ⭐"
+              subtitle="Seleziona la partita per giornata (opzionale)"
+            />
             <CardContent className="space-y-4">
-              <div className="text-sm text-orange-50/70">
+              <div className="text-sm text-cyan-50/70">
                 {rules?.enableJolly ? (
                   <>
-                    Scegli una partita per ogni giornata: i punti ottenuti su quella partita vengono moltiplicati per <span className="font-semibold">x{Number(rules?.jollyMultiplier ?? 2) || 2}</span>.
+                    Scegli una partita per ogni giornata: i punti ottenuti su
+                    quella partita vengono moltiplicati per{" "}
+                    <span className="font-semibold">
+                      x{Number(rules?.jollyMultiplier ?? 2) || 2}
+                    </span>
+                    .
                   </>
                 ) : (
-                  <>La Partita Jolly è disattivata nelle regole. Attivala nella sezione "Funzioni extra" per renderla effettiva.</>
+                  <>
+                    La Partita Jolly è disattivata nelle regole. Attivala nella
+                    sezione "Funzioni extra" per renderla effettiva.
+                  </>
                 )}
               </div>
 
@@ -866,26 +1242,51 @@ function RulesTab() {
                 });
                 const matchdays = Array.from(byMd.keys()).sort((a, b) => a - b);
                 const selMap = new Map<number, string>();
-                (jolly?.selections || []).forEach((s: any) => selMap.set(Number(s.matchday), String(s.matchId)));
+                (jolly?.selections || []).forEach((s: any) =>
+                  selMap.set(Number(s.matchday), String(s.matchId)),
+                );
 
                 if (matchdays.length === 0) {
-                  return <div className="text-xs text-orange-50/60">Nessuna partita disponibile.</div>;
+                  return (
+                    <div className="text-xs text-cyan-100/60">
+                      Nessuna partita disponibile.
+                    </div>
+                  );
                 }
 
                 return (
                   <div className="space-y-3">
                     {matchdays.map((md) => {
-                      const list = (byMd.get(md) || []).slice().sort((a: any, b: any) => new Date(a.kickoffAt).getTime() - new Date(b.kickoffAt).getTime());
+                      const list = (byMd.get(md) || [])
+                        .slice()
+                        .sort(
+                          (a: any, b: any) =>
+                            new Date(a.kickoffAt).getTime() -
+                            new Date(b.kickoffAt).getTime(),
+                        );
                       const current = selMap.get(md) || "";
                       return (
-                        <div key={md} className="rounded-2xl border border-amber-100/15 p-3">
+                        <div
+                          key={md}
+                          className="rounded-2xl border border-cyan-100/15 p-3"
+                        >
                           <div className="mb-2 flex items-center justify-between">
-                            <div className="text-sm font-semibold text-white">Giornata {md}</div>
-                            {current ? <span className="text-xs font-semibold text-amber-200">⭐ Selezionata</span> : <span className="text-xs text-orange-50/60">—</span>}
+                            <div className="text-sm font-semibold text-white">
+                              Giornata {md}
+                            </div>
+                            {current ? (
+                              <span className="text-xs font-semibold text-amber-200">
+                                ⭐ Selezionata
+                              </span>
+                            ) : (
+                              <span className="text-xs text-cyan-100/60">
+                                —
+                              </span>
+                            )}
                           </div>
 
                           <select
-                            className="w-full rounded-xl border border-amber-100/15 bg-[#07150f]/90 px-3 py-2 text-sm"
+                            className="w-full rounded-xl border border-cyan-100/15 bg-cyan-950/45 px-3 py-2 text-sm"
                             value={current}
                             onChange={async (e) => {
                               const v = e.target.value || "";
@@ -893,31 +1294,44 @@ function RulesTab() {
                               try {
                                 setErr("");
                                 setOk("");
-                                await api.adminSetJollyForMatchday(md, v ? v : null);
+                                await api.adminSetJollyForMatchday(
+                                  md,
+                                  v ? v : null,
+                                );
                                 const r = await api.adminJolly();
                                 setJolly(r);
-                                setOk('Partita jolly aggiornata. Classifica ricalcolata.');
+                                setOk(
+                                  "Partita jolly aggiornata. Classifica ricalcolata.",
+                                );
                               } catch (e: any) {
-                                setErr(e?.message || 'Errore');
+                                setErr(e?.message || "Errore");
                               } finally {
                                 hide();
                               }
                             }}
                           >
-                            <option value="">Nessuna (disattiva per questa giornata)</option>
+                            <option value="">
+                              Nessuna (disattiva per questa giornata)
+                            </option>
                             {list.map((m: any) => {
                               const label = `${m.homeTeam} - ${m.awayTeam}`;
                               const when = (() => {
                                 try {
                                   const d = new Date(m.kickoffAt);
-                                  return d.toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+                                  return d.toLocaleString("it-IT", {
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  });
                                 } catch {
-                                  return '';
+                                  return "";
                                 }
                               })();
                               return (
                                 <option key={m.id} value={m.id}>
-                                  {when ? `${when} · ` : ''}{label}
+                                  {when ? `${when} · ` : ""}
+                                  {label}
                                 </option>
                               );
                             })}
@@ -929,23 +1343,31 @@ function RulesTab() {
                 );
               })()}
 
-              <div className="text-xs text-orange-50/60">
-                Nota: se la feature è disattivata, la selezione non ha effetti sul punteggio (ma viene comunque salvata).
+              <div className="text-xs text-cyan-100/60">
+                Nota: se la feature è disattivata, la selezione non ha effetti
+                sul punteggio (ma viene comunque salvata).
               </div>
             </CardContent>
           </Card>
 
           {/* Lock */}
           <Card>
-            <CardHeader title="Lock pronostici" subtitle="Blocco automatico gestito dal calendario" />
+            <CardHeader
+              title="Lock pronostici"
+              subtitle="Blocco automatico gestito dal calendario"
+            />
             <CardContent className="space-y-4">
-              <div className="rounded-2xl border border-amber-100/15 bg-white/[0.055] p-4">
+              <div className="rounded-2xl border border-cyan-100/15 bg-cyan-100/5 p-4">
                 <div className="text-sm font-semibold flex items-center gap-2">
-                  Come funziona <HelpHint text="Il lock è automatico: parte X minuti prima del match rilevante. In modalità 'giornata per giornata' il lock è per-matchday (solo la giornata interessata), così i rinvii non bloccano le giornate successive." />
+                  Come funziona{" "}
+                  <HelpHint text="Il lock è automatico: parte X minuti prima del match rilevante. In modalità 'giornata per giornata' il lock è per-matchday (solo la giornata interessata), così i rinvii non bloccano le giornate successive." />
                 </div>
-                <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-orange-50/60">
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-cyan-100/60">
                   <li>Automatico con anticipo configurabile.</li>
-                  <li>Con rinvii: si blocca solo la matchday in lock, non tutta la lega.</li>
+                  <li>
+                    Con rinvii: si blocca solo la matchday in lock, non tutta la
+                    lega.
+                  </li>
                 </ul>
               </div>
 
@@ -955,32 +1377,58 @@ function RulesTab() {
               >
                 <div className="grid gap-2">
                   <RadioCard
-                    checked={(settings?.predictionMode || "MATCHDAY_BY_MATCHDAY") === "TOURNAMENT_PRE"}
+                    checked={
+                      (settings?.predictionMode || "MATCHDAY_BY_MATCHDAY") ===
+                      "TOURNAMENT_PRE"
+                    }
                     title="Tutti prima del torneo"
                     subtitle="I partecipanti inseriscono tutti i pronostici prima dell'inizio."
-                    onSelect={() => setSettings({ ...settings, predictionMode: "TOURNAMENT_PRE" })}
+                    onSelect={() =>
+                      setSettings({
+                        ...settings,
+                        predictionMode: "TOURNAMENT_PRE",
+                      })
+                    }
                   />
                   <RadioCard
-                    checked={(settings?.predictionMode || "MATCHDAY_BY_MATCHDAY") === "MATCHDAY_BY_MATCHDAY"}
+                    checked={
+                      (settings?.predictionMode || "MATCHDAY_BY_MATCHDAY") ===
+                      "MATCHDAY_BY_MATCHDAY"
+                    }
                     title="Giornata per giornata"
                     subtitle="Si pronostica la giornata in corso (se rinvii) + la prossima che deve iniziare."
-                    onSelect={() => setSettings({ ...settings, predictionMode: "MATCHDAY_BY_MATCHDAY" })}
+                    onSelect={() =>
+                      setSettings({
+                        ...settings,
+                        predictionMode: "MATCHDAY_BY_MATCHDAY",
+                      })
+                    }
                   />
                 </div>
               </Section>
 
-              <Section title="Anticipo lock" hint="Quanto tempo prima del primo match rilevante bloccare i pronostici.">
+              <Section
+                title="Anticipo lock"
+                hint="Quanto tempo prima del primo match rilevante bloccare i pronostici."
+              >
                 <select
-                  className="w-full rounded-xl border border-amber-100/15 bg-[#07150f]/90 px-3 py-2 text-sm"
+                  className="w-full rounded-xl border border-cyan-100/15 bg-cyan-950/45 px-3 py-2 text-sm"
                   value={String(settings?.lockOffsetMinutes ?? 30)}
-                  onChange={(e) => setSettings({ ...settings, lockOffsetMinutes: Number(e.target.value) })}
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      lockOffsetMinutes: Number(e.target.value),
+                    })
+                  }
                 >
                   <option value="60">1 ora prima</option>
                   <option value="30">30 minuti prima</option>
                   <option value="15">15 minuti prima</option>
                   <option value="0">All'inizio della partita (0 min)</option>
                 </select>
-                <div className="mt-1 text-xs text-orange-50/60">Esempio: primo match 20:45 con 30 min → lock dalle 20:15.</div>
+                <div className="mt-1 text-xs text-cyan-100/60">
+                  Esempio: primo match 20:45 con 30 min → lock dalle 20:15.
+                </div>
               </Section>
 
               <Section
@@ -1001,24 +1449,144 @@ function RulesTab() {
                   })()}
                   onChange={(e) => {
                     const v = e.target.value;
-                    if (!v) return setSettings({ ...settings, competitionPredictionsDeadline: null });
+                    if (!v)
+                      return setSettings({
+                        ...settings,
+                        competitionPredictionsDeadline: null,
+                      });
                     try {
                       const d = new Date(v);
-                      setSettings({ ...settings, competitionPredictionsDeadline: d.toISOString() });
+                      setSettings({
+                        ...settings,
+                        competitionPredictionsDeadline: d.toISOString(),
+                      });
                     } catch {
-                      setSettings({ ...settings, competitionPredictionsDeadline: null });
+                      setSettings({
+                        ...settings,
+                        competitionPredictionsDeadline: null,
+                      });
                     }
                   }}
                 />
-                <div className="mt-1 text-xs text-orange-50/60">Suggerimento: imposta la deadline prima della prima giornata.</div>
+                <div className="mt-1 text-xs text-cyan-100/60">
+                  Suggerimento: imposta la deadline prima della prima giornata.
+                </div>
               </Section>
 
-              <Section title="Lock forzato" hint="Blocca subito i pronostici indipendentemente dal calendario. Usa questa opzione solo in emergenza.">
+              <Section
+                title="Lock forzato"
+                hint="Blocca subito i pronostici indipendentemente dal calendario. Usa questa opzione solo in emergenza."
+              >
                 <SwitchRow
                   label="Attiva lock forzato"
                   checked={!!settings?.isForceLocked}
-                  onChange={(v) => setSettings({ ...settings, isForceLocked: v })}
+                  onChange={(v) =>
+                    setSettings({ ...settings, isForceLocked: v })
+                  }
                 />
+              </Section>
+
+              <Section
+                title="Fine torneo"
+                hint="Forza la chiusura della lega, blocca i pronostici e abilita la premiazione finale per i vincitori configurati nei premi."
+              >
+                <div className="space-y-3 rounded-2xl border border-amber-300/20 bg-amber-300/10 p-4">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <div className="text-sm font-extrabold text-white">
+                        {finalResult?.finalized
+                          ? "Torneo terminato"
+                          : "Torneo aperto"}
+                      </div>
+                      <div className="text-xs text-cyan-50/70">
+                        Premi configurati:{" "}
+                        {finalResult?.winners?.length ||
+                          (prizes.length ? prizes.length : 1)}
+                      </div>
+                    </div>
+                    {finalResult?.finalized ? (
+                      <Badge tone="green">Finale</Badge>
+                    ) : (
+                      <Badge>In corso</Badge>
+                    )}
+                  </div>
+                  {finalResult?.winners?.length ? (
+                    <div className="grid gap-2">
+                      {finalResult.winners.map((w) => (
+                        <div
+                          key={w.userId}
+                          className="flex items-center justify-between rounded-xl bg-black/20 px-3 py-2 text-sm"
+                        >
+                          <span className="font-semibold text-white">
+                            #{w.position} {w.displayName}
+                          </span>
+                          <span className="text-cyan-50/70">
+                            {typeof w.prizeAmountCents === "number"
+                              ? `${(w.prizeAmountCents / 100).toLocaleString("it-IT", { style: "currency", currency: "EUR" })}`
+                              : "Premio"}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                  <div className="flex flex-wrap gap-2">
+                    {!finalResult?.finalized ? (
+                      <Button
+                        variant="primary"
+                        onClick={async () => {
+                          if (
+                            !window.confirm(
+                              "Terminare il torneo? I pronostici verranno bloccati e i vincitori vedranno la premiazione finale.",
+                            )
+                          )
+                            return;
+                          show();
+                          try {
+                            setErr("");
+                            setOk("");
+                            await api.adminFinalizeTournament();
+                            await load();
+                            setOk(
+                              "Torneo terminato. La premiazione è attiva per i vincitori.",
+                            );
+                          } catch (e: any) {
+                            setErr(e?.message || "Errore");
+                          } finally {
+                            hide();
+                          }
+                        }}
+                      >
+                        Termina torneo
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        onClick={async () => {
+                          if (
+                            !window.confirm(
+                              "Riaprire il torneo e rimuovere il lock forzato?",
+                            )
+                          )
+                            return;
+                          show();
+                          try {
+                            setErr("");
+                            setOk("");
+                            await api.adminReopenTournament();
+                            await load();
+                            setOk("Torneo riaperto.");
+                          } catch (e: any) {
+                            setErr(e?.message || "Errore");
+                          } finally {
+                            hide();
+                          }
+                        }}
+                      >
+                        Riapri torneo
+                      </Button>
+                    )}
+                  </div>
+                </div>
               </Section>
 
               <div className="flex flex-wrap gap-2">
@@ -1030,12 +1598,16 @@ function RulesTab() {
                       setOk("");
                       await api.adminSaveSettings({
                         isForceLocked: !!settings.isForceLocked,
-                        lockOffsetMinutes: Number(settings.lockOffsetMinutes ?? 30),
-                        predictionMode: settings.predictionMode || "MATCHDAY_BY_MATCHDAY",
+                        lockOffsetMinutes: Number(
+                          settings.lockOffsetMinutes ?? 30,
+                        ),
+                        predictionMode:
+                          settings.predictionMode || "MATCHDAY_BY_MATCHDAY",
                         tieBreak1: settings.tieBreak1,
                         tieBreak2: settings.tieBreak2,
                         tieBreak3: settings.tieBreak3,
-                        competitionPredictionsDeadline: settings.competitionPredictionsDeadline ?? null,
+                        competitionPredictionsDeadline:
+                          settings.competitionPredictionsDeadline ?? null,
                       });
                       await load();
                       setOk("Impostazioni salvate.");
@@ -1079,12 +1651,16 @@ function RulesTab() {
                         setOk("");
                         await api.adminSaveSettings({
                           isForceLocked: false,
-                          lockOffsetMinutes: Number(settings.lockOffsetMinutes ?? 30),
-                          predictionMode: settings.predictionMode || "MATCHDAY_BY_MATCHDAY",
+                          lockOffsetMinutes: Number(
+                            settings.lockOffsetMinutes ?? 30,
+                          ),
+                          predictionMode:
+                            settings.predictionMode || "MATCHDAY_BY_MATCHDAY",
                           tieBreak1: settings.tieBreak1,
                           tieBreak2: settings.tieBreak2,
                           tieBreak3: settings.tieBreak3,
-                          competitionPredictionsDeadline: settings.competitionPredictionsDeadline ?? null,
+                          competitionPredictionsDeadline:
+                            settings.competitionPredictionsDeadline ?? null,
                         });
                         await load();
                         setOk("Lock forzato rimosso.");
@@ -1106,18 +1682,34 @@ function RulesTab() {
 
       {/* TIEBREAKERS (unchanged, but with a hint) */}
       <Card>
-        <CardHeader title="Criteri classifica" subtitle="Ordine di spareggio a parità di punti" />
+        <CardHeader
+          title="Criteri classifica"
+          subtitle="Ordine di spareggio a parità di punti"
+        />
         <CardContent>
           {settings ? (
             <div className="space-y-3">
-              <div className="text-sm text-orange-50/60 flex items-center gap-2">
-                La classifica è ordinata per <b>punti totali</b>. A parità di punti si applicano questi criteri.
+              <div className="text-sm text-cyan-100/60 flex items-center gap-2">
+                La classifica è ordinata per <b>punti totali</b>. A parità di
+                punti si applicano questi criteri.
                 <HelpHint text="Questi criteri vengono usati solo quando due utenti hanno gli stessi punti totali. Consiglio: scegli criteri diversi tra loro." />
               </div>
 
-              <TieBreakerRow label="1° spareggio" value={settings.tieBreak1 || "EXACT"} onChange={(v) => setSettings({ ...settings, tieBreak1: v })} />
-              <TieBreakerRow label="2° spareggio" value={settings.tieBreak2 || "OUTCOME"} onChange={(v) => setSettings({ ...settings, tieBreak2: v })} />
-              <TieBreakerRow label="3° spareggio" value={settings.tieBreak3 || "SUM_GOALS"} onChange={(v) => setSettings({ ...settings, tieBreak3: v })} />
+              <TieBreakerRow
+                label="1° spareggio"
+                value={settings.tieBreak1 || "EXACT"}
+                onChange={(v) => setSettings({ ...settings, tieBreak1: v })}
+              />
+              <TieBreakerRow
+                label="2° spareggio"
+                value={settings.tieBreak2 || "OUTCOME"}
+                onChange={(v) => setSettings({ ...settings, tieBreak2: v })}
+              />
+              <TieBreakerRow
+                label="3° spareggio"
+                value={settings.tieBreak3 || "SUM_GOALS"}
+                onChange={(v) => setSettings({ ...settings, tieBreak3: v })}
+              />
 
               <Button
                 onClick={async () => {
@@ -1127,12 +1719,16 @@ function RulesTab() {
                     setOk("");
                     await api.adminSaveSettings({
                       isForceLocked: !!settings.isForceLocked,
-                      lockOffsetMinutes: Number(settings.lockOffsetMinutes ?? 30),
-                      predictionMode: settings.predictionMode || "MATCHDAY_BY_MATCHDAY",
+                      lockOffsetMinutes: Number(
+                        settings.lockOffsetMinutes ?? 30,
+                      ),
+                      predictionMode:
+                        settings.predictionMode || "MATCHDAY_BY_MATCHDAY",
                       tieBreak1: settings.tieBreak1,
                       tieBreak2: settings.tieBreak2,
                       tieBreak3: settings.tieBreak3,
-                      competitionPredictionsDeadline: settings.competitionPredictionsDeadline ?? null,
+                      competitionPredictionsDeadline:
+                        settings.competitionPredictionsDeadline ?? null,
                     });
                     setOk("Criteri classifica salvati.");
                   } catch (e: any) {
@@ -1152,7 +1748,6 @@ function RulesTab() {
   );
 }
 
-
 function TieBreakerRow({
   label,
   value,
@@ -1164,8 +1759,12 @@ function TieBreakerRow({
 }) {
   return (
     <label className="flex items-center justify-between gap-3 text-sm">
-      <span className="text-orange-50/70">{label}</span>
-      <select className="rounded-xl border border-amber-100/15 bg-[#07150f]/90 px-3 py-2 text-sm" value={value} onChange={(e) => onChange(e.target.value as any)}>
+      <span className="text-cyan-50/70">{label}</span>
+      <select
+        className="rounded-xl border border-cyan-100/15 bg-cyan-950/45 px-3 py-2 text-sm"
+        value={value}
+        onChange={(e) => onChange(e.target.value as any)}
+      >
         <option value="EXACT">Risultati esatti</option>
         <option value="OUTCOME">Pronostici (1X2)</option>
         <option value="SUM_GOALS">Somma gol</option>
@@ -1174,26 +1773,40 @@ function TieBreakerRow({
   );
 }
 
-function ToggleRow({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
+function ToggleRow({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
   return (
     <label className="flex items-center justify-between gap-3 text-sm">
-      <span className="text-orange-50/70">{label}</span>
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      <span className="text-cyan-50/70">{label}</span>
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+      />
     </label>
   );
 }
 
-
 function HelpHint({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
-  const isMobile = typeof window !== "undefined" ? window.matchMedia("(max-width: 640px)").matches : false;
+  const isMobile =
+    typeof window !== "undefined"
+      ? window.matchMedia("(max-width: 640px)").matches
+      : false;
 
   return (
     <span className="relative inline-flex">
       <button
         type="button"
         aria-label="Aiuto"
-        className="h-5 w-5 rounded-full border border-amber-100/15 bg-[#07150f]/90 text-orange-50/60 hover:shadow-sm transition inline-flex items-center justify-center"
+        className="h-5 w-5 rounded-full border border-cyan-100/15 bg-cyan-950/45 text-cyan-100/60 hover:shadow-sm transition inline-flex items-center justify-center"
         onClick={() => setOpen((v) => !v)}
       >
         ?
@@ -1207,24 +1820,32 @@ function HelpHint({ text }: { text: string }) {
               aria-label="Chiudi aiuto"
               onClick={() => setOpen(false)}
             />
-            <div className="absolute bottom-0 left-0 right-0 rounded-t-2xl bg-[#07150f]/90 p-4 shadow-2xl">
+            <div className="absolute bottom-0 left-0 right-0 rounded-t-2xl bg-cyan-950/45 p-4 shadow-2xl">
               <div className="mb-2 flex items-center justify-between">
                 <div className="text-base font-semibold text-white">Info</div>
-                <button type="button" className="text-sm font-semibold text-orange-50/60" onClick={() => setOpen(false)}>
+                <button
+                  type="button"
+                  className="text-sm font-semibold text-cyan-100/60"
+                  onClick={() => setOpen(false)}
+                >
                   Chiudi
                 </button>
               </div>
-              <div className="max-h-[60vh] overflow-auto whitespace-pre-wrap text-sm text-orange-50/70 pr-1">
+              <div className="max-h-[60vh] overflow-auto whitespace-pre-wrap text-sm text-cyan-50/70 pr-1">
                 {text}
               </div>
               <div className="h-[calc(env(safe-area-inset-bottom)+8px)]" />
             </div>
           </div>
         ) : (
-          <div className="absolute z-30 top-7 right-0 w-72 rounded-xl border border-amber-100/15 bg-[#07150f]/90 p-3 text-xs text-orange-50/70 shadow-lg">
+          <div className="absolute z-30 top-7 right-0 w-72 rounded-xl border border-cyan-100/15 bg-cyan-950/45 p-3 text-xs text-cyan-50/70 shadow-lg">
             <div className="whitespace-pre-wrap">{text}</div>
             <div className="mt-2 flex justify-end">
-              <button type="button" className="text-xs text-orange-50/60 hover:text-orange-50/70" onClick={() => setOpen(false)}>
+              <button
+                type="button"
+                className="text-xs text-cyan-100/60 hover:text-cyan-50/70"
+                onClick={() => setOpen(false)}
+              >
                 Chiudi
               </button>
             </div>
@@ -1235,13 +1856,23 @@ function HelpHint({ text }: { text: string }) {
   );
 }
 
-function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
+function Section({
+  title,
+  hint,
+  children,
+}: {
+  title: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="rounded-2xl border border-amber-100/15 p-4">
+    <div className="rounded-2xl border border-cyan-100/15 p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="text-sm font-semibold text-white">{title}</div>
-          {hint ? <div className="mt-1 text-xs text-orange-50/60">{hint}</div> : null}
+          {hint ? (
+            <div className="mt-1 text-xs text-cyan-100/60">{hint}</div>
+          ) : null}
         </div>
         {hint ? <HelpHint text={hint} /> : null}
       </div>
@@ -1266,7 +1897,7 @@ function SwitchRow({
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div className="min-w-0 flex-1">
-        <div className="text-sm text-orange-50/70 flex items-start gap-2">
+        <div className="text-sm text-cyan-50/70 flex items-start gap-2">
           <span className="break-words">{label}</span>
           {hint ? <HelpHint text={hint} /> : null}
         </div>
@@ -1283,10 +1914,10 @@ function SwitchRow({
         }}
         className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition ${
           disabled
-            ? "cursor-not-allowed opacity-60 bg-white/[0.055] border-amber-100/15"
+            ? "cursor-not-allowed opacity-60 bg-cyan-100/5 border-cyan-100/15"
             : checked
-              ? "bg-amber-500 border-amber-400"
-              : "bg-slate-200 border-amber-100/15"
+              ? "bg-emerald-500 border-emerald-400"
+              : "bg-slate-200 border-cyan-100/15"
         }`}
       >
         <span
@@ -1315,16 +1946,24 @@ function RadioCard({
       type="button"
       onClick={onSelect}
       className={`text-left rounded-2xl border p-4 transition ${
-        checked ? "border-rose-400/45 bg-rose-500/10 shadow-[0_12px_30px_rgba(0,0,0,0.22)]" : "border-white/20 bg-[#07150f]/80 hover:border-slate-500 hover:bg-slate-950"
+        checked
+          ? "border-rose-400/45 bg-rose-500/10 shadow-[0_12px_30px_rgba(0,0,0,0.22)]"
+          : "border-white/20 bg-cyan-950/35 hover:border-slate-500 hover:bg-slate-950"
       }`}
     >
       <div className="flex items-start gap-3">
-        <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${checked ? "border-rose-300 bg-rose-500/15" : "border-slate-500 bg-slate-950"}`}>
-          {checked ? <div className="h-2.5 w-2.5 rounded-full bg-rose-300" /> : null}
+        <div
+          className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${checked ? "border-rose-300 bg-rose-500/15" : "border-slate-500 bg-slate-950"}`}
+        >
+          {checked ? (
+            <div className="h-2.5 w-2.5 rounded-full bg-rose-300" />
+          ) : null}
         </div>
         <div className="min-w-0">
           <div className="text-sm font-semibold text-white">{title}</div>
-          <div className="text-xs leading-relaxed text-orange-50/70">{subtitle}</div>
+          <div className="text-xs leading-relaxed text-cyan-50/70">
+            {subtitle}
+          </div>
         </div>
       </div>
     </button>

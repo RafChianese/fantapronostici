@@ -161,6 +161,9 @@ model League {
   // Optional monetization (entry fee + prizes)
   monetization LeagueMonetization?
 
+  // Optional finalization state for forced tournament end
+  finalization LeagueFinalization?
+
   // Optional branding (logo, display name tweaks, etc.)
   branding LeagueBranding?
 }
@@ -206,6 +209,19 @@ model LeaguePrize {
 
   @@unique([monetizationId, position])
   @@index([monetizationId])
+}
+
+
+model LeagueFinalization {
+  id                String   @id @default(cuid())
+  leagueId          String   @unique
+  finalizedAt       DateTime @default(now())
+  finalizedByUserId String?
+  message           String?
+
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+
+  @@index([leagueId])
 }
 
 model LeagueMember {

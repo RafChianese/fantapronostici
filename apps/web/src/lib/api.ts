@@ -238,7 +238,7 @@ export type LeagueStatsResponse = {
   topOutcomeHits?: { userId: string; displayName: string; value: number } | null;
   topSumGoalsHits?: { userId: string; displayName: string; value: number } | null;
   topUnderOverHits?: { userId: string; displayName: string; value: number } | null;
-  funStats?: Array<{ key: string; title: string; description: string; userId?: string; displayName?: string; value?: number }>;
+  funStats?: Array<{ key: string; title: string; description: string; userId?: string; displayName?: string; value?: number; winners?: Array<{ userId: string; displayName: string; value: number }>; tieCount?: number }>;
 
   features?: { underOver25: boolean };
 
@@ -253,6 +253,18 @@ export type LeagueStatsResponse = {
   distribution: Array<{ label: string; count: number }>;
   bestMatchday: { matchday: number; avgPoints: number } | null;
   worstMatchday: { matchday: number; avgPoints: number } | null;
+};
+
+
+export type FinalResultResponse = {
+  finalized: boolean;
+  finalizedAt: string | null;
+  myPosition?: number | null;
+  prizePosition?: number | null;
+  prizeAmountCents?: number | null;
+  winners: Array<{ userId: string; displayName: string; position: number; prizeAmountCents?: number | null; totalPoints?: number }>;
+  leaderboardTop: Array<{ userId: string; displayName: string; totalPoints: number }>;
+  prizeCount?: number;
 };
 
 export function getToken() {
@@ -471,6 +483,18 @@ export const api = {
     const q = leagueId ? `?leagueId=${encodeURIComponent(leagueId)}` : "";
     return request(`/api/admin/lock-now${q}`, { method: "POST" });
   },
+  adminTournamentFinalResult: (leagueId?: string) => {
+    const q = leagueId ? `?leagueId=${encodeURIComponent(leagueId)}` : "";
+    return request(`/api/admin/tournament/final-result${q}`) as Promise<FinalResultResponse>;
+  },
+  adminFinalizeTournament: (leagueId?: string, message?: string) => {
+    const q = leagueId ? `?leagueId=${encodeURIComponent(leagueId)}` : "";
+    return request(`/api/admin/tournament/finalize${q}`, { method: "POST", body: JSON.stringify({ message: message || null }) });
+  },
+  adminReopenTournament: (leagueId?: string) => {
+    const q = leagueId ? `?leagueId=${encodeURIComponent(leagueId)}` : "";
+    return request(`/api/admin/tournament/reopen${q}`, { method: "POST" });
+  },
   adminSetMatchResult: (id: string, payload: any) => request(`/api/admin/matches/${id}/result`, { method: "PUT", body: JSON.stringify(payload) }),
   adminSync: () => request(`/api/admin/sync`, { method: "POST" }),
 
@@ -537,6 +561,7 @@ export const api = {
   superImportFixtures: () => request(`/api/super/external/import-fixtures`, { method: "POST" }),
   // league stats
   leagueStats: () => request(`/api/league/stats`) as Promise<LeagueStatsResponse>,
+  leagueFinalResult: () => request(`/api/league/final-result`) as Promise<FinalResultResponse>,
 };
 
 export function apiUrl() {

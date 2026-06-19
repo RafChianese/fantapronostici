@@ -579,6 +579,97 @@ adminRouter.post("/lock-now", async (req, res) => {
   res.json({ settings });
 });
 
+
+// --- Tournament finalization ---
+adminRouter.get("/tournament/final-result", async (req, res) => {
+  const leagueId = getLeagueOr400(req, res);
+  if (!leagueId) return;
+
+  const finalization = await (prisma as any).leagueFinalization.findUnique({ where: { leagueId } });
+  const leaderboardRes: any = { rows: [] };
+
+  const [members, predictions, competition, rules, settings, monetization] = await Promise.all([
+    prisma.leagueMember.findMany({ where: { leagueId, status: "APPROVED" }, include: { user: true } }),
+    prisma.prediction.findMany({ where: { leagueId }, select: { userId: true, totalPoints: true, pointsExact: true, pointsOutcome: true, pointsSumGoals: true } }),
+    prisma.competitionPick.groupBy({ by: ["userId"], where: { leagueId }, _sum: { pointsAwarded: true } }),
+    prisma.rule.findUnique({ where: { leagueId } }),
+    prisma.setting.findUnique({ where: { leagueId } }),
+    prisma.leagueMonetization.findUnique({ where: { leagueId }, include: { prizes: true } }),
+  ]);
+
+  const agg = new Map<string, any>();
+  for (const p of predictions as any[]) {
+    const a = agg.get(p.userId) || { totalPoints: 0, competitionPoints: 0, exactHits: 0, outcomeHits: 0, sumGoalsHits: 0 };
+    a.totalPoints += Number(p.totalPoints || 0);
+    if (Number(p.pointsExact || 0) > 0) a.exactHits += 1;
+    if (Number(p.pointsOutcome || 0) > 0) a.outcomeHits += 1;
+    if (Number(p.pointsSumGoals || 0) > 0) a.sumGoalsHits += 1;
+    agg.set(p.userId, a);
+  }
+  for (const row of competition as any[]) {
+    const uid = String(row.userId);
+    const pts = Number(row._sum?.pointsAwarded || 0);
+    const a = agg.get(uid) || { totalPoints: 0, competitionPoints: 0, exactHits: 0, outcomeHits: 0, sumGoalsHits: 0 };
+    a.competitionPoints = pts;
+    a.totalPoints += pts;
+    agg.set(uid, a);
+  }
+  const tie1 = settings?.tieBreak1 || "EXACT";
+  const tie2 = settings?.tieBreak2 || "OUTCOME";
+  const tie3 = settings?.tieBreak3 || "SUM_GOALS";
+  const tieVal = (r: any, c: string) => c === "EXACT" ? r.exactHits : c === "OUTCOME" ? r.outcomeHits : r.sumGoalsHits;
+  leaderboardRes.rows = (members as any[]).map((m) => ({
+    userId: m.user.id,
+    displayName: m.user.displayName,
+    totalPoints: agg.get(m.user.id)?.totalPoints || 0,
+    competitionPoints: agg.get(m.user.id)?.competitionPoints || 0,
+    exactHits: agg.get(m.user.id)?.exactHits || 0,
+    outcomeHits: agg.get(m.user.id)?.outcomeHits || 0,
+    sumGoalsHits: agg.get(m.user.id)?.sumGoalsHits || 0,
+  })).sort((a: any, b: any) => {
+    if (a.totalPoints !== b.totalPoints) return b.totalPoints - a.totalPoints;
+    for (const t of [tie1, tie2, tie3]) { const d = tieVal(b, t) - tieVal(a, t); if (d) return d; }
+    return String(a.displayName).localeCompare(String(b.displayName), "it");
+  });
+
+  const prizes = ((monetization as any)?.prizes || []).slice().sort((a: any, b: any) => Number(a.position) - Number(b.position));
+  const prizeCount = prizes.length ? Math.max(...prizes.map((p: any) => Number(p.position || 0))) : 1;
+  const winners = leaderboardRes.rows.slice(0, prizeCount).map((row: any, idx: number) => {
+    const position = idx + 1;
+    const prize = prizes.find((p: any) => Number(p.position) === position);
+    return { ...row, position, prizeAmountCents: prize?.amountCents ?? null };
+  });
+
+  res.json({ finalized: !!finalization, finalizedAt: finalization?.finalizedAt || null, winners, prizeCount, leaderboardTop: leaderboardRes.rows.slice(0, Math.max(5, prizeCount)) });
+});
+
+adminRouter.post("/tournament/finalize", async (req: AuthedRequest, res) => {
+  const leagueId = getLeagueOr400(req, res);
+  if (!leagueId) return;
+
+  await recalcAllScoresForLeague(leagueId);
+  await ensureLeagueConfig(leagueId);
+  await prisma.setting.upsert({
+    where: { leagueId },
+    create: { leagueId, lockUntil: new Date(), isForceLocked: true },
+    update: { isForceLocked: true },
+  });
+  const row = await (prisma as any).leagueFinalization.upsert({
+    where: { leagueId },
+    create: { leagueId, finalizedByUserId: req.user?.id || null, message: typeof req.body?.message === "string" ? req.body.message : null },
+    update: { finalizedAt: new Date(), finalizedByUserId: req.user?.id || null, message: typeof req.body?.message === "string" ? req.body.message : null },
+  });
+  res.json({ finalization: row });
+});
+
+adminRouter.post("/tournament/reopen", async (req, res) => {
+  const leagueId = getLeagueOr400(req, res);
+  if (!leagueId) return;
+  await (prisma as any).leagueFinalization.deleteMany({ where: { leagueId } });
+  const settings = await prisma.setting.update({ where: { leagueId }, data: { isForceLocked: false } }).catch(() => null);
+  res.json({ finalized: false, settings });
+});
+
 // --- Manual match result (fallback) ---
 const ManualResultSchema = z.object({
   status: z.enum(["NOT_STARTED", "IN_PROGRESS", "FINISHED"]),

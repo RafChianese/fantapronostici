@@ -2,28 +2,61 @@ import React, { useEffect, useMemo, useState } from "react";
 import { api, LeagueStatsResponse } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { useLoading } from "../lib/loading";
-import { Alert, Badge, Button, Card, CardContent, CardHeader, Skeleton } from "../components/ui";
-import { Trophy, Target, CheckCircle2, Sigma, TrendingUp, BarChart3, Crown, Flame, Shield, Sparkles } from "lucide-react";
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  Skeleton,
+} from "../components/ui";
+import {
+  Trophy,
+  Target,
+  CheckCircle2,
+  Sigma,
+  TrendingUp,
+  BarChart3,
+  Crown,
+  Flame,
+  Shield,
+  Sparkles,
+} from "lucide-react";
 
 function StatTile({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-amber-100/15 bg-[#07150f]/80 p-4">
-      <div className="text-xs text-orange-50/60">{label}</div>
+    <div className="rounded-2xl border border-cyan-100/15 bg-cyan-950/35 p-4">
+      <div className="text-xs text-cyan-100/60">{label}</div>
       <div className="mt-1 text-2xl font-semibold text-white">{value}</div>
     </div>
   );
 }
 
-function LeaderTile({ icon, title, name, value }: { icon: React.ReactNode; title: string; name: string; value: number }) {
+function LeaderTile({
+  icon,
+  title,
+  name,
+  value,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  name: string;
+  value: number;
+}) {
   return (
-    <div className="rounded-2xl border border-amber-100/15 bg-[#07150f]/80 p-4">
-      <div className="flex items-center gap-2 text-xs font-semibold text-orange-50/70">
+    <div className="rounded-2xl border border-cyan-100/15 bg-cyan-950/35 p-4">
+      <div className="flex items-center gap-2 text-xs font-semibold text-cyan-50/70">
         {icon}
         {title}
       </div>
       <div className="mt-2 flex items-baseline justify-between gap-3">
-        <div className="min-w-0 truncate text-base font-extrabold text-white">{name}</div>
-        <div className="shrink-0 rounded-xl bg-white/[0.055] px-2 py-1 text-sm font-extrabold text-white ring-1 ring-slate-800">{value}</div>
+        <div className="min-w-0 truncate text-base font-extrabold text-white">
+          {name}
+        </div>
+        <div className="shrink-0 rounded-xl bg-cyan-100/5 px-2 py-1 text-sm font-extrabold text-white ring-1 ring-slate-800">
+          {value}
+        </div>
       </div>
     </div>
   );
@@ -35,6 +68,7 @@ export default function StatsPage() {
   const [data, setData] = useState<LeagueStatsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [section, setSection] = useState<"top" | "fun" | "distribution">("top");
 
   const refetch = () => {
     setLoading(true);
@@ -43,7 +77,9 @@ export default function StatsPage() {
     api
       .leagueStats()
       .then((d) => setData(d))
-      .catch((e: any) => setError(e?.message || "Errore nel caricamento delle statistiche"))
+      .catch((e: any) =>
+        setError(e?.message || "Errore nel caricamento delle statistiche"),
+      )
       .finally(() => {
         setLoading(false);
         hide();
@@ -62,8 +98,12 @@ export default function StatsPage() {
 
   const headline = useMemo(() => {
     if (!data) return "";
-    const best = data.bestMatchday ? ` · Migliore: ${data.bestMatchday.matchday}` : "";
-    const worst = data.worstMatchday ? ` · Peggiore: ${data.worstMatchday.matchday}` : "";
+    const best = data.bestMatchday
+      ? ` · Migliore: ${data.bestMatchday.matchday}`
+      : "";
+    const worst = data.worstMatchday
+      ? ` · Peggiore: ${data.worstMatchday.matchday}`
+      : "";
     return `Media punti/giornata: ${data.avgPointsPerMatchday.toFixed(2)}${best}${worst}`;
   }, [data]);
 
@@ -99,17 +139,21 @@ export default function StatsPage() {
   const topSumGoals = data.topSumGoalsHits ?? null;
   const topUnderOver = data.topUnderOverHits ?? null;
   const underOverOn = Boolean((data as any)?.features?.underOver25);
-  const funStats = Array.isArray((data as any)?.funStats) ? (data as any).funStats : [];
+  const funStats = Array.isArray((data as any)?.funStats)
+    ? (data as any).funStats
+    : [];
   const funIcon = (key: string) => {
     if (key === "drawExact") return <Crown size={16} aria-hidden="true" />;
-    if (key === "bigExact") return <Flame size={16} aria-hidden="true" />;
-    if (key === "zeroZero") return <Shield size={16} aria-hidden="true" />;
+    if (["bigExact", "kamikaze", "folle"].includes(key))
+      return <Flame size={16} aria-hidden="true" />;
+    if (["zeroZero", "catenacciaro", "prudente"].includes(key))
+      return <Shield size={16} aria-hidden="true" />;
     return <Sparkles size={16} aria-hidden="true" />;
   };
 
   return (
     <div className="space-y-6">
-      <div className="overflow-hidden rounded-3xl border border-amber-100/15 shadow-sm">
+      <div className="overflow-hidden rounded-3xl border border-cyan-100/15 shadow-sm">
         <div
           className="text-white"
           style={{
@@ -120,12 +164,14 @@ export default function StatsPage() {
           <div className="p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-orange-50/70">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-cyan-50/70">
                   <BarChart3 className="h-4 w-4" aria-hidden="true" />
                   Statistiche
                 </div>
-                <div className="mt-1 text-2xl font-extrabold tracking-tight">Statistiche lega</div>
-                <div className="mt-1 text-sm text-orange-50/70">{headline}</div>
+                <div className="mt-1 text-2xl font-extrabold tracking-tight">
+                  Statistiche lega
+                </div>
+                <div className="mt-1 text-sm text-cyan-50/70">{headline}</div>
               </div>
               <button
                 type="button"
@@ -150,100 +196,221 @@ export default function StatsPage() {
           }
         />
         <CardContent>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {topTotal ? (
-              <LeaderTile icon={<Trophy size={16} aria-hidden="true" />} title="Più punti" name={topTotal.displayName} value={topTotal.value} />
-            ) : (
-              <LeaderTile icon={<Trophy size={16} aria-hidden="true" />} title="Più punti" name="—" value={0} />
-            )}
-            {topExact ? (
-              <LeaderTile icon={<Target size={16} aria-hidden="true" />} title="Più esatti" name={topExact.displayName} value={topExact.value} />
-            ) : (
-              <LeaderTile icon={<Target size={16} aria-hidden="true" />} title="Più esatti" name="—" value={0} />
-            )}
-            {topOutcome ? (
-              <LeaderTile icon={<CheckCircle2 size={16} aria-hidden="true" />} title="Più 1X2" name={topOutcome.displayName} value={topOutcome.value} />
-            ) : (
-              <LeaderTile icon={<CheckCircle2 size={16} aria-hidden="true" />} title="Più 1X2" name="—" value={0} />
-            )}
-            {topSumGoals ? (
-              <LeaderTile icon={<Sigma size={16} aria-hidden="true" />} title="Più somma gol" name={topSumGoals.displayName} value={topSumGoals.value} />
-            ) : (
-              <LeaderTile icon={<Sigma size={16} aria-hidden="true" />} title="Più somma gol" name="—" value={0} />
-            )}
-            {underOverOn ? (
-              topUnderOver ? (
-                <LeaderTile icon={<TrendingUp size={16} aria-hidden="true" />} title="Più U/O 2.5" name={topUnderOver.displayName} value={topUnderOver.value} />
-              ) : (
-                <LeaderTile icon={<TrendingUp size={16} aria-hidden="true" />} title="Più U/O 2.5" name="—" value={0} />
-              )
-            ) : null}
+          <div className="mb-4 flex flex-wrap gap-2">
+            <Button
+              variant={section === "top" ? "primary" : "ghost"}
+              onClick={() => setSection("top")}
+            >
+              Top performance
+            </Button>
+            <Button
+              variant={section === "fun" ? "primary" : "ghost"}
+              onClick={() => setSection("fun")}
+            >
+              Statistiche fun
+            </Button>
+            <Button
+              variant={section === "distribution" ? "primary" : "ghost"}
+              onClick={() => setSection("distribution")}
+            >
+              Distribuzione
+            </Button>
           </div>
+          {section === "top" ? (
+            <>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {topTotal ? (
+                  <LeaderTile
+                    icon={<Trophy size={16} aria-hidden="true" />}
+                    title="Più punti"
+                    name={topTotal.displayName}
+                    value={topTotal.value}
+                  />
+                ) : (
+                  <LeaderTile
+                    icon={<Trophy size={16} aria-hidden="true" />}
+                    title="Più punti"
+                    name="—"
+                    value={0}
+                  />
+                )}
+                {topExact ? (
+                  <LeaderTile
+                    icon={<Target size={16} aria-hidden="true" />}
+                    title="Più esatti"
+                    name={topExact.displayName}
+                    value={topExact.value}
+                  />
+                ) : (
+                  <LeaderTile
+                    icon={<Target size={16} aria-hidden="true" />}
+                    title="Più esatti"
+                    name="—"
+                    value={0}
+                  />
+                )}
+                {topOutcome ? (
+                  <LeaderTile
+                    icon={<CheckCircle2 size={16} aria-hidden="true" />}
+                    title="Più 1X2"
+                    name={topOutcome.displayName}
+                    value={topOutcome.value}
+                  />
+                ) : (
+                  <LeaderTile
+                    icon={<CheckCircle2 size={16} aria-hidden="true" />}
+                    title="Più 1X2"
+                    name="—"
+                    value={0}
+                  />
+                )}
+                {topSumGoals ? (
+                  <LeaderTile
+                    icon={<Sigma size={16} aria-hidden="true" />}
+                    title="Più somma gol"
+                    name={topSumGoals.displayName}
+                    value={topSumGoals.value}
+                  />
+                ) : (
+                  <LeaderTile
+                    icon={<Sigma size={16} aria-hidden="true" />}
+                    title="Più somma gol"
+                    name="—"
+                    value={0}
+                  />
+                )}
+                {underOverOn ? (
+                  topUnderOver ? (
+                    <LeaderTile
+                      icon={<TrendingUp size={16} aria-hidden="true" />}
+                      title="Più U/O 2.5"
+                      name={topUnderOver.displayName}
+                      value={topUnderOver.value}
+                    />
+                  ) : (
+                    <LeaderTile
+                      icon={<TrendingUp size={16} aria-hidden="true" />}
+                      title="Più U/O 2.5"
+                      name="—"
+                      value={0}
+                    />
+                  )
+                ) : null}
+              </div>
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <StatTile label="Media punti per giornata" value={data.avgPointsPerMatchday.toFixed(2)} />
-            <StatTile label="Esatti totali (lega)" value={data.exactTotal} />
-          </div>
-
-          {funStats.length ? (
-            <div className="mt-4">
-              <div className="mb-2 text-sm font-extrabold text-white">Statistiche da spogliatoio</div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <StatTile
+                  label="Media punti per giornata"
+                  value={data.avgPointsPerMatchday.toFixed(2)}
+                />
+                <StatTile
+                  label="Esatti totali (lega)"
+                  value={data.exactTotal}
+                />
+              </div>
+            </>
+          ) : null}
+          {section === "fun" && funStats.length ? (
+            <div>
+              <div className="mb-2 text-sm font-extrabold text-white">
+                Statistiche da spogliatoio
+              </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 {funStats.map((stat: any) => (
-                  <div key={stat.key} className="rounded-2xl border border-amber-300/20 bg-amber-300/10 p-4 shadow-[0_0_26px_rgba(251,191,36,0.06)]">
+                  <div
+                    key={stat.key}
+                    className="rounded-2xl border border-amber-300/20 bg-amber-300/10 p-4 shadow-[0_0_26px_rgba(251,191,36,0.06)]"
+                  >
                     <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wide text-amber-100">
                       {funIcon(String(stat.key))}
                       {stat.title}
                     </div>
                     <div className="mt-2 flex items-end justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="truncate text-base font-extrabold text-white">{stat.displayName || "—"}</div>
-                        <div className="mt-1 text-xs text-orange-50/70">{stat.description}</div>
+                        <div className="flex items-center gap-2">
+                          <div className="truncate text-base font-extrabold text-white">
+                            {stat.displayName || "—"}
+                          </div>
+                          {Number(stat.tieCount || 0) > 1 ? (
+                            <Badge>ex aequo</Badge>
+                          ) : null}
+                        </div>
+                        <div className="mt-1 text-xs text-cyan-50/70">
+                          {stat.description}
+                        </div>
                       </div>
-                      <div className="shrink-0 rounded-xl bg-black/25 px-2.5 py-1 text-sm font-black text-amber-100 ring-1 ring-amber-200/20">{Number(stat.value || 0)}</div>
+                      <div className="shrink-0 rounded-xl bg-black/25 px-2.5 py-1 text-sm font-black text-amber-100 ring-1 ring-amber-200/20">
+                        {Number(stat.value || 0)}
+                      </div>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
+          ) : section === "fun" ? (
+            <div className="rounded-2xl border border-cyan-100/15 bg-cyan-950/35 p-4 text-sm text-cyan-50/70">
+              Le statistiche da spogliatoio compariranno appena ci saranno
+              abbastanza pronostici e risultati.
+            </div>
           ) : null}
 
-          <div className="mt-4 flex flex-wrap gap-2">
-            {data.bestMatchday ? (
-              <Badge tone="green">Migliore giornata: {data.bestMatchday.matchday} · {data.bestMatchday.avgPoints.toFixed(2)} pt medi</Badge>
-            ) : (
-              <Badge>Migliore giornata: —</Badge>
-            )}
-            {data.worstMatchday ? (
-              <Badge tone="rose">Peggiore giornata: {data.worstMatchday.matchday} · {data.worstMatchday.avgPoints.toFixed(2)} pt medi</Badge>
-            ) : (
-              <Badge>Peggiore giornata: —</Badge>
-            )}
-          </div>
+          {section === "top" ? (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {data.bestMatchday ? (
+                <Badge tone="green">
+                  Migliore giornata: {data.bestMatchday.matchday} ·{" "}
+                  {data.bestMatchday.avgPoints.toFixed(2)} pt medi
+                </Badge>
+              ) : (
+                <Badge>Migliore giornata: —</Badge>
+              )}
+              {data.worstMatchday ? (
+                <Badge tone="rose">
+                  Peggiore giornata: {data.worstMatchday.matchday} ·{" "}
+                  {data.worstMatchday.avgPoints.toFixed(2)} pt medi
+                </Badge>
+              ) : (
+                <Badge>Peggiore giornata: —</Badge>
+              )}
+            </div>
+          ) : null}
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader
-          title="Distribuzione"
-          subtitle="Quanti utenti rientrano in ciascuna fascia punti (per giornata)"
-          right={<BarChart3 size={18} className="text-orange-50/60" aria-hidden="true" />}
-        />
-        <CardContent>
-          {data.distribution?.length ? (
-            <div className="space-y-2">
-              {data.distribution.map((b) => (
-                <div key={b.label} className="flex items-center justify-between rounded-xl border border-amber-100/15 bg-[#07150f]/80 px-3 py-2">
-                  <div className="text-sm font-semibold text-white">{b.label}</div>
-                  <Badge>{b.count}</Badge>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-sm text-orange-50/70">Nessun dato.</div>
-          )}
-        </CardContent>
-      </Card>
+      {section === "distribution" ? (
+        <Card>
+          <CardHeader
+            title="Distribuzione"
+            subtitle="Quanti utenti rientrano in ciascuna fascia punti (per giornata)"
+            right={
+              <BarChart3
+                size={18}
+                className="text-cyan-100/60"
+                aria-hidden="true"
+              />
+            }
+          />
+          <CardContent>
+            {data.distribution?.length ? (
+              <div className="space-y-2">
+                {data.distribution.map((b) => (
+                  <div
+                    key={b.label}
+                    className="flex items-center justify-between rounded-xl border border-cyan-100/15 bg-cyan-950/35 px-3 py-2"
+                  >
+                    <div className="text-sm font-semibold text-white">
+                      {b.label}
+                    </div>
+                    <Badge>{b.count}</Badge>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-sm text-cyan-50/70">Nessun dato.</div>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }

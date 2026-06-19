@@ -48,7 +48,7 @@ export function LockBanner() {
         </div>
 
         {showCountdown ? (
-          <div className="shrink-0 rounded-2xl bg-[#07150f]/80 px-3 py-1 ring-1 ring-slate-800">
+          <div className="shrink-0 rounded-2xl bg-cyan-950/35 px-3 py-1 ring-1 ring-slate-800">
             <div className="whitespace-nowrap">
               <Countdown
                 lockUntilIso={lock.lockUntil}

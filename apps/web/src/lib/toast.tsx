@@ -42,7 +42,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             t.tone === "danger"
               ? "bg-rose-600 text-white"
               : t.tone === "success"
-              ? "bg-amber-600 text-white"
+              ? "bg-emerald-600 text-white"
               : "bg-slate-900 text-white";
           return (
             <div key={t.id} className={`pointer-events-auto rounded-2xl px-4 py-3 text-sm shadow-lg ${cls}`}>

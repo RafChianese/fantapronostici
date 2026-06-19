@@ -39,9 +39,9 @@ export default function OAuthCallbackPage() {
   if (!handled) {
     return (
       <div className="mx-auto max-w-lg">
-        <div className="rounded-2xl border border-amber-100/15 bg-[#07150f]/90 p-6 shadow-sm">
+        <div className="rounded-2xl border border-cyan-100/15 bg-cyan-950/45 p-6 shadow-sm">
           <div className="text-lg font-semibold">Accesso in corso…</div>
-          <div className="mt-2 text-sm text-orange-50/60">
+          <div className="mt-2 text-sm text-cyan-100/60">
             Stiamo completando l’accesso. Se non vieni reindirizzato, torna al login.
           </div>
         </div>
