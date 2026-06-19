@@ -4,7 +4,13 @@ export type GlobalRole = "USER" | "SUPER_ADMIN";
 export type LeagueRole = "MEMBER" | "ADMIN";
 export type MembershipStatus = "PENDING" | "APPROVED" | "REJECTED";
 
-export type User = { id: string; email: string; displayName: string; globalRole: GlobalRole; avatarId?: string | null };
+export type User = {
+  id: string;
+  email: string;
+  displayName: string;
+  globalRole: GlobalRole;
+  avatarId?: string | null;
+};
 
 export type AvatarConfig = {
   /** Schema version (v2 full-body avatar). Optional for backward compatibility. */
@@ -18,9 +24,29 @@ export type AvatarConfig = {
   eyebrowsType?: "straight" | "arched" | "thick";
   eyebrowsColor?: "black" | "brown" | "blonde" | "red" | "gray";
   outfitType?: "tshirt" | "hoodie" | "jersey" | "tracksuit" | "dress" | "suit";
-  outfitColor?: "black" | "blue" | "red" | "green" | "purple" | "orange" | "gray" | "teal" | "pink";
+  outfitColor?:
+    | "black"
+    | "blue"
+    | "red"
+    | "green"
+    | "purple"
+    | "orange"
+    | "gray"
+    | "teal"
+    | "pink";
   /** Secondary/accent color for outfits (eg stripes/collar). */
-  outfitAccentColor?: "white" | "black" | "blue" | "red" | "green" | "purple" | "orange" | "gray" | "teal" | "pink" | "yellow";
+  outfitAccentColor?:
+    | "white"
+    | "black"
+    | "blue"
+    | "red"
+    | "green"
+    | "purple"
+    | "orange"
+    | "gray"
+    | "teal"
+    | "pink"
+    | "yellow";
   /** Jersey personalization (displayed on kit). */
   jerseyNumber?: number; // 0..99
   jerseyName?: string; // 0..12 chars
@@ -39,7 +65,12 @@ export type LiveParticipant = {
   avatarJson?: AvatarConfig | null;
   prediction: { homeGoals: number; awayGoals: number } | null;
   livePoints: number;
-  liveBreakdown?: { exact: number; outcome: number; sumGoals: number; underOver: number };
+  liveBreakdown?: {
+    exact: number;
+    outcome: number;
+    sumGoals: number;
+    underOver: number;
+  };
   isExactLive: boolean;
 };
 
@@ -73,7 +104,11 @@ export type LiveLeaderboardRow = {
   rankDelta: number;
 };
 
-export type LiveResponse = { matches: LiveMatch[]; liveLeaderboard?: LiveLeaderboardRow[]; prizeCount?: number };
+export type LiveResponse = {
+  matches: LiveMatch[];
+  liveLeaderboard?: LiveLeaderboardRow[];
+  prizeCount?: number;
+};
 export type CalendarParticipant = {
   userId: string;
   displayName: string;
@@ -81,7 +116,12 @@ export type CalendarParticipant = {
   avatarJson?: AvatarConfig | null;
   prediction: { homeGoals: number; awayGoals: number } | null;
   points: number;
-  breakdown?: { exact: number; outcome: number; sumGoals: number; underOver: number };
+  breakdown?: {
+    exact: number;
+    outcome: number;
+    sumGoals: number;
+    underOver: number;
+  };
   isExactLive: boolean;
 };
 
@@ -104,9 +144,16 @@ export type CalendarMatch = {
 
 export type CalendarResponse = { matches: CalendarMatch[] };
 
-
-export type LeagueBranding = { logoUrl?: string | null; logoDataUrl?: string | null };
-export type League = { id: string; name: string; code: string; branding?: LeagueBranding | null };
+export type LeagueBranding = {
+  logoUrl?: string | null;
+  logoDataUrl?: string | null;
+};
+export type League = {
+  id: string;
+  name: string;
+  code: string;
+  branding?: LeagueBranding | null;
+};
 export type Membership = {
   id: string;
   role: LeagueRole;
@@ -168,20 +215,57 @@ export type MatchDetailResponse = {
 
 export type CompetitionPredictionsResponse = {
   competitionType?: "LEAGUE" | "KNOCKOUT_CUP";
-  enabled: { winner: boolean; topScorer: boolean; quarterFinalist?: boolean; semiFinalist?: boolean; finalist?: boolean };
-  points: { winner: number; topScorer: number; quarterFinalist?: number; semiFinalist?: number; finalist?: number };
+  enabled: {
+    winner: boolean;
+    topScorer: boolean;
+    quarterFinalist?: boolean;
+    semiFinalist?: boolean;
+    finalist?: boolean;
+  };
+  points: {
+    winner: number;
+    topScorer: number;
+    quarterFinalist?: number;
+    semiFinalist?: number;
+    finalist?: number;
+  };
   deadline: string | null;
   canEdit: boolean;
   picks: {
-    winner: { teamExternalId: number | null; teamName: string | null; pointsAwarded: number } | null;
-    topScorer: { playerExternalId: number | null; playerName: string | null; pointsAwarded: number } | null;
-    quarterFinalist?: { teamExternalId: number | null; teamName: string | null; pointsAwarded: number } | null;
-    semiFinalist?: { teamExternalId: number | null; teamName: string | null; pointsAwarded: number } | null;
-    finalist?: { teamExternalId: number | null; teamName: string | null; pointsAwarded: number } | null;
+    winner: {
+      teamExternalId: number | null;
+      teamName: string | null;
+      pointsAwarded: number;
+    } | null;
+    topScorer: {
+      playerExternalId: number | null;
+      playerName: string | null;
+      pointsAwarded: number;
+    } | null;
+    quarterFinalist?: {
+      teamExternalId: number | null;
+      teamName: string | null;
+      pointsAwarded: number;
+    } | null;
+    semiFinalist?: {
+      teamExternalId: number | null;
+      teamName: string | null;
+      pointsAwarded: number;
+    } | null;
+    finalist?: {
+      teamExternalId: number | null;
+      teamName: string | null;
+      pointsAwarded: number;
+    } | null;
   };
   options: {
     teams: Array<{ id: number; name: string; crest?: string | null }>;
-    scorers: Array<{ id: number; name: string; teamName?: string | null; goals?: number }>;
+    scorers: Array<{
+      id: number;
+      name: string;
+      teamName?: string | null;
+      goals?: number;
+    }>;
   };
 };
 
@@ -212,7 +296,10 @@ export type RegolamentoConfigResponse = {
   league: League;
   rules: LeagueRules;
   settings: LeagueSettings;
-  monetization: { entryFeeCents: number; prizes: Array<{ position: number; amountCents: number }> };
+  monetization: {
+    entryFeeCents: number;
+    prizes: Array<{ position: number; amountCents: number }>;
+  };
   lock: {
     lockUntil: string;
     isForceLocked: boolean;
@@ -233,12 +320,78 @@ export type LeagueStatsResponse = {
   bestDefense: { userId: string; displayName: string; value: number } | null;
 
   // Preferred fields
-  topTotalPoints?: { userId: string; displayName: string; value: number } | null;
+  topTotalPoints?: {
+    userId: string;
+    displayName: string;
+    value: number;
+  } | null;
   topExactHits?: { userId: string; displayName: string; value: number } | null;
-  topOutcomeHits?: { userId: string; displayName: string; value: number } | null;
-  topSumGoalsHits?: { userId: string; displayName: string; value: number } | null;
-  topUnderOverHits?: { userId: string; displayName: string; value: number } | null;
-  funStats?: Array<{ key: string; title: string; description: string; userId?: string; displayName?: string; value?: number; winners?: Array<{ userId: string; displayName: string; value: number }>; tieCount?: number }>;
+  topOutcomeHits?: {
+    userId: string;
+    displayName: string;
+    value: number;
+  } | null;
+  topSumGoalsHits?: {
+    userId: string;
+    displayName: string;
+    value: number;
+  } | null;
+  topUnderOverHits?: {
+    userId: string;
+    displayName: string;
+    value: number;
+  } | null;
+  funStats?: Array<{
+    key: string;
+    title: string;
+    description: string;
+    userId?: string;
+    displayName?: string;
+    value?: number;
+    winners?: Array<{ userId: string; displayName: string; value: number }>;
+    tieCount?: number;
+  }>;
+  engagement?: {
+    achievements?: Array<{
+      key: string;
+      title: string;
+      userId?: string;
+      displayName: string;
+      value: number;
+      description?: string;
+    }>;
+    profileCards?: Array<{
+      userId: string;
+      displayName: string;
+      position: number;
+      totalPoints: number;
+      ovr: number;
+      attributes: {
+        precision: number;
+        courage: number;
+        consistency: number;
+        exactHits: number;
+        avgPredictedGoals: number;
+      };
+    }>;
+    rivalries?: Array<{
+      title: string;
+      gap: number;
+      userA: {
+        userId: string;
+        displayName: string;
+        position: number;
+        totalPoints: number;
+      };
+      userB: {
+        userId: string;
+        displayName: string;
+        position: number;
+        totalPoints: number;
+      };
+    }>;
+    timeline?: Array<{ type: string; title: string; text: string }>;
+  };
 
   features?: { underOver25: boolean };
 
@@ -255,15 +408,24 @@ export type LeagueStatsResponse = {
   worstMatchday: { matchday: number; avgPoints: number } | null;
 };
 
-
 export type FinalResultResponse = {
   finalized: boolean;
   finalizedAt: string | null;
   myPosition?: number | null;
   prizePosition?: number | null;
   prizeAmountCents?: number | null;
-  winners: Array<{ userId: string; displayName: string; position: number; prizeAmountCents?: number | null; totalPoints?: number }>;
-  leaderboardTop: Array<{ userId: string; displayName: string; totalPoints: number }>;
+  winners: Array<{
+    userId: string;
+    displayName: string;
+    position: number;
+    prizeAmountCents?: number | null;
+    totalPoints?: number;
+  }>;
+  leaderboardTop: Array<{
+    userId: string;
+    displayName: string;
+    totalPoints: number;
+  }>;
   prizeCount?: number;
 };
 
@@ -296,7 +458,8 @@ async function request(path: string, opts: RequestInit = {}) {
   const token = getToken();
   const leagueId = getActiveLeagueId();
 
-  const isForm = typeof FormData !== "undefined" && opts.body instanceof FormData;
+  const isForm =
+    typeof FormData !== "undefined" && opts.body instanceof FormData;
 
   const headers: Record<string, string> = {
     ...(isForm ? {} : { "Content-Type": "application/json" }),
@@ -362,60 +525,136 @@ export function saveBlob(blob: Blob, filename: string) {
 export const api = {
   // auth
   login: (email: string, password: string) =>
-    request(`/api/auth/login`, { method: "POST", body: JSON.stringify({ email, password }) }),
+    request(`/api/auth/login`, {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    }),
   register: (email: string, displayName: string, password: string) =>
-    request(`/api/auth/register`, { method: "POST", body: JSON.stringify({ email, displayName, password }) }),
+    request(`/api/auth/register`, {
+      method: "POST",
+      body: JSON.stringify({ email, displayName, password }),
+    }),
 
   verifyEmail: (email: string, code: string) =>
-    request(`/api/auth/verify-email`, { method: "POST", body: JSON.stringify({ email, code }) }),
+    request(`/api/auth/verify-email`, {
+      method: "POST",
+      body: JSON.stringify({ email, code }),
+    }),
   resendVerification: (email: string) =>
-    request(`/api/auth/resend-verification`, { method: "POST", body: JSON.stringify({ email }) }),
+    request(`/api/auth/resend-verification`, {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
 
   forgotPassword: (email: string) =>
-    request(`/api/auth/forgot-password`, { method: "POST", body: JSON.stringify({ email }) }),
+    request(`/api/auth/forgot-password`, {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
   resetPassword: (email: string, token: string, newPassword: string) =>
-    request(`/api/auth/reset-password`, { method: "POST", body: JSON.stringify({ email, token, newPassword }) }),
+    request(`/api/auth/reset-password`, {
+      method: "POST",
+      body: JSON.stringify({ email, token, newPassword }),
+    }),
 
   // me
   // Optional signal is used by the auth bootstrapper to implement timeouts/retries.
   me: (opts?: { signal?: AbortSignal }) =>
-    request(`/api/me`, { signal: opts?.signal }) as Promise<{ user: UserWithAvatar; memberships: Membership[] }>,
+    request(`/api/me`, { signal: opts?.signal }) as Promise<{
+      user: UserWithAvatar;
+      memberships: Membership[];
+    }>,
   changePassword: (currentPassword: string, newPassword: string) =>
-    request(`/api/me/password`, { method: "PUT", body: JSON.stringify({ currentPassword, newPassword }) }),
-  updateProfile: (payload: { displayName?: string; avatarId?: string | null }) =>
-    request(`/api/me/profile`, { method: "PUT", body: JSON.stringify(payload) }),
+    request(`/api/me/password`, {
+      method: "PUT",
+      body: JSON.stringify({ currentPassword, newPassword }),
+    }),
+  updateProfile: (payload: {
+    displayName?: string;
+    avatarId?: string | null;
+  }) =>
+    request(`/api/me/profile`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
   adUnlockStatus: () => request(`/api/me/ad-unlock`),
   adUnlock: () => request(`/api/me/ad-unlock`, { method: "POST" }),
   myPredictions: () => request(`/api/me/predictions`),
-  matchDetail: (matchId: string) => request(`/api/me/matches/${encodeURIComponent(matchId)}/detail`) as Promise<MatchDetailResponse>,
-  setScorer: (matchId: string, payload: { playerId: number | null; playerName?: string | null }) =>
-    request(`/api/me/matches/${encodeURIComponent(matchId)}/scorer`, { method: "PUT", body: JSON.stringify(payload) }),
+  matchDetail: (matchId: string) =>
+    request(
+      `/api/me/matches/${encodeURIComponent(matchId)}/detail`,
+    ) as Promise<MatchDetailResponse>,
+  setScorer: (
+    matchId: string,
+    payload: { playerId: number | null; playerName?: string | null },
+  ) =>
+    request(`/api/me/matches/${encodeURIComponent(matchId)}/scorer`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
   live: () => request(`/api/me/live`) as Promise<LiveResponse>,
   calendar: () => request(`/api/me/calendar`) as Promise<CalendarResponse>,
-  competitionPredictions: () => request(`/api/me/competition-predictions`) as Promise<CompetitionPredictionsResponse>,
+  competitionPredictions: () =>
+    request(
+      `/api/me/competition-predictions`,
+    ) as Promise<CompetitionPredictionsResponse>,
   saveCompetitionPredictions: (body: SaveCompetitionPredictionsBody) =>
-    request(`/api/me/competition-predictions`, { method: "PUT", body: JSON.stringify(body) }) as Promise<CompetitionPredictionsResponse>,
-  savePredictions: (predictions: { matchId: string; homeGoals: number; awayGoals: number }[]) =>
-    request(`/api/me/predictions`, { method: "PUT", body: JSON.stringify({ predictions }) }),
+    request(`/api/me/competition-predictions`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }) as Promise<CompetitionPredictionsResponse>,
+  savePredictions: (
+    predictions: { matchId: string; homeGoals: number; awayGoals: number }[],
+  ) =>
+    request(`/api/me/predictions`, {
+      method: "PUT",
+      body: JSON.stringify({ predictions }),
+    }),
   lock: (leagueId?: string, leagueCode?: string) => {
-    const q = leagueId ? `?leagueId=${encodeURIComponent(leagueId)}` : leagueCode ? `?leagueCode=${encodeURIComponent(leagueCode)}` : "";
+    const q = leagueId
+      ? `?leagueId=${encodeURIComponent(leagueId)}`
+      : leagueCode
+        ? `?leagueCode=${encodeURIComponent(leagueCode)}`
+        : "";
     return request(`/api/lock${q}`);
   },
   // dashboard helper (uses league header x-league-id)
   publicConfig: () => request(`/api/lock`),
 
   // league public rules+settings (used by "Regolamento")
-  regolamentoConfig: () => request(`/api/regolamento-config`) as Promise<RegolamentoConfigResponse>,
+  regolamentoConfig: () =>
+    request(`/api/regolamento-config`) as Promise<RegolamentoConfigResponse>,
 
   // leagues
   myLeagues: () => request(`/api/leagues/mine`),
-  createLeague: (name: string, opts?: { entryFeeCents?: number; prizes?: Array<{ position: number; amountCents: number }> }) =>
-    request(`/api/leagues`, { method: "POST", body: JSON.stringify({ name, ...(opts || {}) }) }),
+  createLeague: (
+    name: string,
+    opts?: {
+      entryFeeCents?: number;
+      prizes?: Array<{ position: number; amountCents: number }>;
+    },
+  ) =>
+    request(`/api/leagues`, {
+      method: "POST",
+      body: JSON.stringify({ name, ...(opts || {}) }),
+    }),
   updateLeague: (leagueId: string, patch: { name?: string }) =>
-    request(`/api/leagues/${leagueId}`, { method: "PATCH", body: JSON.stringify(patch) }),
-  uploadLeagueLogo: (leagueId: string, dataUrl: string) => request(`/api/leagues/${leagueId}/logo`, { method: "POST", body: JSON.stringify({ dataUrl }) }),
-  removeLeagueLogo: (leagueId: string) => request(`/api/leagues/${leagueId}/logo`, { method: "DELETE" }),
-  joinLeague: (code: string) => request(`/api/leagues/join`, { method: "POST", body: JSON.stringify({ code }) }),
+    request(`/api/leagues/${leagueId}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    }),
+  uploadLeagueLogo: (leagueId: string, dataUrl: string) =>
+    request(`/api/leagues/${leagueId}/logo`, {
+      method: "POST",
+      body: JSON.stringify({ dataUrl }),
+    }),
+  removeLeagueLogo: (leagueId: string) =>
+    request(`/api/leagues/${leagueId}/logo`, { method: "DELETE" }),
+  joinLeague: (code: string) =>
+    request(`/api/leagues/join`, {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    }),
 
   // public (league-scoped)
   matches: () => request(`/api/matches`),
@@ -423,7 +662,18 @@ export const api = {
   leaderboard: (a?: string, b?: string) => {
     const params = new URLSearchParams();
     // Backward compatible: if first argument looks like a sort value, treat it as such.
-    const knownSorts = new Set(["points","name","points_desc","points_asc","exact_desc","exact_asc","outcome_desc","outcome_asc","sumgoals_desc","sumgoals_asc"]); 
+    const knownSorts = new Set([
+      "points",
+      "name",
+      "points_desc",
+      "points_asc",
+      "exact_desc",
+      "exact_asc",
+      "outcome_desc",
+      "outcome_asc",
+      "sumgoals_desc",
+      "sumgoals_asc",
+    ]);
     const sort = a && knownSorts.has(a) ? a : b;
     const leagueCode = a && !knownSorts.has(a) ? a : undefined;
     if (leagueCode) params.set("leagueCode", leagueCode);
@@ -441,9 +691,16 @@ export const api = {
     const q = leagueId ? `?leagueId=${encodeURIComponent(leagueId)}` : "";
     return request(`/api/admin/members${q}`);
   },
-  adminPatchMember: (memberId: string, patch: { status?: MembershipStatus; role?: LeagueRole }, leagueId?: string) => {
+  adminPatchMember: (
+    memberId: string,
+    patch: { status?: MembershipStatus; role?: LeagueRole },
+    leagueId?: string,
+  ) => {
     const q = leagueId ? `?leagueId=${encodeURIComponent(leagueId)}` : "";
-    return request(`/api/admin/members/${memberId}${q}`, { method: "PATCH", body: JSON.stringify(patch) });
+    return request(`/api/admin/members/${memberId}${q}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    });
   },
   adminExportPredictionsCsv: (leagueId?: string) => {
     const q = leagueId ? `?leagueId=${encodeURIComponent(leagueId)}` : "";
@@ -455,20 +712,36 @@ export const api = {
   },
   adminSaveRules: (rules: any, leagueId?: string) => {
     const q = leagueId ? `?leagueId=${encodeURIComponent(leagueId)}` : "";
-    return request(`/api/admin/rules${q}`, { method: "PUT", body: JSON.stringify(rules) });
+    return request(`/api/admin/rules${q}`, {
+      method: "PUT",
+      body: JSON.stringify(rules),
+    });
   },
   // jolly (admin)
   adminJolly: (leagueId?: string) => {
     const q = leagueId ? `?leagueId=${encodeURIComponent(leagueId)}` : "";
     return request(`/api/admin/jolly${q}`);
   },
-  adminSaveJollySettings: (payload: { enableJolly: boolean; jollyMultiplier: number }, leagueId?: string) => {
+  adminSaveJollySettings: (
+    payload: { enableJolly: boolean; jollyMultiplier: number },
+    leagueId?: string,
+  ) => {
     const q = leagueId ? `?leagueId=${encodeURIComponent(leagueId)}` : "";
-    return request(`/api/admin/jolly/settings${q}`, { method: "PUT", body: JSON.stringify(payload) });
+    return request(`/api/admin/jolly/settings${q}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
   },
-  adminSetJollyForMatchday: (matchday: number, matchId: string | null, leagueId?: string) => {
+  adminSetJollyForMatchday: (
+    matchday: number,
+    matchId: string | null,
+    leagueId?: string,
+  ) => {
     const q = leagueId ? `?leagueId=${encodeURIComponent(leagueId)}` : "";
-    return request(`/api/admin/jolly/${matchday}${q}`, { method: "PUT", body: JSON.stringify({ matchId }) });
+    return request(`/api/admin/jolly/${matchday}${q}`, {
+      method: "PUT",
+      body: JSON.stringify({ matchId }),
+    });
   },
 
   adminSettings: (leagueId?: string) => {
@@ -477,7 +750,10 @@ export const api = {
   },
   adminSaveSettings: (settings: any, leagueId?: string) => {
     const q = leagueId ? `?leagueId=${encodeURIComponent(leagueId)}` : "";
-    return request(`/api/admin/settings${q}`, { method: "PUT", body: JSON.stringify(settings) });
+    return request(`/api/admin/settings${q}`, {
+      method: "PUT",
+      body: JSON.stringify(settings),
+    });
   },
   adminLockNow: (leagueId?: string) => {
     const q = leagueId ? `?leagueId=${encodeURIComponent(leagueId)}` : "";
@@ -485,22 +761,34 @@ export const api = {
   },
   adminTournamentFinalResult: (leagueId?: string) => {
     const q = leagueId ? `?leagueId=${encodeURIComponent(leagueId)}` : "";
-    return request(`/api/admin/tournament/final-result${q}`) as Promise<FinalResultResponse>;
+    return request(
+      `/api/admin/tournament/final-result${q}`,
+    ) as Promise<FinalResultResponse>;
   },
   adminFinalizeTournament: (leagueId?: string, message?: string) => {
     const q = leagueId ? `?leagueId=${encodeURIComponent(leagueId)}` : "";
-    return request(`/api/admin/tournament/finalize${q}`, { method: "POST", body: JSON.stringify({ message: message || null }) });
+    return request(`/api/admin/tournament/finalize${q}`, {
+      method: "POST",
+      body: JSON.stringify({ message: message || null }),
+    });
   },
   adminReopenTournament: (leagueId?: string) => {
     const q = leagueId ? `?leagueId=${encodeURIComponent(leagueId)}` : "";
     return request(`/api/admin/tournament/reopen${q}`, { method: "POST" });
   },
-  adminSetMatchResult: (id: string, payload: any) => request(`/api/admin/matches/${id}/result`, { method: "PUT", body: JSON.stringify(payload) }),
+  adminSetMatchResult: (id: string, payload: any) =>
+    request(`/api/admin/matches/${id}/result`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
   adminSync: () => request(`/api/admin/sync`, { method: "POST" }),
 
   // SuperAdmin - football-data.org v4 (global)
   adminFootballDataStatus: () => request(`/api/admin/football-data/status`),
-  adminFootballDataCompetitions: (params: { search?: string; area?: string }) => {
+  adminFootballDataCompetitions: (params: {
+    search?: string;
+    area?: string;
+  }) => {
     const q = new URLSearchParams();
     if (params.search) q.set("search", params.search);
     if (params.area) q.set("area", params.area);
@@ -508,36 +796,68 @@ export const api = {
     return request(`/api/admin/football-data/competitions${s ? `?${s}` : ""}`);
   },
   adminFootballDataSelect: (competitionCode: string, season?: number | null) =>
-    request(`/api/admin/settings/football-data/select`, { method: "POST", body: JSON.stringify({ competitionCode, season: season ?? null }) }),
-  adminFootballDataSelected: () => request(`/api/admin/settings/football-data/selected`),
-  adminFootballDataImportFixtures: () => request(`/api/admin/football-data/import-fixtures`, { method: "POST" }),
+    request(`/api/admin/settings/football-data/select`, {
+      method: "POST",
+      body: JSON.stringify({ competitionCode, season: season ?? null }),
+    }),
+  adminFootballDataSelected: () =>
+    request(`/api/admin/settings/football-data/selected`),
+  adminFootballDataImportFixtures: () =>
+    request(`/api/admin/football-data/import-fixtures`, { method: "POST" }),
   adminFootballDataSyncResults: (matchday?: number) => {
-    const q = matchday ? `?matchday=${encodeURIComponent(String(matchday))}` : "";
-    return request(`/api/admin/football-data/sync-results${q}`, { method: "POST" });
+    const q = matchday
+      ? `?matchday=${encodeURIComponent(String(matchday))}`
+      : "";
+    return request(`/api/admin/football-data/sync-results${q}`, {
+      method: "POST",
+    });
   },
 
   // super admin
   superLeagues: () => request(`/api/super/leagues`),
   superLeagueDetail: (id: string) => request(`/api/super/leagues/${id}`),
   superPatchMember: (leagueId: string, memberId: string, patch: any) =>
-    request(`/api/super/leagues/${leagueId}/members/${memberId}`, { method: "PATCH", body: JSON.stringify(patch) }),
+    request(`/api/super/leagues/${leagueId}/members/${memberId}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    }),
 
   // push
-  pushSubscribe: (sub: { endpoint: string; keys: { p256dh: string; auth: string } }) =>
-    request(`/api/push/subscribe`, { method: "POST", body: JSON.stringify(sub) }),
+  pushSubscribe: (sub: {
+    endpoint: string;
+    keys: { p256dh: string; auth: string };
+  }) =>
+    request(`/api/push/subscribe`, {
+      method: "POST",
+      body: JSON.stringify(sub),
+    }),
   pushUnsubscribe: (endpoint: string) =>
-    request(`/api/push/unsubscribe`, { method: "POST", body: JSON.stringify({ endpoint }) }),
+    request(`/api/push/unsubscribe`, {
+      method: "POST",
+      body: JSON.stringify({ endpoint }),
+    }),
   pushTest: () => request(`/api/push/test`, { method: "POST" }),
 
   // super admin monetization
   superMonetization: () => request(`/api/super/monetization`),
-  superSaveMonetization: (config: { adsEnabled?: boolean; demoAdsEnabled?: boolean; unlockMinutes?: number }) =>
-    request(`/api/super/monetization`, { method: "PUT", body: JSON.stringify(config) }),
+  superSaveMonetization: (config: {
+    adsEnabled?: boolean;
+    demoAdsEnabled?: boolean;
+    unlockMinutes?: number;
+  }) =>
+    request(`/api/super/monetization`, {
+      method: "PUT",
+      body: JSON.stringify(config),
+    }),
   superMonetizationStats: () => request(`/api/super/monetization/stats`),
 
   // super admin - external football provider
   superExternalConfig: () => request(`/api/super/external-config`),
-  superSaveExternalConfig: (patch: any) => request(`/api/super/external-config`, { method: "PUT", body: JSON.stringify(patch) }),
+  superSaveExternalConfig: (patch: any) =>
+    request(`/api/super/external-config`, {
+      method: "PUT",
+      body: JSON.stringify(patch),
+    }),
 
   // super admin - global competition outcome (winner + top scorer)
   superCompetitionOutcome: () => request(`/api/super/competition-outcome`),
@@ -551,17 +871,24 @@ export const api = {
     quarterFinalistTeams?: Array<{ id: number; name: string }>;
     semiFinalistTeams?: Array<{ id: number; name: string }>;
     finalistTeams?: Array<{ id: number; name: string }>;
-  }) => request(`/api/super/competition-outcome`, { method: "PUT", body: JSON.stringify(payload) }),
+  }) =>
+    request(`/api/super/competition-outcome`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
   superSearchExternalLeagues: (search: string, season?: number) => {
     const params = new URLSearchParams();
     params.set("search", search);
     if (season) params.set("season", String(season));
     return request(`/api/super/external/leagues?${params.toString()}`);
   },
-  superImportFixtures: () => request(`/api/super/external/import-fixtures`, { method: "POST" }),
+  superImportFixtures: () =>
+    request(`/api/super/external/import-fixtures`, { method: "POST" }),
   // league stats
-  leagueStats: () => request(`/api/league/stats`) as Promise<LeagueStatsResponse>,
-  leagueFinalResult: () => request(`/api/league/final-result`) as Promise<FinalResultResponse>,
+  leagueStats: () =>
+    request(`/api/league/stats`) as Promise<LeagueStatsResponse>,
+  leagueFinalResult: () =>
+    request(`/api/league/final-result`) as Promise<FinalResultResponse>,
 };
 
 export function apiUrl() {

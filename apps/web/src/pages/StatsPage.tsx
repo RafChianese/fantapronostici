@@ -347,6 +347,195 @@ function ExperienceIdea({
   );
 }
 
+function MiniProgress({ label, value }: { label: string; value: number }) {
+  const safe = Math.max(0, Math.min(99, Math.round(Number(value || 0))));
+  return (
+    <div>
+      <div className="mb-1 flex items-center justify-between gap-2 text-[11px] font-bold text-cyan-50/65">
+        <span>{label}</span>
+        <span>{safe}</span>
+      </div>
+      <div className="h-1.5 overflow-hidden rounded-full bg-black/30 ring-1 ring-cyan-100/10">
+        <div
+          className="h-full rounded-full bg-cyan-100/70"
+          style={{ width: `${safe}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function EngagementPanel({
+  engagement,
+}: {
+  engagement: NonNullable<LeagueStatsResponse["engagement"]>;
+}) {
+  const achievements = engagement.achievements || [];
+  const profileCards = engagement.profileCards || [];
+  const rivalries = engagement.rivalries || [];
+  const timeline = engagement.timeline || [];
+  const hasData =
+    achievements.length ||
+    profileCards.length ||
+    rivalries.length ||
+    timeline.length;
+  if (!hasData) return null;
+
+  return (
+    <Card>
+      <CardHeader
+        title="Zona fan: badge, rivalità e carte giocatore"
+        subtitle="Statistiche trasformate in contenuti da spogliatoio: più sfottò, più competizione, più voglia di rientrare."
+      />
+      <CardContent>
+        <div className="grid gap-3 xl:grid-cols-[1.1fr_1fr]">
+          {profileCards.length ? (
+            <div>
+              <div className="mb-2 flex items-center gap-2 text-sm font-extrabold text-white">
+                <Crown className="h-4 w-4 text-amber-200" aria-hidden="true" />
+                Carte giocatore
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {profileCards.slice(0, 4).map((card) => (
+                  <div
+                    key={card.userId}
+                    className="overflow-hidden rounded-3xl border border-amber-200/20 bg-gradient-to-br from-amber-200/15 via-cyan-950/35 to-black/35 p-4 shadow-sm"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-[11px] font-black uppercase tracking-wide text-amber-100/75">
+                          Posizione #{card.position}
+                        </div>
+                        <div className="mt-1 truncate text-base font-black text-white">
+                          {card.displayName}
+                        </div>
+                        <div className="mt-1 text-xs text-cyan-50/65">
+                          {card.totalPoints} punti · {card.attributes.exactHits}{" "}
+                          esatti
+                        </div>
+                      </div>
+                      <div className="rounded-2xl border border-amber-200/35 bg-black/30 px-3 py-2 text-center">
+                        <div className="text-[10px] font-black text-amber-100/70">
+                          OVR
+                        </div>
+                        <div className="text-2xl font-black text-amber-100">
+                          {card.ovr}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-4 space-y-2">
+                      <MiniProgress
+                        label="Precisione"
+                        value={card.attributes.precision}
+                      />
+                      <MiniProgress
+                        label="Coraggio"
+                        value={card.attributes.courage}
+                      />
+                      <MiniProgress
+                        label="Costanza"
+                        value={card.attributes.consistency}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="space-y-3">
+            {achievements.length ? (
+              <div>
+                <div className="mb-2 flex items-center gap-2 text-sm font-extrabold text-white">
+                  <Medal
+                    className="h-4 w-4 text-amber-200"
+                    aria-hidden="true"
+                  />
+                  Badge sbloccati
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {achievements.slice(0, 8).map((badge) => (
+                    <div
+                      key={`${badge.key}-${badge.userId || badge.displayName}`}
+                      className="rounded-2xl border border-amber-200/20 bg-amber-100/10 px-3 py-2"
+                    >
+                      <div className="text-xs font-black text-amber-100">
+                        {badge.title}
+                      </div>
+                      <div className="mt-0.5 text-[11px] text-cyan-50/70">
+                        {badge.displayName} · {badge.value}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {rivalries.length ? (
+              <div>
+                <div className="mb-2 flex items-center gap-2 text-sm font-extrabold text-white">
+                  <Swords
+                    className="h-4 w-4 text-rose-200"
+                    aria-hidden="true"
+                  />
+                  Rivalità accese
+                </div>
+                <div className="space-y-2">
+                  {rivalries.map((rivalry, idx) => (
+                    <div
+                      key={`${rivalry.userA.userId}-${rivalry.userB.userId}-${idx}`}
+                      className="rounded-2xl border border-rose-200/15 bg-rose-950/20 p-3"
+                    >
+                      <div className="text-xs font-black text-rose-100">
+                        {rivalry.title}
+                      </div>
+                      <div className="mt-1 text-sm font-extrabold text-white">
+                        #{rivalry.userA.position} {rivalry.userA.displayName} vs
+                        #{rivalry.userB.position} {rivalry.userB.displayName}
+                      </div>
+                      <div className="mt-1 text-xs text-cyan-50/65">
+                        {rivalry.userA.totalPoints} pt ·{" "}
+                        {rivalry.userB.totalPoints} pt
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {timeline.length ? (
+              <div>
+                <div className="mb-2 flex items-center gap-2 text-sm font-extrabold text-white">
+                  <Activity
+                    className="h-4 w-4 text-cyan-200"
+                    aria-hidden="true"
+                  />
+                  Timeline lega
+                </div>
+                <div className="space-y-2">
+                  {timeline.map((event, idx) => (
+                    <div
+                      key={`${event.type}-${idx}`}
+                      className="rounded-2xl border border-cyan-100/15 bg-cyan-950/30 p-3"
+                    >
+                      <div className="text-xs font-black text-cyan-100">
+                        {event.title}
+                      </div>
+                      <div className="mt-1 text-xs leading-relaxed text-cyan-50/70">
+                        {event.text}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function StatTile({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="rounded-2xl border border-cyan-100/15 bg-cyan-950/35 p-4">
@@ -677,6 +866,10 @@ export default function StatsPage() {
           ) : null}
         </CardContent>
       </Card>
+
+      {data.engagement ? (
+        <EngagementPanel engagement={data.engagement} />
+      ) : null}
 
       <Card>
         <CardHeader
