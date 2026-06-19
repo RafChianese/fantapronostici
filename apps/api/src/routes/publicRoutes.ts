@@ -403,6 +403,7 @@ publicRouter.get("/leaderboard", async (req, res) => {
     const getTieVal = (row: any, c: string) => {
       if (c === "EXACT") return row.exactHits;
       if (c === "OUTCOME") return row.outcomeHits;
+      if (c === "UNDER_OVER") return row.underOverHits;
       return row.sumGoalsHits;
     };
 

@@ -162,7 +162,7 @@ export type Membership = {
 };
 
 export type ScoringMode = "CUMULATIVE" | "BEST_ONLY" | "MIXED";
-export type RankingCriterion = "EXACT" | "OUTCOME" | "SUM_GOALS";
+export type RankingCriterion = "EXACT" | "OUTCOME" | "SUM_GOALS" | "UNDER_OVER";
 
 export type LeagueRules = {
   pointsExact: number;

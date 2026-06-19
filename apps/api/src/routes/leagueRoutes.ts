@@ -178,7 +178,9 @@ async function computeLeaderboardRows(leagueId: string) {
       ? row.exactHits
       : c === "OUTCOME"
         ? row.outcomeHits
-        : row.sumGoalsHits;
+        : c === "UNDER_OVER"
+          ? row.underOverHits
+          : row.sumGoalsHits;
   rows = rows.sort((a: any, b: any) => {
     if (a.totalPoints !== b.totalPoints) return b.totalPoints - a.totalPoints;
     for (const t of [tie1, tie2, tie3]) {

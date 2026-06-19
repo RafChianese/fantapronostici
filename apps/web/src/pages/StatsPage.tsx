@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { api, LeagueStatsResponse } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { useLoading } from "../lib/loading";
@@ -207,28 +207,41 @@ function podiumMedal(index: number) {
 
 function FunStatInfoButton({ stat }: { stat: FunStat }) {
   const [open, setOpen] = useState(false);
+  const [dialogTop, setDialogTop] = useState(96);
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
   const info = FUN_STAT_INFO[stat.key];
   const winners = Array.isArray(stat.winners) ? stat.winners.slice(0, 5) : [];
+
+  const openInfo = () => {
+    const rect = buttonRef.current?.getBoundingClientRect();
+    const viewportHeight = window.innerHeight || 720;
+    const wantedTop = rect ? rect.top - 10 : 96;
+    const maxTop = Math.max(20, viewportHeight - 520);
+    setDialogTop(Math.max(16, Math.min(wantedTop, maxTop)));
+    setOpen(true);
+  };
 
   return (
     <>
       <button
+        ref={buttonRef}
         type="button"
         aria-label={`Info statistica ${stat.title}`}
         aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => (open ? setOpen(false) : openInfo())}
         className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-amber-200/35 bg-slate-950 text-amber-100 shadow-sm transition hover:bg-amber-200/15"
       >
         <HelpCircle size={15} aria-hidden="true" />
       </button>
       {open ? (
         <div
-          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/55 px-4 py-6 backdrop-blur-sm"
+          className="fixed inset-0 z-[80] bg-black/55 px-4 backdrop-blur-sm"
           onMouseDown={() => setOpen(false)}
           role="presentation"
         >
           <div
-            className="max-h-[82vh] w-full max-w-md overflow-y-auto rounded-3xl border border-amber-200/30 bg-slate-950 p-4 text-left shadow-2xl shadow-black/70 ring-1 ring-black/70"
+            className="fixed left-1/2 w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 overflow-y-auto rounded-3xl border border-amber-200/30 bg-slate-950 p-4 text-left shadow-2xl shadow-black/70 ring-1 ring-black/70"
+            style={{ top: dialogTop, maxHeight: `calc(100vh - ${dialogTop + 20}px)` }}
             onMouseDown={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
@@ -869,7 +882,7 @@ export default function StatsPage() {
         </CardContent>
       </Card>
 
-      {data.engagement ? (
+      {section === "fun" && data.engagement ? (
         <EngagementPanel engagement={data.engagement} />
       ) : null}
       {section === "distribution" ? (

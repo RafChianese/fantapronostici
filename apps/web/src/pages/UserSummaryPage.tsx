@@ -6,6 +6,7 @@ import { Badge, Button, Card, CardContent, CardHeader, Skeleton } from "../compo
 import { UserAvatar } from "../components/Avatar";
 import { useAuth } from "../lib/auth";
 import { showNativeRewardedAd } from "../lib/nativeAds";
+import { Flame, Gauge, Medal, Shield, Sparkles, Target, Trophy } from "lucide-react";
 
 type SummaryItem = {
   match?: any;
@@ -237,7 +238,27 @@ export default function UserSummaryPage() {
   const outcomeHits = finishedItems.filter(isOutcomeHit).length;
   const pctExact = finishedCount ? Math.round((exactHits / finishedCount) * 100) : 0;
   const pctOutcome = finishedCount ? Math.round((outcomeHits / finishedCount) * 100) : 0;
-
+  const sumGoalsHits = finishedItems.filter((it) => Number(it?.points?.sumGoals ?? 0) > 0).length;
+  const underOverHits = finishedItems.filter((it) => Number(it?.points?.underOver ?? 0) > 0).length;
+  const predictedGoals = finishedItems.reduce((tot, it) => tot + Number(it?.prediction?.homeGoals ?? 0) + Number(it?.prediction?.awayGoals ?? 0), 0);
+  const avgPredictedGoals = finishedCount ? predictedGoals / finishedCount : 0;
+  const cleanSheetsPredicted = finishedItems.filter((it) => Number(it?.prediction?.homeGoals ?? 0) === 0 || Number(it?.prediction?.awayGoals ?? 0) === 0).length;
+  const exactScoreRate = Math.min(99, Math.round(pctExact * 2.4));
+  const outcomeRate = Math.min(99, Math.round(pctOutcome * 1.15));
+  const instinctRate = Math.min(99, Math.round(((sumGoalsHits + underOverHits) / Math.max(1, finishedCount)) * 100));
+  const courageRate = Math.min(99, Math.round(45 + avgPredictedGoals * 14));
+  const defenseRate = Math.min(99, Math.round((cleanSheetsPredicted / Math.max(1, finishedCount)) * 100));
+  const consistencyRate = Math.min(99, Math.round((Number(safeSummary.total ?? 0) / Math.max(1, finishedCount)) * 9));
+  const playerOvr = Math.max(45, Math.min(99, Math.round((exactScoreRate + outcomeRate + instinctRate + courageRate + defenseRate + consistencyRate) / 6)));
+  const playerArchetype = exactHits >= 5
+    ? "Veggente"
+    : avgPredictedGoals >= 3.2
+      ? "Fantasista"
+      : pctOutcome >= 55
+        ? "Pragmatico"
+        : defenseRate >= 45
+          ? "Catenacciaro"
+          : "Outsider";
   const streakFromEnd = (fn: (it: SummaryItem) => boolean) => {
     let s = 0;
     for (let i = finishedItems.length - 1; i >= 0; i -= 1) {
@@ -249,6 +270,13 @@ export default function UserSummaryPage() {
 
   const streakOutcome = streakFromEnd(isOutcomeHit);
   const streakExact = streakFromEnd(isExactHit);
+  const playerBadges = [
+    exactHits > 0 ? { label: "Risultato esatto", tone: "amber" as const } : null,
+    streakExact >= 2 ? { label: `${streakExact} esatti di fila`, tone: "amber" as const } : null,
+    streakOutcome >= 3 ? { label: `${streakOutcome} 1X2 di fila`, tone: "success" as const } : null,
+    avgPredictedGoals >= 3 ? { label: "Ama la goleada", tone: "amber" as const } : null,
+    cleanSheetsPredicted >= Math.max(3, Math.ceil(finishedCount * 0.25)) ? { label: "Muro basso", tone: "gray" as const } : null,
+  ].filter(Boolean) as Array<{ label: string; tone: "amber" | "success" | "gray" }>;
 
   const pointsByMatchday = new Map<number, number>();
   for (const it of safeItems) {
@@ -308,6 +336,21 @@ export default function UserSummaryPage() {
     if (status === "FINISHED") return <Badge tone="gray">Terminata</Badge>;
     if (status === "IN_PROGRESS") return <Badge tone="green">In corso</Badge>;
     return <Badge tone="gray">Non iniziata</Badge>;
+  };
+
+  const PlayerAttribute = ({ label, value }: { label: string; value: number }) => {
+    const safeValue = Math.max(0, Math.min(99, Math.round(Number(value || 0))));
+    return (
+      <div>
+        <div className="mb-1 flex items-center justify-between text-[11px] font-black uppercase tracking-wide text-cyan-50/65">
+          <span>{label}</span>
+          <span className="text-white">{safeValue}</span>
+        </div>
+        <div className="h-2 overflow-hidden rounded-full bg-black/35 ring-1 ring-cyan-100/10">
+          <div className="h-full rounded-full bg-gradient-to-r from-cyan-300 via-amber-200 to-emerald-300" style={{ width: `${safeValue}%` }} />
+        </div>
+      </div>
+    );
   };
 
   if (loading) {
@@ -436,19 +479,74 @@ export default function UserSummaryPage() {
           right={<Link className="text-sm text-cyan-100/60 hover:underline" to="/leaderboard">← Torna alla classifica</Link>}
         />
         <CardContent className="space-y-4">
-          <div className="flex items-center gap-3 rounded-2xl border border-cyan-100/15 bg-cyan-100/5 p-3">
-            <UserAvatar avatarId={(safeUser as any).avatarId || null} size={60} mode="full" className="shadow-sm" />
-            <div className="min-w-0">
-              <div className="truncate text-sm font-semibold text-white">{safeUser.displayName}</div>
-              <div className="mt-0.5 text-xs text-cyan-100/60">{safeLeague.name}</div>
-            </div>
-          </div>
+          <div className="overflow-hidden rounded-[2rem] border border-amber-200/25 bg-gradient-to-br from-amber-200/20 via-cyan-950/45 to-slate-950 p-4 shadow-[0_0_40px_rgba(251,191,36,0.10)]">
+            <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
+              <div className="relative overflow-hidden rounded-[1.75rem] border border-amber-200/30 bg-black/30 p-4 text-white shadow-inner">
+                <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-amber-200/20 blur-2xl" />
+                <div className="relative flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-[11px] font-black uppercase tracking-[0.18em] text-amber-100/80">Player card</div>
+                    <div className="mt-1 text-4xl font-black leading-none text-amber-100">{playerOvr}</div>
+                    <div className="mt-1 text-xs font-black uppercase tracking-wide text-cyan-50/65">OVR</div>
+                  </div>
+                  <div className="rounded-2xl border border-cyan-100/15 bg-cyan-100/10 px-3 py-1 text-xs font-black text-cyan-50">
+                    {playerArchetype}
+                  </div>
+                </div>
+                <div className="relative mt-4 flex flex-col items-center text-center">
+                  <UserAvatar avatarId={(safeUser as any).avatarId || null} size={92} mode="full" className="drop-shadow-xl" />
+                  <div className="mt-3 max-w-full truncate text-lg font-black">{safeUser.displayName}</div>
+                  <div className="mt-1 max-w-full truncate text-xs font-semibold text-cyan-50/65">{safeLeague.name}</div>
+                </div>
+                <div className="relative mt-4 grid grid-cols-3 gap-2 text-center">
+                  <div className="rounded-2xl border border-cyan-100/10 bg-slate-950/60 p-2"><div className="text-lg font-black text-white">{fmtPoints(safeSummary.total)}</div><div className="text-[10px] font-bold text-cyan-50/55">PTS</div></div>
+                  <div className="rounded-2xl border border-cyan-100/10 bg-slate-950/60 p-2"><div className="text-lg font-black text-white">{exactHits}</div><div className="text-[10px] font-bold text-cyan-50/55">ESATTI</div></div>
+                  <div className="rounded-2xl border border-cyan-100/10 bg-slate-950/60 p-2"><div className="text-lg font-black text-white">{streakOutcome}</div><div className="text-[10px] font-bold text-cyan-50/55">STREAK</div></div>
+                </div>
+              </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="rounded-2xl border border-cyan-100/15 bg-cyan-100/5 p-3"><div className="text-[11px] font-medium text-cyan-100/60">% Esatti</div><div className="mt-1 text-2xl font-semibold text-white">{pctExact}%</div><div className="mt-1 text-xs text-cyan-100/60">Su {finishedCount} partite finite</div></div>
-            <div className="rounded-2xl border border-cyan-100/15 bg-cyan-100/5 p-3"><div className="text-[11px] font-medium text-cyan-100/60">% 1X2</div><div className="mt-1 text-2xl font-semibold text-white">{pctOutcome}%</div><div className="mt-1 text-xs text-cyan-100/60">Su {finishedCount} partite finite</div></div>
-            <div className="rounded-2xl border border-cyan-100/15 bg-cyan-100/5 p-3"><div className="text-[11px] font-medium text-cyan-100/60">Streak 1X2</div><div className="mt-1 text-2xl font-semibold text-white">{streakOutcome}</div><div className="mt-1 text-xs text-cyan-100/60">Consecutivi corretti</div></div>
-            <div className="rounded-2xl border border-cyan-100/15 bg-cyan-100/5 p-3"><div className="text-[11px] font-medium text-cyan-100/60">Miglior giornata</div><div className="mt-1 text-2xl font-semibold text-white">G{bestMatchday.md}</div><div className="mt-1 text-xs text-cyan-100/60">{bestMatchday.pts} punti</div></div>
+              <div className="grid gap-3 lg:grid-rows-[auto_1fr]">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div className="rounded-2xl border border-cyan-100/15 bg-cyan-100/5 p-3"><Target className="mb-2 h-4 w-4 text-amber-100" aria-hidden="true" /><div className="text-[11px] font-black uppercase tracking-wide text-cyan-100/60">Precisione</div><div className="mt-1 text-2xl font-black text-white">{pctExact}%</div><div className="mt-1 text-xs text-cyan-100/55">Risultati esatti</div></div>
+                  <div className="rounded-2xl border border-cyan-100/15 bg-cyan-100/5 p-3"><Shield className="mb-2 h-4 w-4 text-cyan-100" aria-hidden="true" /><div className="text-[11px] font-black uppercase tracking-wide text-cyan-100/60">Affidabilità</div><div className="mt-1 text-2xl font-black text-white">{pctOutcome}%</div><div className="mt-1 text-xs text-cyan-100/55">Esiti 1X2 presi</div></div>
+                  <div className="rounded-2xl border border-cyan-100/15 bg-cyan-100/5 p-3"><Flame className="mb-2 h-4 w-4 text-amber-100" aria-hidden="true" /><div className="text-[11px] font-black uppercase tracking-wide text-cyan-100/60">Forma</div><div className="mt-1 text-2xl font-black text-white">{streakOutcome}</div><div className="mt-1 text-xs text-cyan-100/55">1X2 consecutivi</div></div>
+                  <div className="rounded-2xl border border-cyan-100/15 bg-cyan-100/5 p-3"><Trophy className="mb-2 h-4 w-4 text-amber-100" aria-hidden="true" /><div className="text-[11px] font-black uppercase tracking-wide text-cyan-100/60">Best day</div><div className="mt-1 text-2xl font-black text-white">G{bestMatchday.md}</div><div className="mt-1 text-xs text-cyan-100/55">{bestMatchday.pts} punti</div></div>
+                </div>
+
+                <div className="grid gap-3 xl:grid-cols-[1fr_0.9fr]">
+                  <div className="rounded-3xl border border-cyan-100/15 bg-slate-950/55 p-4">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2 text-sm font-black text-white"><Gauge className="h-4 w-4 text-amber-100" aria-hidden="true" /> Attributi stile FIFA</div>
+                        <div className="text-xs text-cyan-100/55">Valori generati da punti, esatti, esiti e stile di pronostico.</div>
+                      </div>
+                      <Badge tone="amber">{playerArchetype}</Badge>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <PlayerAttribute label="Precisione" value={exactScoreRate} />
+                      <PlayerAttribute label="Lettura 1X2" value={outcomeRate} />
+                      <PlayerAttribute label="Istinto bonus" value={instinctRate} />
+                      <PlayerAttribute label="Coraggio gol" value={courageRate} />
+                      <PlayerAttribute label="Catenaccio" value={defenseRate} />
+                      <PlayerAttribute label="Costanza" value={consistencyRate} />
+                    </div>
+                  </div>
+
+                  <div className="rounded-3xl border border-amber-200/20 bg-amber-200/10 p-4">
+                    <div className="flex items-center gap-2 text-sm font-black text-white"><Sparkles className="h-4 w-4 text-amber-100" aria-hidden="true" /> Badge sbloccati</div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {playerBadges.length ? playerBadges.map((badge) => <Badge key={badge.label} tone={badge.tone}>{badge.label}</Badge>) : <span className="text-xs text-cyan-50/60">Ancora nessun badge: serve almeno una giocata memorabile.</span>}
+                    </div>
+                    <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+                      <div className="rounded-2xl bg-black/25 p-3"><div className="font-black text-white">{avgPredictedGoals.toFixed(2)}</div><div className="text-cyan-50/55">gol previsti di media</div></div>
+                      <div className="rounded-2xl bg-black/25 p-3"><div className="font-black text-white">{sumGoalsHits}</div><div className="text-cyan-50/55">bonus somma gol</div></div>
+                      {features.underOver25 ? <div className="rounded-2xl bg-black/25 p-3"><div className="font-black text-white">{underOverHits}</div><div className="text-cyan-50/55">bonus U/O 2.5</div></div> : null}
+                      <div className="rounded-2xl bg-black/25 p-3"><div className="font-black text-white">{streakExact}</div><div className="text-cyan-50/55">streak esatti</div></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -457,9 +555,16 @@ export default function UserSummaryPage() {
               <div className="mt-2 text-white">{renderMiniChart()}</div>
             </div>
             <div className="rounded-2xl border border-cyan-100/15 bg-cyan-950/45 p-3">
-              <div className="text-sm font-semibold text-white">Sintesi</div>
-              <div className="mt-1 text-xs text-cyan-100/60">Esatti: <b>{exactHits}</b> · 1X2: <b>{outcomeHits}</b> · Partite finite: <b>{finishedCount}</b></div>
-              <div className="mt-2 text-xs text-cyan-100/60">Nota: le percentuali si basano solo sulle partite terminate con risultato disponibile.</div>
+              <div className="flex items-center gap-2 text-sm font-semibold text-white"><Medal className="h-4 w-4 text-amber-100" aria-hidden="true" /> Sintesi giocatore</div>
+              <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-cyan-100/60">
+                <div>Esatti: <b className="text-white">{exactHits}</b></div>
+                <div>1X2: <b className="text-white">{outcomeHits}</b></div>
+                <div>Partite finite: <b className="text-white">{finishedCount}</b></div>
+                <div>Somma gol: <b className="text-white">{sumGoalsHits}</b></div>
+              </div>
+              <div className="mt-3 rounded-2xl border border-cyan-100/10 bg-black/20 p-3 text-xs leading-relaxed text-cyan-50/70">
+                Profilo generato automaticamente: più esatti e bonus alzano l’OVR, la media gol influenza il coraggio, gli 0 previsti aumentano il catenaccio.
+              </div>
             </div>
           </div>
         </CardContent>
@@ -492,95 +597,8 @@ export default function UserSummaryPage() {
         </Card>
       ) : null}
 
-      <Card>
-        <CardHeader
-          title="Pronostici per giornata"
-          subtitle={selectedMatchday === "ALL" ? "Stai visualizzando tutte le giornate." : `Stai visualizzando la giornata ${selectedMatchday}.`}
-          right={
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <select
-                className="min-w-[210px] rounded-xl border border-cyan-100/15 bg-cyan-950/45 px-3 py-2 text-sm text-white"
-                value={selectedMatchday}
-                onChange={(e) => setSelectedMatchday(e.target.value)}
-              >
-                {matchdays.map((md) => (
-                  <option key={md} value={String(md)}>
-                    Giornata {md} · {byMatchday[md]?.length ?? 0} partite{String(md) === defaultMatchday ? " · corrente" : ""}
-                  </option>
-                ))}
-                <option value="ALL">Tutte le giornate</option>
-              </select>
-              <Button variant="secondary" onClick={() => setSelectedMatchday(defaultMatchday)}>Vai alla giornata corrente</Button>
-            </div>
-          }
-        />
-        <CardContent>
-          <div className="space-y-6">
-            {visibleMatchdays.map((md) => (
-              <div key={md} className="space-y-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className="text-base font-semibold text-white">Giornata {md}</div>
-                    <div className="text-xs text-cyan-100/60">{byMatchday[md]?.length ?? 0} partite · {pointsByMatchday.get(md) ?? 0} punti</div>
-                  </div>
-                  {String(md) === defaultMatchday ? <Badge tone="green">Corrente</Badge> : null}
-                </div>
+      {/* Lista pronostici match rimossa dal profilo giocatore: restano statistiche e pronostici torneo. */}
 
-                {(byMatchday[md] ?? []).map((it) => {
-                  const m = it?.match;
-                  const kickoff = m?.kickoffAt ? new Date(m.kickoffAt) : null;
-                  const date = kickoff ? kickoff.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" }) : "";
-                  const time = kickoff ? kickoff.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" }) : "";
-                  const pr = it?.prediction ? `${it.prediction.homeGoals}-${it.prediction.awayGoals}` : "—";
-                  const real = it?.real ? `${it.real.home}-${it.real.away}` : "—";
-                  const pts = Number(it?.points?.total ?? 0);
-                  const exactHit = Number(it?.points?.exact ?? 0) > 0;
-                  const status = getStatus(it);
-                  const shell = exactHit
-                    ? "border-emerald-500/35 bg-emerald-500/10"
-                    : pts > 0
-                    ? "border-sky-500/25 bg-sky-500/10"
-                    : "border-cyan-100/15 bg-cyan-950/35";
-
-                  return (
-                    <div key={m?.id ?? `${m?.kickoffAt}-${m?.homeTeam}`} className={`rounded-2xl border p-4 ${shell}`}>
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <StatusPill status={status} />
-                          {m?.group ? <Badge tone="gray">{String(m.group)}</Badge> : null}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge tone={exactHit ? "green" : pts > 0 ? "green" : "gray"}>{pts} pt</Badge>
-                          {exactHit ? <span className="text-xs font-semibold text-emerald-300">Pronostico esatto ✅</span> : null}
-                        </div>
-                      </div>
-
-                      <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2"><TeamDot name={m?.homeTeam || ""} logo={m?.homeLogo} /><div className="truncate text-sm font-semibold text-white">{m?.homeTeam}</div></div>
-                          <div className="flex items-center gap-2"><TeamDot name={m?.awayTeam || ""} logo={m?.awayLogo} /><div className="truncate text-sm font-semibold text-white">{m?.awayTeam}</div></div>
-                        </div>
-                        <div className="rounded-2xl border border-cyan-100/15 bg-black/20 px-4 py-3 text-center">
-                          <div className="text-[11px] uppercase tracking-wide text-cyan-100/60">Pronostico</div>
-                          <div className="mt-1 text-2xl font-extrabold text-white">{pr}</div>
-                          <div className="mt-2 text-[11px] uppercase tracking-wide text-cyan-100/60">Reale</div>
-                          <div className="mt-1 text-lg font-bold text-cyan-50/85">{real}</div>
-                        </div>
-                        <div className="space-y-2 rounded-2xl border border-cyan-100/15 bg-black/20 p-3 text-sm">
-                          <div className="flex items-center justify-between"><span className="text-cyan-100/60">Data</span><span className="font-medium text-white">{date} · {time}</span></div>
-                          <div className="flex items-center justify-between"><span className="text-cyan-100/60">Punti match</span><span className="font-semibold text-white">{pts}</span></div>
-                          <div className="flex items-start justify-between gap-3"><span className="text-cyan-100/60">Breakdown</span><span className="text-right text-cyan-50/85">{buildBreakdown(it?.points)}</span></div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
-            {safeItems.length === 0 ? <div className="py-6 text-sm text-cyan-100/60">Nessuna partita.</div> : null}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

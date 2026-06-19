@@ -20,6 +20,8 @@ function criterionLabel(c: RankingCriterion): string {
       return "Numero di esiti (1X2) indovinati";
     case "SUM_GOALS":
       return "Numero di somme gol indovinate";
+    case "UNDER_OVER":
+      return "Numero di Under/Over 2.5 indovinati";
     default:
       return String(c);
   }

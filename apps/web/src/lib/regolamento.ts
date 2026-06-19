@@ -15,6 +15,7 @@ export type RegolamentoDoc = {
 function criterionLabel(c: RankingCriterion): string {
   if (c === "EXACT") return "Risultati esatti";
   if (c === "OUTCOME") return "Esiti 1X2";
+  if (c === "UNDER_OVER") return "Under/Over 2.5 indovinati";
   return "Somma gol";
 }
 

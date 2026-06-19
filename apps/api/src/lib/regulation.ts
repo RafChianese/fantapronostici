@@ -3,6 +3,7 @@ import type { Rule, Setting, RankingCriterion, ScoringMode } from "@prisma/clien
 function fmtCriterion(c: RankingCriterion) {
   if (c === "EXACT") return "Numero di risultati esatti";
   if (c === "OUTCOME") return "Numero di esiti corretti (1X2)";
+  if (c === "UNDER_OVER") return "Numero di Under/Over 2.5 corretti";
   return "Numero di somme gol corrette";
 }
 

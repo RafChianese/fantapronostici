@@ -51,6 +51,7 @@ enum RankingCriterion {
   EXACT
   OUTCOME
   SUM_GOALS
+  UNDER_OVER
 }
 
 enum CompetitionPickType {

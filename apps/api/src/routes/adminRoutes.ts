@@ -531,9 +531,9 @@ const SettingsSchema = z.object({
   lockOffsetMinutes: z.number().int().min(0).max(120).optional(),
   predictionMode: z.enum(["TOURNAMENT_PRE", "MATCHDAY_BY_MATCHDAY"]).optional(),
 
-  tieBreak1: z.enum(["EXACT", "OUTCOME", "SUM_GOALS"]).optional(),
-  tieBreak2: z.enum(["EXACT", "OUTCOME", "SUM_GOALS"]).optional(),
-  tieBreak3: z.enum(["EXACT", "OUTCOME", "SUM_GOALS"]).optional(),
+  tieBreak1: z.enum(["EXACT", "OUTCOME", "SUM_GOALS", "UNDER_OVER"]).optional(),
+  tieBreak2: z.enum(["EXACT", "OUTCOME", "SUM_GOALS", "UNDER_OVER"]).optional(),
+  tieBreak3: z.enum(["EXACT", "OUTCOME", "SUM_GOALS", "UNDER_OVER"]).optional(),
 
   competitionPredictionsDeadline: z.string().datetime().nullable().optional(),
 });
@@ -612,7 +612,7 @@ adminRouter.get("/tournament/final-result", async (req, res) => {
 
   const [members, predictions, competition, rules, settings, monetization] = await Promise.all([
     prisma.leagueMember.findMany({ where: { leagueId, status: "APPROVED" }, include: { user: true } }),
-    prisma.prediction.findMany({ where: { leagueId }, select: { userId: true, totalPoints: true, pointsExact: true, pointsOutcome: true, pointsSumGoals: true } }),
+    prisma.prediction.findMany({ where: { leagueId }, select: { userId: true, totalPoints: true, pointsExact: true, pointsOutcome: true, pointsSumGoals: true, pointsUnderOver: true } }),
     prisma.competitionPick.groupBy({ by: ["userId"], where: { leagueId }, _sum: { pointsAwarded: true } }),
     prisma.rule.findUnique({ where: { leagueId } }),
     prisma.setting.findUnique({ where: { leagueId } }),
@@ -621,17 +621,18 @@ adminRouter.get("/tournament/final-result", async (req, res) => {
 
   const agg = new Map<string, any>();
   for (const p of predictions as any[]) {
-    const a = agg.get(p.userId) || { totalPoints: 0, competitionPoints: 0, exactHits: 0, outcomeHits: 0, sumGoalsHits: 0 };
+    const a = agg.get(p.userId) || { totalPoints: 0, competitionPoints: 0, exactHits: 0, outcomeHits: 0, sumGoalsHits: 0, underOverHits: 0 };
     a.totalPoints += Number(p.totalPoints || 0);
     if (Number(p.pointsExact || 0) > 0) a.exactHits += 1;
     if (Number(p.pointsOutcome || 0) > 0) a.outcomeHits += 1;
     if (Number(p.pointsSumGoals || 0) > 0) a.sumGoalsHits += 1;
+    if (Number(p.pointsUnderOver || 0) > 0) a.underOverHits += 1;
     agg.set(p.userId, a);
   }
   for (const row of competition as any[]) {
     const uid = String(row.userId);
     const pts = Number(row._sum?.pointsAwarded || 0);
-    const a = agg.get(uid) || { totalPoints: 0, competitionPoints: 0, exactHits: 0, outcomeHits: 0, sumGoalsHits: 0 };
+    const a = agg.get(uid) || { totalPoints: 0, competitionPoints: 0, exactHits: 0, outcomeHits: 0, sumGoalsHits: 0, underOverHits: 0 };
     a.competitionPoints = pts;
     a.totalPoints += pts;
     agg.set(uid, a);
@@ -639,7 +640,7 @@ adminRouter.get("/tournament/final-result", async (req, res) => {
   const tie1 = settings?.tieBreak1 || "EXACT";
   const tie2 = settings?.tieBreak2 || "OUTCOME";
   const tie3 = settings?.tieBreak3 || "SUM_GOALS";
-  const tieVal = (r: any, c: string) => c === "EXACT" ? r.exactHits : c === "OUTCOME" ? r.outcomeHits : r.sumGoalsHits;
+  const tieVal = (r: any, c: string) => c === "EXACT" ? r.exactHits : c === "OUTCOME" ? r.outcomeHits : c === "UNDER_OVER" ? r.underOverHits : r.sumGoalsHits;
   leaderboardRes.rows = (members as any[]).map((m) => ({
     userId: m.user.id,
     displayName: m.user.displayName,
@@ -648,6 +649,7 @@ adminRouter.get("/tournament/final-result", async (req, res) => {
     exactHits: agg.get(m.user.id)?.exactHits || 0,
     outcomeHits: agg.get(m.user.id)?.outcomeHits || 0,
     sumGoalsHits: agg.get(m.user.id)?.sumGoalsHits || 0,
+    underOverHits: agg.get(m.user.id)?.underOverHits || 0,
   })).sort((a: any, b: any) => {
     if (a.totalPoints !== b.totalPoints) return b.totalPoints - a.totalPoints;
     for (const t of [tie1, tie2, tie3]) { const d = tieVal(b, t) - tieVal(a, t); if (d) return d; }

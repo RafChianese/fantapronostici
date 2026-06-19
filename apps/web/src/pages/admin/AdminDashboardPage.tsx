@@ -1692,22 +1692,30 @@ function RulesTab() {
               <div className="text-sm text-cyan-100/60 flex items-center gap-2">
                 La classifica è ordinata per <b>punti totali</b>. A parità di
                 punti si applicano questi criteri.
-                <HelpHint text="Questi criteri vengono usati solo quando due utenti hanno gli stessi punti totali. Consiglio: scegli criteri diversi tra loro." />
+                <HelpHint text="Questi criteri vengono usati solo quando due utenti hanno gli stessi punti totali. Consiglio: scegli criteri diversi tra loro. Se Under/Over 2.5 è abilitato, puoi usarlo come criterio di spareggio." />
               </div>
+              {rules?.enableUnderOver25 ? (
+                <div className="rounded-2xl border border-cyan-100/15 bg-cyan-950/35 p-3 text-xs text-cyan-50/70">
+                  Under/Over 2.5 è attivo: puoi selezionarlo come criterio di ordinamento in caso di pari punti.
+                </div>
+              ) : null}
 
               <TieBreakerRow
                 label="1° spareggio"
                 value={settings.tieBreak1 || "EXACT"}
+                underOverEnabled={!!rules?.enableUnderOver25}
                 onChange={(v) => setSettings({ ...settings, tieBreak1: v })}
               />
               <TieBreakerRow
                 label="2° spareggio"
                 value={settings.tieBreak2 || "OUTCOME"}
+                underOverEnabled={!!rules?.enableUnderOver25}
                 onChange={(v) => setSettings({ ...settings, tieBreak2: v })}
               />
               <TieBreakerRow
                 label="3° spareggio"
                 value={settings.tieBreak3 || "SUM_GOALS"}
+                underOverEnabled={!!rules?.enableUnderOver25}
                 onChange={(v) => setSettings({ ...settings, tieBreak3: v })}
               />
 
@@ -1751,12 +1759,15 @@ function RulesTab() {
 function TieBreakerRow({
   label,
   value,
+  underOverEnabled,
   onChange,
 }: {
   label: string;
-  value: "EXACT" | "OUTCOME" | "SUM_GOALS";
-  onChange: (v: "EXACT" | "OUTCOME" | "SUM_GOALS") => void;
+  value: "EXACT" | "OUTCOME" | "SUM_GOALS" | "UNDER_OVER";
+  underOverEnabled?: boolean;
+  onChange: (v: "EXACT" | "OUTCOME" | "SUM_GOALS" | "UNDER_OVER") => void;
 }) {
+  const showUnderOver = underOverEnabled || value === "UNDER_OVER";
   return (
     <label className="flex items-center justify-between gap-3 text-sm">
       <span className="text-cyan-50/70">{label}</span>
@@ -1768,6 +1779,11 @@ function TieBreakerRow({
         <option value="EXACT">Risultati esatti</option>
         <option value="OUTCOME">Pronostici (1X2)</option>
         <option value="SUM_GOALS">Somma gol</option>
+        {showUnderOver ? (
+          <option value="UNDER_OVER">
+            Under/Over 2.5{underOverEnabled ? "" : " (non più attivo)"}
+          </option>
+        ) : null}
       </select>
     </label>
   );
