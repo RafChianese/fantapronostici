@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { api } from "../lib/api";
+import { api, FinalResultResponse, LeagueStatsResponse } from "../lib/api";
+import { BookOpen, Clapperboard, Newspaper, Percent, Sparkles, Star, TrendingUp } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { useLock } from "../lib/lock";
 import { AchievementsStrip } from "../components/Achievements";
@@ -59,6 +60,8 @@ export default function DashboardPage() {
   const [leader, setLeader] = useState<LeaderRow[]>([]);
   const [prizes, setPrizes] = useState<PrizeInfo[]>([]);
   const [matches, setMatches] = useState<any[]>([]);
+  const [leagueStats, setLeagueStats] = useState<LeagueStatsResponse | null>(null);
+  const [finalResult, setFinalResult] = useState<FinalResultResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   const normalizeLeaderRow = (r: any): LeaderRow => {
@@ -74,15 +77,26 @@ export default function DashboardPage() {
     if (!user?.id || !activeLeagueId || !leagueCode) return;
 
     setLoading(true);
-    Promise.all([
+    Promise.allSettled([
       api.userSummary(user.id, leagueCode),
       // Leaderboard uses league header; keep leagueCode only for userSummary.
       api.leaderboard("points_desc"),
       api.matches(),
       api.competitionPredictions(),
+      api.leagueStats(),
+      api.leagueFinalResult(),
     ])
-      .then(([s, lb, m, cp]) => {
+      .then((results) => {
         if (cancelled) return;
+        const [summaryRes, leaderboardRes, matchesRes, competitionRes, statsRes, finalRes] = results;
+
+        const s = summaryRes.status === "fulfilled" ? summaryRes.value : null;
+        const lb = leaderboardRes.status === "fulfilled" ? leaderboardRes.value : null;
+        const m = matchesRes.status === "fulfilled" ? matchesRes.value : null;
+        const cp = competitionRes.status === "fulfilled" ? competitionRes.value : null;
+        const stats = statsRes.status === "fulfilled" ? statsRes.value : null;
+        const finalData = finalRes.status === "fulfilled" ? finalRes.value : null;
+
         setSummary(s);
         const raw = (lb?.leaderboard ?? lb?.rows ?? []) as any[];
         setLeader(Array.isArray(raw) ? raw.map(normalizeLeaderRow).filter((x) => x.userId) : []);
@@ -95,6 +109,8 @@ export default function DashboardPage() {
         );
         setMatches(Array.isArray(m?.matches) ? m.matches : []);
         setCompetitionPred(cp ?? null);
+        setLeagueStats(stats);
+        setFinalResult(finalData);
       })
       .catch(() => {
         if (cancelled) return;
@@ -103,6 +119,8 @@ export default function DashboardPage() {
         setPrizes([]);
         setMatches([]);
         setCompetitionPred(null);
+        setLeagueStats(null);
+        setFinalResult(null);
       })
       .finally(() => {
         if (cancelled) return;
@@ -449,6 +467,86 @@ const tournamentMeta = useMemo(() => {
       ? (amount / 100).toLocaleString("it-IT", { style: "currency", currency: "EUR" })
       : null;
 
+  const finishedMatchesCount = useMemo(() => matches.filter((m) => m?.status === "FINISHED").length, [matches]);
+  const remainingMatchesCount = useMemo(() => matches.filter((m) => m?.status !== "FINISHED").length, [matches]);
+
+  const winnerProbabilities = useMemo(() => {
+    if (!leader.length) return [] as Array<LeaderRow & { probability: number; gap: number }>;
+    const maxPoints = Math.max(...leader.map((r) => Number(r.totalPoints || 0)), 0);
+    const matchesLeft = Math.max(remainingMatchesCount, 1);
+    const comebackWindow = Math.max(18, matchesLeft * 4);
+    const scored = leader.slice(0, Math.min(8, leader.length)).map((r, idx) => {
+      const gap = Math.max(0, maxPoints - Number(r.totalPoints || 0));
+      const formBoost = Math.max(0, 8 - idx) * 2.4;
+      const score = Math.max(1, comebackWindow - gap + formBoost);
+      return { ...r, gap, score };
+    });
+    const total = scored.reduce((sum, r) => sum + r.score, 0) || 1;
+    return scored.map((r) => ({ ...r, probability: Math.max(1, Math.round((r.score / total) * 100)) }));
+  }, [leader, remainingMatchesCount]);
+
+  const myGrade = useMemo(() => {
+    const total = Number(totals?.total || 0);
+    const predicted = Math.max(1, items.length);
+    const avg = total / predicted;
+    const exact = Number(exactHits || 0);
+    const positionBoost = myPosition ? Math.max(0, 8 - myPosition) * 0.18 : 0;
+    const vote = Math.max(4, Math.min(10, 5 + avg * 0.55 + exact * 0.08 + positionBoost));
+    let title = "In rodaggio";
+    let text = "Sta prendendo le misure alla lega. Il potenziale c'è, ora servono colpi pesanti.";
+    if (vote >= 8.5) {
+      title = "Veggente di giornata";
+      text = "Prestazione da alta classifica: precisione, sangue freddo e qualche colpo da applausi.";
+    } else if (vote >= 7) {
+      title = "Molto solido";
+      text = "Giornata concreta: pochi fuochi d'artificio, ma tanti punti utili alla causa.";
+    } else if (vote < 5.5) {
+      title = "Rivedibile";
+      text = "Qualche pronostico sembra arrivato da un universo parallelo. Serve una reazione.";
+    }
+    return { vote: vote.toFixed(1), title, text, exact };
+  }, [totals?.total, items.length, exactHits, myPosition]);
+
+  const tgLeague = useMemo(() => {
+    const leaderRow = leader[0];
+    const myRow = user?.id ? leader.find((r) => r.userId === user.id) : null;
+    const second = leader[1];
+    const funTop = (leagueStats as any)?.funStats?.[0];
+    const lines: string[] = [];
+    if (leaderRow) {
+      lines.push(`${leaderRow.displayName || "Il leader"} guida la lega con ${leaderRow.totalPoints} punti${second ? `, ma ${second.displayName || "il secondo"} resta in scia a ${Math.max(0, leaderRow.totalPoints - second.totalPoints)} punti` : ""}.`);
+    }
+    if (myRow && leaderRow && myRow.userId !== leaderRow.userId) {
+      lines.push(`${displayName} è ${myPosition ? `#${myPosition}` : "in classifica"}: la vetta dista ${Math.max(0, leaderRow.totalPoints - myRow.totalPoints)} punti.`);
+    } else if (myRow && leaderRow && myRow.userId === leaderRow.userId) {
+      lines.push(`${displayName} è davanti a tutti: ora deve solo gestire la pressione.`);
+    }
+    if (finishedMatchesCount > 0) {
+      lines.push(`Sono già stati giocati ${finishedMatchesCount} match; ne restano ${remainingMatchesCount}. Ogni risultato può cambiare la zona premi.`);
+    }
+    if (funTop?.winner?.displayName || funTop?.winners?.[0]?.displayName) {
+      const w = funTop.winner || funTop.winners?.[0];
+      lines.push(`Statistica da spogliatoio: ${w.displayName} si prende il titolo "${funTop.title}".`);
+    }
+    if (!lines.length) lines.push("La lega si sta scaldando: appena arrivano risultati e pronostici, il TG avrà molto da raccontare.");
+    return lines;
+  }, [leader, user?.id, displayName, myPosition, finishedMatchesCount, remainingMatchesCount, leagueStats]);
+
+  const finalDocumentary = useMemo(() => {
+    if (!finalResult?.finalized) return null;
+    const winner = finalResult.winners?.[0] || finalResult.leaderboardTop?.[0];
+    const topExact = leagueStats?.topExactHits;
+    const bestDay = leagueStats?.bestMatchday;
+    return {
+      winner,
+      chapters: [
+        winner ? `Capitolo finale: ${winner.displayName} chiude davanti a tutti e diventa il volto della lega.` : "Capitolo finale: il torneo è concluso e la classifica è ufficiale.",
+        topExact ? `Il cecchino del torneo è ${topExact.displayName}, con ${topExact.value} risultati esatti.` : "La corsa agli esatti ha deciso molte sfide interne.",
+        bestDay ? `La giornata ${bestDay.matchday} è stata la più spettacolare: media ${bestDay.avgPoints.toFixed(2)} punti.` : "Ogni giornata ha lasciato il suo segno sulla classifica.",
+      ],
+    };
+  }, [finalResult, leagueStats]);
+
   const Orb = ({ p }: { p: { md: number; pts: number; tone: string; status: string } }) => {
     const ringColor =
       p.tone === "green"
@@ -686,6 +784,113 @@ const tournamentMeta = useMemo(() => {
           myRank: myPosition ?? null,
         }}
       />
+
+      {/* WOW League Intelligence */}
+      <Card>
+        <CardHeader
+          title="TG della lega"
+          subtitle="Commento automatico generato dai dati della classifica"
+          right={<Newspaper className="h-5 w-5 text-rose-200" aria-hidden="true" />}
+        />
+        <CardContent>
+          <div className="rounded-3xl border border-rose-200/20 bg-[radial-gradient(circle_at_top_left,rgba(244,63,94,0.20),transparent_42%),linear-gradient(135deg,rgba(15,23,42,0.92),rgba(2,6,23,0.96))] p-4 shadow-[0_18px_55px_rgba(0,0,0,0.28)]">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-rose-200/25 bg-rose-500/10 px-3 py-1 text-[11px] font-black uppercase tracking-wide text-rose-100">
+              <Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> Edizione flash
+            </div>
+            <div className="space-y-2 text-sm font-medium leading-relaxed text-cyan-50/85">
+              {tgLeague.map((line, idx) => (
+                <p key={idx}>{line}</p>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Card>
+          <CardHeader
+            title="Pagella automatica"
+            subtitle="Voto dinamico sul tuo rendimento"
+            right={<Star className="h-5 w-5 text-amber-200" aria-hidden="true" />}
+          />
+          <CardContent>
+            <div className="rounded-3xl border border-amber-200/25 bg-amber-300/10 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-wide text-amber-100/70">{myGrade.title}</div>
+                  <div className="mt-1 text-sm leading-relaxed text-cyan-50/80">{myGrade.text}</div>
+                </div>
+                <div className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl border border-amber-200/35 bg-black/30 text-2xl font-black text-white">
+                  {myGrade.vote}
+                </div>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-bold text-cyan-50/75">
+                <span className="rounded-full border border-cyan-100/15 bg-cyan-100/5 px-2 py-1">{Number(totals?.total || 0)} punti</span>
+                <span className="rounded-full border border-cyan-100/15 bg-cyan-100/5 px-2 py-1">{myGrade.exact} esatti</span>
+                <span className="rounded-full border border-cyan-100/15 bg-cyan-100/5 px-2 py-1">#{myPosition || "—"}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader
+            title="Probabilità vittoria"
+            subtitle="Stima live basata su punti e partite residue"
+            right={<Percent className="h-5 w-5 text-cyan-200" aria-hidden="true" />}
+          />
+          <CardContent>
+            {winnerProbabilities.length ? (
+              <div className="space-y-2">
+                {winnerProbabilities.slice(0, 5).map((r, idx) => (
+                  <div key={r.userId} className="rounded-2xl border border-cyan-100/15 bg-cyan-100/5 p-3">
+                    <div className="mb-1 flex items-center justify-between gap-3">
+                      <div className="min-w-0 truncate text-sm font-extrabold text-white">{idx + 1}. {r.displayName || "—"}</div>
+                      <div className="text-sm font-black text-cyan-100">{r.probability}%</div>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                      <div className="h-full rounded-full bg-cyan-300/80" style={{ width: `${Math.min(100, r.probability)}%` }} />
+                    </div>
+                    <div className="mt-1 text-[11px] text-cyan-50/55">Distacco dalla vetta: {r.gap} pt</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-sm text-cyan-50/70">Servono dati classifica per calcolare la stima.</div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {finalDocumentary ? (
+        <Card>
+          <CardHeader
+            title="Documentario del torneo"
+            subtitle="La storia automatica della lega conclusa"
+            right={<Clapperboard className="h-5 w-5 text-purple-200" aria-hidden="true" />}
+          />
+          <CardContent>
+            <div className="rounded-3xl border border-purple-200/25 bg-[radial-gradient(circle_at_top,rgba(168,85,247,0.22),transparent_45%),rgba(15,23,42,0.82)] p-4">
+              <div className="mb-3 flex items-center gap-2 text-sm font-black uppercase tracking-wide text-purple-100">
+                <BookOpen className="h-4 w-4" aria-hidden="true" /> La storia di {leagueName}
+              </div>
+              <div className="space-y-3">
+                {finalDocumentary.chapters.map((chapter, idx) => (
+                  <div key={idx} className="rounded-2xl border border-cyan-100/15 bg-black/20 p-3 text-sm leading-relaxed text-cyan-50/85">
+                    <span className="mr-2 font-black text-white">{idx + 1}.</span>{chapter}
+                  </div>
+                ))}
+              </div>
+              {finalDocumentary.winner ? (
+                <div className="mt-4 rounded-2xl border border-amber-200/35 bg-amber-300/10 p-3 text-center">
+                  <div className="text-xs font-black uppercase tracking-wide text-amber-100/70">Campione</div>
+                  <div className="mt-1 text-xl font-black text-white">🏆 {finalDocumentary.winner.displayName}</div>
+                </div>
+              ) : null}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {/* Recent matchdays */}
       <Card>
