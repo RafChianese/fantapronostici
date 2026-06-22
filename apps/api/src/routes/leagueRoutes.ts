@@ -658,19 +658,15 @@ leagueRouter.get(
         const outcomeHits = Number(row.outcomeHits || 0);
         const sumGoalsHits = Number(row.sumGoalsHits || 0);
         const totalPoints = Number(row.totalPoints || 0);
-        const precision = Math.min(
-          99,
-          Math.round(exactHits * 8 + outcomeHits * 2),
-        );
-        const courage = Math.min(99, Math.round(avgPredictedGoals * 18));
-        const consistency = Math.min(
-          99,
-          Math.round(totalPoints * 3 + sumGoalsHits * 2),
-        );
-        const ovr = Math.max(
-          40,
-          Math.min(99, Math.round((precision + courage + consistency) / 3)),
-        );
+        const clampRating = (value: number, min = 35, max = 96) =>
+          Math.max(min, Math.min(max, Math.round(value)));
+        const pointsPerPrediction = predictedCount ? totalPoints / predictedCount : 0;
+        const precision = clampRating(38 + (exactHits / Math.max(1, predictedCount)) * 58);
+        const courage = clampRating(42 + Math.min(avgPredictedGoals, 5) * 8.5);
+        const consistency = clampRating(36 + Math.min(pointsPerPrediction, 12) * 4.2 + sumGoalsHits * 0.8);
+        const ovr = predictedCount
+          ? clampRating(precision * 0.42 + consistency * 0.38 + courage * 0.20, 40, 96)
+          : 40;
         return {
           userId: row.userId,
           displayName: row.displayName,

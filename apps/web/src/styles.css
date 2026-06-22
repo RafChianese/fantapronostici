@@ -234,8 +234,11 @@ body {
   position: absolute !important;
   top: 100% !important;
   right: 0 !important;
-  z-index: 60 !important;
+  z-index: 90 !important;
   margin-top: 0.5rem;
+  min-width: 14rem;
+  background: linear-gradient(145deg, rgba(3, 12, 24, 0.98), rgba(6, 22, 38, 0.98)) !important;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
 }
 
 select,
@@ -288,7 +291,18 @@ select {
 .tm-app-bg > main,
 .tm-app-bg > nav {
   position: relative;
+}
+
+.tm-app-bg > header {
+  z-index: 80 !important;
+}
+
+.tm-app-bg > main {
   z-index: 1;
+}
+
+.tm-app-bg > nav {
+  z-index: 70 !important;
 }
 
 @media (max-width: 767px) {

@@ -9,6 +9,7 @@ import { AnimatedNumber } from "../components/AnimatedNumber";
 import { Badge, Button, Card, CardContent, CardHeader, Skeleton, Spinner } from "../components/ui";
 
 type LeaderRow = { userId: string; totalPoints: number; displayName?: string | null };
+type PrizeInfo = { position: number; amountCents?: number | null };
 
 function useCountdown(targetIso?: string) {
   const [now, setNow] = useState(Date.now());
@@ -56,6 +57,7 @@ export default function DashboardPage() {
   const [summary, setSummary] = useState<any>(null);
   const [competitionPred, setCompetitionPred] = useState<any>(null);
   const [leader, setLeader] = useState<LeaderRow[]>([]);
+  const [prizes, setPrizes] = useState<PrizeInfo[]>([]);
   const [matches, setMatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -84,6 +86,13 @@ export default function DashboardPage() {
         setSummary(s);
         const raw = (lb?.leaderboard ?? lb?.rows ?? []) as any[];
         setLeader(Array.isArray(raw) ? raw.map(normalizeLeaderRow).filter((x) => x.userId) : []);
+        const rawPrizes = Array.isArray(lb?.monetization?.prizes) ? lb.monetization.prizes : [];
+        setPrizes(
+          rawPrizes
+            .map((p: any) => ({ position: Number(p?.position || 0), amountCents: p?.amountCents ?? null }))
+            .filter((p: PrizeInfo) => p.position > 0)
+            .sort((a: PrizeInfo, b: PrizeInfo) => a.position - b.position)
+        );
         setMatches(Array.isArray(m?.matches) ? m.matches : []);
         setCompetitionPred(cp ?? null);
       })
@@ -91,6 +100,7 @@ export default function DashboardPage() {
         if (cancelled) return;
         setSummary(null);
         setLeader([]);
+        setPrizes([]);
         setMatches([]);
         setCompetitionPred(null);
       })
@@ -429,7 +439,15 @@ const tournamentMeta = useMemo(() => {
     return finished[0] ?? null;
   }, [matches]);
 
-  const top5 = leader.slice(0, 5);
+  const prizePositions = useMemo(() => new Set(prizes.map((p) => p.position)), [prizes]);
+  const prizeByPosition = useMemo(() => new Map(prizes.map((p) => [p.position, p])), [prizes]);
+  const maxPrizePosition = prizes.reduce((max, p) => Math.max(max, p.position), 0);
+  const miniLeaderboardLimit = Math.max(5, Math.min(10, maxPrizePosition || 0));
+  const top5 = leader.slice(0, miniLeaderboardLimit);
+  const formatPrize = (amount?: number | null) =>
+    typeof amount === "number" && Number.isFinite(amount) && amount > 0
+      ? (amount / 100).toLocaleString("it-IT", { style: "currency", currency: "EUR" })
+      : null;
 
   const Orb = ({ p }: { p: { md: number; pts: number; tone: string; status: string } }) => {
     const ringColor =
@@ -775,7 +793,7 @@ const tournamentMeta = useMemo(() => {
       <Card>
         <CardHeader
           title="Mini leaderboard"
-          subtitle="Top 5"
+          subtitle={prizes.length ? `Prime ${top5.length} posizioni · ${prizes.length} premi censiti dall'admin` : "Top 5"}
           right={
             <Link to="/leaderboard" className="text-xs font-bold text-rose-300 hover:underline">
               Vedi tutto
@@ -792,14 +810,22 @@ const tournamentMeta = useMemo(() => {
           ) : top5.length ? (
             <div className="space-y-2">
               {top5.map((r, idx) => {
+                const position = idx + 1;
                 const isMe = r.userId === user?.id;
-                const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : String(idx + 1);
+                const isPrizePosition = prizePositions.has(position);
+                const prize = prizeByPosition.get(position);
+                const prizeLabel = formatPrize(prize?.amountCents);
+                const medal = position === 1 ? "🥇" : position === 2 ? "🥈" : position === 3 ? "🥉" : String(position);
                 return (
                   <Link
                     key={r.userId}
                     to={`/users/${r.userId}`}
                     className={`group block rounded-2xl border px-3 py-2 transition hover:-translate-y-0.5 hover:border-rose-400/40 hover:bg-cyan-100/10 focus:outline-none focus:ring-2 focus:ring-rose-400/40 ${
-                      isMe ? "border-rose-400/40 bg-rose-500/10" : "border-cyan-100/15 bg-cyan-100/5"
+                      isMe
+                        ? "border-rose-400/45 bg-rose-500/10"
+                        : isPrizePosition
+                          ? "border-amber-200/35 bg-amber-300/10"
+                          : "border-cyan-100/15 bg-cyan-100/5"
                     }`}
                     aria-label={`Apri il dettaglio di ${r.displayName || "questo partecipante"}`}
                   >
@@ -811,11 +837,18 @@ const tournamentMeta = useMemo(() => {
                             {r.displayName || "—"}
                             {isMe ? "  (TU)" : ""}
                           </div>
-                          <div className="text-[11px] text-cyan-100/60">Tocca per vedere i pronostici</div>
+                          <div className="text-[11px] text-cyan-100/60">Tocca per vedere statistiche e pronostici torneo</div>
                         </div>
                       </div>
-                      <div className="shrink-0 rounded-xl border border-cyan-100/15 bg-black/20 px-2 py-1 text-sm font-extrabold text-white">
-                        {r.totalPoints}
+                      <div className="flex shrink-0 items-center gap-2">
+                        {isPrizePosition ? (
+                          <div className="hidden rounded-xl border border-amber-200/35 bg-amber-300/15 px-2 py-1 text-[10px] font-black uppercase tracking-wide text-amber-100 sm:block">
+                            Premio{prizeLabel ? ` · ${prizeLabel}` : ""}
+                          </div>
+                        ) : null}
+                        <div className="rounded-xl border border-cyan-100/15 bg-black/20 px-2 py-1 text-sm font-extrabold text-white">
+                          {r.totalPoints}
+                        </div>
                       </div>
                     </div>
                   </Link>

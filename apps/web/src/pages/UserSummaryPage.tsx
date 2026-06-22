@@ -243,13 +243,26 @@ export default function UserSummaryPage() {
   const predictedGoals = finishedItems.reduce((tot, it) => tot + Number(it?.prediction?.homeGoals ?? 0) + Number(it?.prediction?.awayGoals ?? 0), 0);
   const avgPredictedGoals = finishedCount ? predictedGoals / finishedCount : 0;
   const cleanSheetsPredicted = finishedItems.filter((it) => Number(it?.prediction?.homeGoals ?? 0) === 0 || Number(it?.prediction?.awayGoals ?? 0) === 0).length;
-  const exactScoreRate = Math.min(99, Math.round(pctExact * 2.4));
-  const outcomeRate = Math.min(99, Math.round(pctOutcome * 1.15));
-  const instinctRate = Math.min(99, Math.round(((sumGoalsHits + underOverHits) / Math.max(1, finishedCount)) * 100));
-  const courageRate = Math.min(99, Math.round(45 + avgPredictedGoals * 14));
-  const defenseRate = Math.min(99, Math.round((cleanSheetsPredicted / Math.max(1, finishedCount)) * 100));
-  const consistencyRate = Math.min(99, Math.round((Number(safeSummary.total ?? 0) / Math.max(1, finishedCount)) * 9));
-  const playerOvr = Math.max(45, Math.min(99, Math.round((exactScoreRate + outcomeRate + instinctRate + courageRate + defenseRate + consistencyRate) / 6)));
+  const clampRating = (value: number, min = 35, max = 96) => Math.max(min, Math.min(max, Math.round(value)));
+  const pointsPerFinished = finishedCount ? Number(safeSummary.total ?? 0) / finishedCount : 0;
+  const exactScoreRate = clampRating(38 + pctExact * 1.45, 35, 96);
+  const outcomeRate = clampRating(35 + pctOutcome * 0.62, 35, 96);
+  const instinctRate = clampRating(36 + ((sumGoalsHits + underOverHits) / Math.max(1, finishedCount)) * 48, 35, 96);
+  const courageRate = clampRating(42 + Math.min(avgPredictedGoals, 5) * 8.5, 35, 96);
+  const defenseRate = clampRating(35 + (cleanSheetsPredicted / Math.max(1, finishedCount)) * 42, 35, 96);
+  const consistencyRate = clampRating(36 + Math.min(pointsPerFinished, 12) * 4.2, 35, 96);
+  const playerOvr = finishedCount
+    ? clampRating(
+        exactScoreRate * 0.28 +
+          outcomeRate * 0.24 +
+          instinctRate * 0.14 +
+          courageRate * 0.10 +
+          defenseRate * 0.08 +
+          consistencyRate * 0.16,
+        40,
+        96
+      )
+    : 40;
   const playerArchetype = exactHits >= 5
     ? "Veggente"
     : avgPredictedGoals >= 3.2
