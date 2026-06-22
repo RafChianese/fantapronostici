@@ -561,8 +561,8 @@ const tournamentMeta = useMemo(() => {
       }
     }
     if (leaderRow && myRow && leaderRow.userId !== myRow.userId) {
-      list.push({ title: "Caccia alla vetta", text: `${leaderRow.displayName || "Il leader"} è davanti di ${Math.max(0, leaderRow.totalPoints - myRow.totalPoints)} punti.`, tone: "rose" });
-    } else if (leaderRow && myRow && leaderRow.userId === myRow.userId) {
+      if(false) list.push({ title: "Caccia alla vetta", text: `${leaderRow.displayName || "Il leader"} è davanti di ${Math.max(0, leaderRow.totalPoints - myRow.totalPoints)} punti.`, tone: "rose" });
+    } else if (false && leaderRow && myRow && leaderRow.userId === myRow.userId) {
       list.push({ title: "Sei tu l'uomo da battere", text: "La classifica dice primo posto: ora gli altri inseguono.", tone: "emerald" });
     }
     if (recentFinishedMatches[0]) {
@@ -610,36 +610,9 @@ const tournamentMeta = useMemo(() => {
     };
   }, [leagueStats, leader]);
 
-  const leagueTimeline = useMemo(() => {
-    const existing = (leagueStats as any)?.engagement?.timeline;
-    const rows: Array<{ title: string; text: string; type?: string }> = Array.isArray(existing) ? existing.slice(0, 4) : [];
-    if (leader[0]) rows.unshift({ type: "leader", title: "Cambio copertina", text: `${leader[0].displayName || "Il leader"} è il riferimento della classifica con ${leader[0].totalPoints} punti.` });
-    if (prizes.length && leader[Math.min(maxPrizePosition || prizes.length, leader.length) - 1]) {
-      const cut = leader[Math.min(maxPrizePosition || prizes.length, leader.length) - 1];
-      rows.push({ type: "prize", title: "Linea premio", text: `La zona premi arriva fino alla posizione #${maxPrizePosition || prizes.length}: al momento il taglio è ${cut.totalPoints} punti.` });
-    }
-    if (leagueStats?.bestMatchday) rows.push({ type: "record", title: "Giornata più calda", text: `Giornata ${leagueStats.bestMatchday.matchday}: media ${leagueStats.bestMatchday.avgPoints.toFixed(2)} punti.` });
-    return rows.slice(0, 6);
-  }, [leagueStats, leader, prizes.length, maxPrizePosition]);
+  const leagueTimeline = useMemo(() => [], [leagueStats]);
 
-  const predictionTwin = useMemo(() => {
-    const rivalries = (leagueStats as any)?.engagement?.rivalries || [];
-    const myRivalry = Array.isArray(rivalries)
-      ? rivalries.find((r: any) => r?.userA?.userId === user?.id || r?.userB?.userId === user?.id)
-      : null;
-    if (myRivalry) {
-      const other = myRivalry.userA?.userId === user?.id ? myRivalry.userB : myRivalry.userA;
-      const affinity = Math.max(35, Math.min(96, 100 - Number(myRivalry.gap || 0) * 4));
-      return { twin: other, affinity, nemesis: null as any };
-    }
-    const myIdx = user?.id ? leader.findIndex((r) => r.userId === user.id) : -1;
-    if (myIdx >= 0 && leader.length > 1) {
-      const near = leader[myIdx - 1] || leader[myIdx + 1];
-      const far = leader[leader.length - 1]?.userId !== user?.id ? leader[leader.length - 1] : leader[0];
-      return { twin: near, affinity: near ? Math.max(40, 90 - Math.abs((near.totalPoints || 0) - (leader[myIdx].totalPoints || 0))) : 0, nemesis: far };
-    }
-    return { twin: leader[1] || leader[0] || null, affinity: 0, nemesis: null };
-  }, [leagueStats, leader, user?.id]);
+  const predictionTwin = useMemo(() => ({twin:null,nemesis:null,affinity:0}), [leagueStats]);
 
   const Orb = ({ p }: { p: { md: number; pts: number; tone: string; status: string } }) => {
     const ringColor =
