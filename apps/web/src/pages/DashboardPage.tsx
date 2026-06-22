@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, FinalResultResponse, LeagueStatsResponse } from "../lib/api";
-import { BookOpen, Clapperboard, Newspaper, Percent, Sparkles, Star, TrendingUp } from "lucide-react";
+import { Activity, Award, Bell, BookOpen, Clapperboard, Flame, History, Newspaper, Percent, Skull, Snowflake, Sparkles, Star, TrendingUp, Users } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { useLock } from "../lib/lock";
 import { AchievementsStrip } from "../components/Achievements";
@@ -547,6 +547,100 @@ const tournamentMeta = useMemo(() => {
     };
   }, [finalResult, leagueStats]);
 
+  const notificationCenter = useMemo(() => {
+    const list: Array<{ title: string; text: string; tone: "rose" | "amber" | "cyan" | "emerald" | "slate" }> = [];
+    const leaderRow = leader[0];
+    const myRow = user?.id ? leader.find((r) => r.userId === user.id) : null;
+    const prizeCut = maxPrizePosition || prizes.length || 3;
+
+    if (myRow && myPosition && prizeCut > 0) {
+      if (myPosition <= prizeCut) {
+        list.push({ title: "Sei in zona premio", text: `Posizione #${myPosition}: al momento sei dentro le posizioni premiate.`, tone: "emerald" });
+      } else {
+        list.push({ title: "Zona premio nel mirino", text: `Ti mancano ${myPosition - prizeCut} posizioni per entrare nella zona premi.`, tone: "amber" });
+      }
+    }
+    if (leaderRow && myRow && leaderRow.userId !== myRow.userId) {
+      list.push({ title: "Caccia alla vetta", text: `${leaderRow.displayName || "Il leader"} è davanti di ${Math.max(0, leaderRow.totalPoints - myRow.totalPoints)} punti.`, tone: "rose" });
+    } else if (leaderRow && myRow && leaderRow.userId === myRow.userId) {
+      list.push({ title: "Sei tu l'uomo da battere", text: "La classifica dice primo posto: ora gli altri inseguono.", tone: "emerald" });
+    }
+    if (recentFinishedMatches[0]) {
+      const m = recentFinishedMatches[0];
+      list.push({ title: "Ultimo risultato aggiornato", text: `${m.homeTeam} ${m.homeScore}-${m.awayScore} ${m.awayTeam}`, tone: "cyan" });
+    }
+    if (nextEditableMatchday && canInsert) {
+      list.push({ title: "Pronostici aperti", text: `Puoi ancora compilare la giornata ${nextEditableMatchday}.`, tone: "cyan" });
+    }
+    if (!list.length) list.push({ title: "Nessuna notifica urgente", text: "Appena succede qualcosa nella lega, lo vedrai qui.", tone: "slate" });
+    return list.slice(0, 5);
+  }, [leader, user?.id, myPosition, maxPrizePosition, prizes.length, recentFinishedMatches, nextEditableMatchday, canInsert]);
+
+  const momentum = useMemo(() => {
+    const cards = (leagueStats as any)?.engagement?.profileCards || [];
+    if (Array.isArray(cards) && cards.length >= 2) {
+      const hot = cards.slice().sort((a: any, b: any) => Number(b?.attributes?.precision || 0) - Number(a?.attributes?.precision || 0))[0];
+      const cold = cards.slice().sort((a: any, b: any) => Number(a?.attributes?.precision || 0) - Number(b?.attributes?.precision || 0))[0];
+      return {
+        hot: hot ? { name: hot.displayName, value: Number(hot?.attributes?.precision || 0), text: "precisione più alta nelle statistiche disponibili" } : null,
+        cold: cold ? { name: cold.displayName, value: Number(cold?.attributes?.precision || 0), text: "deve ritrovare continuità" } : null,
+      };
+    }
+    const myPts = lastPills.filter((p) => p.status === "FINISHED").slice(-3).reduce((s, p) => s + Number(p.pts || 0), 0);
+    return {
+      hot: { name: displayName, value: myPts, text: "punti nelle ultime giornate visibili" },
+      cold: null,
+    };
+  }, [leagueStats, lastPills, displayName]);
+
+  const mvpFlop = useMemo(() => {
+    const cards = (leagueStats as any)?.engagement?.profileCards || [];
+    if (Array.isArray(cards) && cards.length) {
+      const sorted = cards.slice().sort((a: any, b: any) => Number(b.totalPoints || 0) - Number(a.totalPoints || 0));
+      const mvp = sorted[0];
+      const flop = sorted[sorted.length - 1];
+      return {
+        mvp: mvp ? { name: mvp.displayName, value: Number(mvp.totalPoints || 0), text: "sta trascinando la lega" } : null,
+        flop: flop && flop.userId !== mvp?.userId ? { name: flop.displayName, value: Number(flop.totalPoints || 0), text: "serve una scossa per risalire" } : null,
+      };
+    }
+    return {
+      mvp: leader[0] ? { name: leader[0].displayName || "Leader", value: leader[0].totalPoints, text: "miglior punteggio totale" } : null,
+      flop: leader.length > 1 ? { name: leader[leader.length - 1].displayName || "Partecipante", value: leader[leader.length - 1].totalPoints, text: "ultimo in classifica, ma il torneo è lungo" } : null,
+    };
+  }, [leagueStats, leader]);
+
+  const leagueTimeline = useMemo(() => {
+    const existing = (leagueStats as any)?.engagement?.timeline;
+    const rows: Array<{ title: string; text: string; type?: string }> = Array.isArray(existing) ? existing.slice(0, 4) : [];
+    if (leader[0]) rows.unshift({ type: "leader", title: "Cambio copertina", text: `${leader[0].displayName || "Il leader"} è il riferimento della classifica con ${leader[0].totalPoints} punti.` });
+    if (prizes.length && leader[Math.min(maxPrizePosition || prizes.length, leader.length) - 1]) {
+      const cut = leader[Math.min(maxPrizePosition || prizes.length, leader.length) - 1];
+      rows.push({ type: "prize", title: "Linea premio", text: `La zona premi arriva fino alla posizione #${maxPrizePosition || prizes.length}: al momento il taglio è ${cut.totalPoints} punti.` });
+    }
+    if (leagueStats?.bestMatchday) rows.push({ type: "record", title: "Giornata più calda", text: `Giornata ${leagueStats.bestMatchday.matchday}: media ${leagueStats.bestMatchday.avgPoints.toFixed(2)} punti.` });
+    return rows.slice(0, 6);
+  }, [leagueStats, leader, prizes.length, maxPrizePosition]);
+
+  const predictionTwin = useMemo(() => {
+    const rivalries = (leagueStats as any)?.engagement?.rivalries || [];
+    const myRivalry = Array.isArray(rivalries)
+      ? rivalries.find((r: any) => r?.userA?.userId === user?.id || r?.userB?.userId === user?.id)
+      : null;
+    if (myRivalry) {
+      const other = myRivalry.userA?.userId === user?.id ? myRivalry.userB : myRivalry.userA;
+      const affinity = Math.max(35, Math.min(96, 100 - Number(myRivalry.gap || 0) * 4));
+      return { twin: other, affinity, nemesis: null as any };
+    }
+    const myIdx = user?.id ? leader.findIndex((r) => r.userId === user.id) : -1;
+    if (myIdx >= 0 && leader.length > 1) {
+      const near = leader[myIdx - 1] || leader[myIdx + 1];
+      const far = leader[leader.length - 1]?.userId !== user?.id ? leader[leader.length - 1] : leader[0];
+      return { twin: near, affinity: near ? Math.max(40, 90 - Math.abs((near.totalPoints || 0) - (leader[myIdx].totalPoints || 0))) : 0, nemesis: far };
+    }
+    return { twin: leader[1] || leader[0] || null, affinity: 0, nemesis: null };
+  }, [leagueStats, leader, user?.id]);
+
   const Orb = ({ p }: { p: { md: number; pts: number; tone: string; status: string } }) => {
     const ringColor =
       p.tone === "green"
@@ -857,6 +951,145 @@ const tournamentMeta = useMemo(() => {
               </div>
             ) : (
               <div className="text-sm text-cyan-50/70">Servono dati classifica per calcolare la stima.</div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card>
+          <CardHeader
+            title="Centro notifiche"
+            subtitle="Avvisi automatici sulla tua lega"
+            right={<Bell className="h-5 w-5 text-cyan-200" aria-hidden="true" />}
+          />
+          <CardContent>
+            <div className="space-y-2">
+              {notificationCenter.map((n, idx) => (
+                <div
+                  key={`${n.title}-${idx}`}
+                  className={`rounded-2xl border p-3 ${
+                    n.tone === "emerald"
+                      ? "border-emerald-200/25 bg-emerald-400/10"
+                      : n.tone === "amber"
+                        ? "border-amber-200/25 bg-amber-300/10"
+                        : n.tone === "rose"
+                          ? "border-rose-200/25 bg-rose-400/10"
+                          : n.tone === "cyan"
+                            ? "border-cyan-200/25 bg-cyan-300/10"
+                            : "border-cyan-100/15 bg-cyan-100/5"
+                  }`}
+                >
+                  <div className="text-sm font-black text-white">{n.title}</div>
+                  <div className="mt-1 text-xs leading-relaxed text-cyan-50/70">{n.text}</div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader
+            title="Momento forma"
+            subtitle="Chi è caldo e chi deve reagire"
+            right={<Activity className="h-5 w-5 text-emerald-200" aria-hidden="true" />}
+          />
+          <CardContent>
+            <div className="grid gap-2">
+              {momentum.hot ? (
+                <div className="rounded-3xl border border-emerald-200/25 bg-emerald-400/10 p-4">
+                  <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wide text-emerald-100/80"><Flame className="h-4 w-4" /> In forma</div>
+                  <div className="mt-2 text-lg font-black text-white">{momentum.hot.name}</div>
+                  <div className="text-sm text-cyan-50/75">{momentum.hot.value} · {momentum.hot.text}</div>
+                </div>
+              ) : null}
+              {momentum.cold ? (
+                <div className="rounded-3xl border border-cyan-100/15 bg-cyan-100/5 p-4">
+                  <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wide text-cyan-100/70"><Snowflake className="h-4 w-4" /> In cerca di svolta</div>
+                  <div className="mt-2 text-lg font-black text-white">{momentum.cold.name}</div>
+                  <div className="text-sm text-cyan-50/75">{momentum.cold.value} · {momentum.cold.text}</div>
+                </div>
+              ) : null}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader
+            title="MVP / Flop"
+            subtitle="Il termometro della lega"
+            right={<Award className="h-5 w-5 text-amber-200" aria-hidden="true" />}
+          />
+          <CardContent>
+            <div className="grid gap-2">
+              {mvpFlop.mvp ? (
+                <div className="rounded-3xl border border-amber-200/25 bg-amber-300/10 p-4">
+                  <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wide text-amber-100/80"><Star className="h-4 w-4" /> MVP</div>
+                  <div className="mt-2 text-lg font-black text-white">{mvpFlop.mvp.name}</div>
+                  <div className="text-sm text-cyan-50/75">{mvpFlop.mvp.value} punti · {mvpFlop.mvp.text}</div>
+                </div>
+              ) : null}
+              {mvpFlop.flop ? (
+                <div className="rounded-3xl border border-rose-200/20 bg-rose-400/10 p-4">
+                  <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wide text-rose-100/75"><Skull className="h-4 w-4" /> Flop ironico</div>
+                  <div className="mt-2 text-lg font-black text-white">{mvpFlop.flop.name}</div>
+                  <div className="text-sm text-cyan-50/75">{mvpFlop.flop.value} punti · {mvpFlop.flop.text}</div>
+                </div>
+              ) : null}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader
+            title="Timeline della lega"
+            subtitle="La storia si aggiorna dai dati del torneo"
+            right={<History className="h-5 w-5 text-purple-200" aria-hidden="true" />}
+          />
+          <CardContent>
+            {leagueTimeline.length ? (
+              <div className="relative space-y-3">
+                {leagueTimeline.map((e, idx) => (
+                  <div key={`${e.title}-${idx}`} className="relative rounded-2xl border border-cyan-100/15 bg-cyan-100/5 p-3 pl-4">
+                    <div className="absolute left-0 top-4 h-2 w-2 -translate-x-1 rounded-full bg-cyan-200 shadow-[0_0_16px_rgba(103,232,249,0.8)]" />
+                    <div className="text-sm font-black text-white">{e.title}</div>
+                    <div className="mt-1 text-xs leading-relaxed text-cyan-50/70">{e.text}</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-sm text-cyan-50/70">La timeline si popolerà con classifica, premi e risultati.</div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader
+            title="Gemello pronosticatore"
+            subtitle="Affinità e rivalità generate dai dati"
+            right={<Users className="h-5 w-5 text-cyan-200" aria-hidden="true" />}
+          />
+          <CardContent>
+            {predictionTwin.twin ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-3xl border border-cyan-200/25 bg-cyan-300/10 p-4">
+                  <div className="text-xs font-black uppercase tracking-wide text-cyan-100/70">Ti assomiglia</div>
+                  <div className="mt-2 text-lg font-black text-white">{predictionTwin.twin.displayName || "Partecipante"}</div>
+                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
+                    <div className="h-full rounded-full bg-cyan-300/80" style={{ width: `${Math.min(100, Math.max(0, predictionTwin.affinity || 0))}%` }} />
+                  </div>
+                  <div className="mt-1 text-xs text-cyan-50/70">Affinità stimata: {Math.round(predictionTwin.affinity || 0)}%</div>
+                </div>
+                <div className="rounded-3xl border border-rose-200/20 bg-rose-400/10 p-4">
+                  <div className="text-xs font-black uppercase tracking-wide text-rose-100/70">Nemesi</div>
+                  <div className="mt-2 text-lg font-black text-white">{predictionTwin.nemesis?.displayName || "La classifica"}</div>
+                  <div className="mt-1 text-sm leading-relaxed text-cyan-50/75">Il riferimento da superare o da tenere lontano nelle prossime giornate.</div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-sm text-cyan-50/70">Servono almeno due partecipanti con dati classifica.</div>
             )}
           </CardContent>
         </Card>
