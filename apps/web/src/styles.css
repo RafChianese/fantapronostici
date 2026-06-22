@@ -316,3 +316,12 @@ select {
     background-attachment: scroll;
   }
 }
+
+@media (min-width: 768px) {
+  .tm-mobile-bottom-nav {
+    display: none !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+}

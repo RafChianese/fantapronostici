@@ -26,7 +26,6 @@ import {
   Info,
   Medal,
   Swords,
-  Activity,
 } from "lucide-react";
 
 type FunWinner = {
@@ -388,12 +387,10 @@ function EngagementPanel({
   const achievements = engagement.achievements || [];
   const profileCards = engagement.profileCards || [];
   const rivalries = engagement.rivalries || [];
-  const timeline = engagement.timeline || [];
   const hasData =
     achievements.length ||
     profileCards.length ||
-    rivalries.length ||
-    timeline.length;
+    rivalries.length;
   if (!hasData) return null;
 
   return (
@@ -518,32 +515,7 @@ function EngagementPanel({
               </div>
             ) : null}
 
-            {timeline.length ? (
-              <div>
-                <div className="mb-2 flex items-center gap-2 text-sm font-extrabold text-white">
-                  <Activity
-                    className="h-4 w-4 text-cyan-200"
-                    aria-hidden="true"
-                  />
-                  Timeline lega
-                </div>
-                <div className="space-y-2">
-                  {timeline.map((event, idx) => (
-                    <div
-                      key={`${event.type}-${idx}`}
-                      className="rounded-2xl border border-cyan-100/15 bg-cyan-950/30 p-3"
-                    >
-                      <div className="text-xs font-black text-cyan-100">
-                        {event.title}
-                      </div>
-                      <div className="mt-1 text-xs leading-relaxed text-cyan-50/70">
-                        {event.text}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
+
           </div>
         </div>
       </CardContent>

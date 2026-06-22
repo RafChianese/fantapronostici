@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, FinalResultResponse, LeagueStatsResponse } from "../lib/api";
-import { Activity, Award, Bell, BookOpen, Clapperboard, Flame, History, Newspaper, Percent, Skull, Snowflake, Sparkles, Star, TrendingUp, Users } from "lucide-react";
+import { Activity, Award, Bell, BookOpen, Clapperboard, Flame, Newspaper, Percent, Skull, Snowflake, Sparkles, Star, TrendingUp, Users } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { useLock } from "../lib/lock";
 import { AchievementsStrip } from "../components/Achievements";
@@ -560,11 +560,6 @@ const tournamentMeta = useMemo(() => {
         list.push({ title: "Zona premio nel mirino", text: `Ti mancano ${myPosition - prizeCut} posizioni per entrare nella zona premi.`, tone: "amber" });
       }
     }
-    if (leaderRow && myRow && leaderRow.userId !== myRow.userId) {
-      if(false) list.push({ title: "Caccia alla vetta", text: `${leaderRow.displayName || "Il leader"} è davanti di ${Math.max(0, leaderRow.totalPoints - myRow.totalPoints)} punti.`, tone: "rose" });
-    } else if (false && leaderRow && myRow && leaderRow.userId === myRow.userId) {
-      list.push({ title: "Sei tu l'uomo da battere", text: "La classifica dice primo posto: ora gli altri inseguono.", tone: "emerald" });
-    }
     if (recentFinishedMatches[0]) {
       const m = recentFinishedMatches[0];
       list.push({ title: "Ultimo risultato aggiornato", text: `${m.homeTeam} ${m.homeScore}-${m.awayScore} ${m.awayTeam}`, tone: "cyan" });
@@ -610,9 +605,30 @@ const tournamentMeta = useMemo(() => {
     };
   }, [leagueStats, leader]);
 
-  const leagueTimeline = useMemo(() => [], [leagueStats]);
+  const predictionTwin = useMemo(() => {
+    const rows = leader.filter((r) => r.userId && r.totalPoints !== null && r.totalPoints !== undefined);
+    const me = user?.id ? rows.find((r) => r.userId === user.id) : null;
+    const others = me ? rows.filter((r) => r.userId !== me.userId) : [];
 
-  const predictionTwin = useMemo(() => ({twin:null,nemesis:null,affinity:0}), [leagueStats]);
+    if (!me || !others.length) {
+      return { twin: null as any, nemesis: null as any, affinity: 0, ready: false };
+    }
+
+    const byDistance = others
+      .map((r) => ({ ...r, distance: Math.abs(Number(r.totalPoints || 0) - Number(me.totalPoints || 0)) }))
+      .sort((a, b) => a.distance - b.distance);
+
+    const twin = byDistance[0] || null;
+    const nemesis = others
+      .slice()
+      .sort((a, b) => Number(b.totalPoints || 0) - Number(a.totalPoints || 0))
+      .find((r) => Number(r.totalPoints || 0) >= Number(me.totalPoints || 0)) || byDistance[byDistance.length - 1] || null;
+
+    const maxSpread = Math.max(1, ...rows.map((r) => Math.abs(Number(r.totalPoints || 0) - Number(me.totalPoints || 0))));
+    const affinity = twin ? Math.max(18, Math.round(100 - (Number(twin.distance || 0) / maxSpread) * 72)) : 0;
+
+    return { twin, nemesis, affinity, ready: true };
+  }, [leader, user?.id]);
 
   const Orb = ({ p }: { p: { md: number; pts: number; tone: string; status: string } }) => {
     const ringColor =
@@ -1014,30 +1030,7 @@ const tournamentMeta = useMemo(() => {
         </Card>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader
-            title="Timeline della lega"
-            subtitle="La storia si aggiorna dai dati del torneo"
-            right={<History className="h-5 w-5 text-purple-200" aria-hidden="true" />}
-          />
-          <CardContent>
-            {leagueTimeline.length ? (
-              <div className="relative space-y-3">
-                {leagueTimeline.map((e, idx) => (
-                  <div key={`${e.title}-${idx}`} className="relative rounded-2xl border border-cyan-100/15 bg-cyan-100/5 p-3 pl-4">
-                    <div className="absolute left-0 top-4 h-2 w-2 -translate-x-1 rounded-full bg-cyan-200 shadow-[0_0_16px_rgba(103,232,249,0.8)]" />
-                    <div className="text-sm font-black text-white">{e.title}</div>
-                    <div className="mt-1 text-xs leading-relaxed text-cyan-50/70">{e.text}</div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-sm text-cyan-50/70">La timeline si popolerà con classifica, premi e risultati.</div>
-            )}
-          </CardContent>
-        </Card>
-
+      <div className="grid gap-4 lg:grid-cols-1">
         <Card>
           <CardHeader
             title="Gemello pronosticatore"
@@ -1062,7 +1055,9 @@ const tournamentMeta = useMemo(() => {
                 </div>
               </div>
             ) : (
-              <div className="text-sm text-cyan-50/70">Servono almeno due partecipanti con dati classifica.</div>
+              <div className="rounded-3xl border border-cyan-100/15 bg-cyan-100/5 p-4 text-sm leading-relaxed text-cyan-50/75">
+                Il gemello pronosticatore verrà mostrato appena la lega avrà almeno due partecipanti con punteggio confrontabile. Nel frattempo qui resta spazio pulito, senza messaggi tecnici.
+              </div>
             )}
           </CardContent>
         </Card>
