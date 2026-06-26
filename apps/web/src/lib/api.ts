@@ -868,6 +868,7 @@ export const api = {
     topScorerPlayerName?: string | null;
     secondTopScorerPlayerId?: number | null;
     secondTopScorerPlayerName?: string | null;
+    topScorers?: Array<{ id: number; name: string }>;
     quarterFinalistTeams?: Array<{ id: number; name: string }>;
     semiFinalistTeams?: Array<{ id: number; name: string }>;
     finalistTeams?: Array<{ id: number; name: string }>;

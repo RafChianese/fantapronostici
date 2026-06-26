@@ -22,6 +22,7 @@ const CompetitionOutcomeSchema = z.object({
   topScorerPlayerName: z.string().trim().min(1).max(200).nullable().optional(),
   secondTopScorerPlayerId: z.number().int().positive().nullable().optional(),
   secondTopScorerPlayerName: z.string().trim().min(1).max(200).nullable().optional(),
+  topScorers: z.array(z.object({ id: z.number().int().positive(), name: z.string().trim().min(1).max(200) })).optional(),
   quarterFinalistTeams: z.array(z.object({ id: z.number().int().positive(), name: z.string().trim().min(1).max(200) })).optional(),
   semiFinalistTeams: z.array(z.object({ id: z.number().int().positive(), name: z.string().trim().min(1).max(200) })).optional(),
   finalistTeams: z.array(z.object({ id: z.number().int().positive(), name: z.string().trim().min(1).max(200) })).optional(),
@@ -31,6 +32,7 @@ async function applyGlobalCompetitionOutcomeToAllLeagues(args: {
   winnerTeamExternalId: number | null;
   topScorerPlayerExternalId: number | null;
   secondTopScorerPlayerExternalId: number | null;
+  topScorers?: Array<{ id: number; name: string }>;
   quarterFinalistTeams?: Array<{ id: number; name: string }>;
   semiFinalistTeams?: Array<{ id: number; name: string }>;
   finalistTeams?: Array<{ id: number; name: string }>;
@@ -40,6 +42,7 @@ async function applyGlobalCompetitionOutcomeToAllLeagues(args: {
   secondTopScorerPlayerName?: string | null;
 }) {
   const globalSetting = await prisma.superSetting.findFirst({ orderBy: { createdAt: "asc" } }).catch(() => null as any);
+  const normalizedTopScorers = normalizeScorerList(args.topScorers);
   const isKnockoutCup = String((globalSetting as any)?.competitionType || "LEAGUE") === "KNOCKOUT_CUP";
   const leagues = await prisma.league.findMany({ select: { id: true } });
   for (const l of leagues) {
@@ -89,7 +92,9 @@ async function applyGlobalCompetitionOutcomeToAllLeagues(args: {
       });
     }
 
-    const validTopIds = [args.topScorerPlayerExternalId, args.secondTopScorerPlayerExternalId].filter((x): x is number => typeof x === "number" && Number.isFinite(x));
+    const validTopIds = normalizedTopScorers.length
+      ? normalizedTopScorers.map((s) => s.id)
+      : [args.topScorerPlayerExternalId, args.secondTopScorerPlayerExternalId].filter((x): x is number => typeof x === "number" && Number.isFinite(x));
     if (!enableTop || validTopIds.length === 0) {
       await prisma.competitionPick.updateMany({ where: { leagueId: l.id, type: "TOP_SCORER" }, data: { pointsAwarded: 0 } });
     } else {
@@ -125,6 +130,20 @@ async function applyGlobalCompetitionOutcomeToAllLeagues(args: {
     // Optional: recompute matchday awards after competition points change is NOT needed.
     // Leaderboard totals include CompetitionPick.pointsAwarded via aggregation.
   }
+}
+
+function normalizeScorerList(value: unknown): Array<{ id: number; name: string }> {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<number>();
+  const out: Array<{ id: number; name: string }> = [];
+  for (const item of value as any[]) {
+    const id = Number(item?.id ?? item?.playerExternalId ?? item?.topScorerPlayerId);
+    const name = String(item?.name ?? item?.playerName ?? item?.topScorerPlayerName ?? "").trim();
+    if (!Number.isFinite(id) || !name || seen.has(id)) continue;
+    seen.add(id);
+    out.push({ id, name });
+  }
+  return out;
 }
 
 function normalizeTeamList(value: unknown): Array<{ id: number; name: string }> {
@@ -178,6 +197,14 @@ superRouter.get("/competition-outcome", async (_req, res) => {
     }
   }
 
+  const topScorers = normalizeScorerList((row as any)?.competitionOutcomeTopScorersJson);
+  const compatTopScorers = topScorers.length
+    ? topScorers
+    : normalizeScorerList([
+        row?.competitionOutcomeTopScorerPlayerExternalId ? { id: row.competitionOutcomeTopScorerPlayerExternalId, name: row.competitionOutcomeTopScorerPlayerName ?? "Capocannoniere" } : null,
+        row?.competitionOutcomeSecondTopScorerPlayerExternalId ? { id: row.competitionOutcomeSecondTopScorerPlayerExternalId, name: row.competitionOutcomeSecondTopScorerPlayerName ?? "Capocannoniere" } : null,
+      ].filter(Boolean));
+
   res.json({
     outcome: {
       winner: row?.competitionOutcomeWinnerTeamExternalId
@@ -189,6 +216,7 @@ superRouter.get("/competition-outcome", async (_req, res) => {
       secondTopScorer: row?.competitionOutcomeSecondTopScorerPlayerExternalId
         ? { playerExternalId: row.competitionOutcomeSecondTopScorerPlayerExternalId, playerName: row.competitionOutcomeSecondTopScorerPlayerName ?? null }
         : null,
+      topScorers: compatTopScorers.map((s) => ({ playerExternalId: s.id, playerName: s.name })),
       quarterFinalists: normalizeTeamList((row as any)?.competitionOutcomeQuarterFinalistTeamsJson),
       semiFinalists: normalizeTeamList((row as any)?.competitionOutcomeSemiFinalistTeamsJson),
       finalists: normalizeTeamList((row as any)?.competitionOutcomeFinalistTeamsJson),
@@ -213,19 +241,25 @@ superRouter.put("/competition-outcome", async (req, res) => {
   const body = CompetitionOutcomeSchema.parse(req.body);
   const resolvedAt = new Date();
 
-  // Normalize: if second scorer equals first, drop it.
-  const secondId = body.secondTopScorerPlayerId && body.secondTopScorerPlayerId === body.topScorerPlayerId ? null : body.secondTopScorerPlayerId ?? null;
-  const secondName = secondId ? body.secondTopScorerPlayerName ?? null : null;
+  const requestedTopScorers = normalizeScorerList(body.topScorers);
+  const fallbackTopScorers = normalizeScorerList([
+    body.topScorerPlayerId ? { id: body.topScorerPlayerId, name: body.topScorerPlayerName ?? "Capocannoniere" } : null,
+    body.secondTopScorerPlayerId ? { id: body.secondTopScorerPlayerId, name: body.secondTopScorerPlayerName ?? "Capocannoniere" } : null,
+  ].filter(Boolean));
+  const topScorers = requestedTopScorers.length ? requestedTopScorers : fallbackTopScorers;
+  const primary = topScorers[0] || null;
+  const secondary = topScorers[1] || null;
 
   const updated = await prisma.superSetting.update({
     where: { id: existing.id },
     data: {
       competitionOutcomeWinnerTeamExternalId: body.winnerTeamId ?? null,
       competitionOutcomeWinnerTeamName: body.winnerTeamName ?? null,
-      competitionOutcomeTopScorerPlayerExternalId: body.topScorerPlayerId ?? null,
-      competitionOutcomeTopScorerPlayerName: body.topScorerPlayerName ?? null,
-      competitionOutcomeSecondTopScorerPlayerExternalId: secondId,
-      competitionOutcomeSecondTopScorerPlayerName: secondName,
+      competitionOutcomeTopScorerPlayerExternalId: primary?.id ?? null,
+      competitionOutcomeTopScorerPlayerName: primary?.name ?? null,
+      competitionOutcomeSecondTopScorerPlayerExternalId: secondary?.id ?? null,
+      competitionOutcomeSecondTopScorerPlayerName: secondary?.name ?? null,
+      competitionOutcomeTopScorersJson: topScorers as any,
       competitionOutcomeQuarterFinalistTeamsJson: normalizeTeamList(body.quarterFinalistTeams) as any,
       competitionOutcomeSemiFinalistTeamsJson: normalizeTeamList(body.semiFinalistTeams) as any,
       competitionOutcomeFinalistTeamsJson: normalizeTeamList(body.finalistTeams) as any,
@@ -240,6 +274,7 @@ superRouter.put("/competition-outcome", async (req, res) => {
     topScorerPlayerName: updated.competitionOutcomeTopScorerPlayerName ?? null,
     secondTopScorerPlayerExternalId: updated.competitionOutcomeSecondTopScorerPlayerExternalId ?? null,
     secondTopScorerPlayerName: updated.competitionOutcomeSecondTopScorerPlayerName ?? null,
+    topScorers: normalizeScorerList((updated as any).competitionOutcomeTopScorersJson),
     quarterFinalistTeams: normalizeTeamList((updated as any).competitionOutcomeQuarterFinalistTeamsJson),
     semiFinalistTeams: normalizeTeamList((updated as any).competitionOutcomeSemiFinalistTeamsJson),
     finalistTeams: normalizeTeamList((updated as any).competitionOutcomeFinalistTeamsJson),

@@ -508,29 +508,87 @@ const tournamentMeta = useMemo(() => {
   }, [totals?.total, items.length, exactHits, myPosition]);
 
   const tgLeague = useMemo(() => {
+    type TgTone = "rose" | "cyan" | "emerald" | "amber" | "slate";
+    type TgNews = { title: string; text: string; tone: TgTone; icon?: string; badge?: string };
+    const news: TgNews[] = [];
+    const seen = new Set<string>();
+    const add = (item: TgNews) => {
+      const key = `${item.title}|${item.text}`.toLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      news.push(item);
+    };
+
     const leaderRow = leader[0];
-    const myRow = user?.id ? leader.find((r) => r.userId === user.id) : null;
     const second = leader[1];
-    const funTop = (leagueStats as any)?.funStats?.[0];
-    const lines: string[] = [];
-    if (leaderRow) {
-      lines.push(`${leaderRow.displayName || "Il leader"} guida la lega con ${leaderRow.totalPoints} punti${second ? `, ma ${second.displayName || "il secondo"} resta in scia a ${Math.max(0, leaderRow.totalPoints - second.totalPoints)} punti` : ""}.`);
+    const third = leader[2];
+    const last = leader[leader.length - 1];
+    const myRow = user?.id ? leader.find((r) => r.userId === user.id) : null;
+    const prizeCut = Math.max(0, maxPrizePosition || prizes.length || 0);
+    const prizeRows = prizeCut ? leader.slice(0, prizeCut) : [];
+    const funStats = Array.isArray((leagueStats as any)?.funStats) ? (leagueStats as any).funStats : [];
+    const rivalries = Array.isArray((leagueStats as any)?.engagement?.rivalries) ? (leagueStats as any).engagement.rivalries : [];
+    const profiles = Array.isArray((leagueStats as any)?.engagement?.profileCards) ? (leagueStats as any).engagement.profileCards : [];
+
+    if (finalResult?.finalized) {
+      const winner = finalResult.winners?.[0] || finalResult.leaderboardTop?.[0] || leaderRow;
+      add({ title: "Verdetto ufficiale", text: winner ? `${winner.displayName || "Il vincitore"} alza il trofeo: classifica congelata e festa autorizzata.` : "La lega è conclusa: classifica finale disponibile.", tone: "emerald", icon: "🏆", badge: "Finale" });
     }
-    if (myRow && leaderRow && myRow.userId !== leaderRow.userId) {
-      lines.push(`${displayName} è ${myPosition ? `#${myPosition}` : "in classifica"}: la vetta dista ${Math.max(0, leaderRow.totalPoints - myRow.totalPoints)} punti.`);
-    } else if (myRow && leaderRow && myRow.userId === leaderRow.userId) {
-      lines.push(`${displayName} è davanti a tutti: ora deve solo gestire la pressione.`);
+
+    if (leaderRow && second) {
+      const gap12 = Math.max(0, Number(leaderRow.totalPoints || 0) - Number(second.totalPoints || 0));
+      if (gap12 <= 5) {
+        add({ title: "Corsa al titolo", text: `${leaderRow.displayName || "Il leader"} è davanti, ma ${second.displayName || "il secondo"} è a soli ${gap12} punti: basta un esatto per ribaltare tutto.`, tone: "rose", icon: "🔥", badge: "Live" });
+      } else if (gap12 >= 15) {
+        add({ title: "Tentativo di fuga", text: `${leaderRow.displayName || "Il leader"} prova lo strappo con ${gap12} punti di vantaggio su ${second.displayName || "il secondo"}.`, tone: "emerald", icon: "🚀", badge: "Break" });
+      } else {
+        add({ title: "Podio compatto", text: third ? `Tra primo e terzo ballano ${Math.max(0, Number(leaderRow.totalPoints || 0) - Number(third.totalPoints || 0))} punti: zona alta ancora apertissima.` : `${second.displayName || "Il secondo"} resta in scia a ${gap12} punti.`, tone: "cyan", icon: "📊", badge: "Classifica" });
+      }
+    } else if (leaderRow) {
+      add({ title: "Primo bollettino", text: `${leaderRow.displayName || "Il leader"} guida la lega con ${leaderRow.totalPoints} punti.`, tone: "cyan", icon: "🎙️", badge: "Flash" });
     }
-    if (finishedMatchesCount > 0) {
-      lines.push(`Sono già stati giocati ${finishedMatchesCount} match; ne restano ${remainingMatchesCount}. Ogni risultato può cambiare la zona premi.`);
+
+    if (myRow && leaderRow) {
+      const gap = Math.max(0, Number(leaderRow.totalPoints || 0) - Number(myRow.totalPoints || 0));
+      if (myRow.userId === leaderRow.userId) add({ title: "Pressione addosso", text: `${displayName} è davanti a tutti: ora ogni pronostico pesa doppio.`, tone: "amber", icon: "👑", badge: "Tu" });
+      else add({ title: "Missione rimonta", text: `${displayName} è ${myPosition ? `#${myPosition}` : "in classifica"}: la vetta dista ${gap} punti.`, tone: gap <= 10 ? "rose" : "slate", icon: "🎯", badge: "Focus" });
     }
-    if (funTop?.winner?.displayName || funTop?.winners?.[0]?.displayName) {
-      const w = funTop.winner || funTop.winners?.[0];
-      lines.push(`Statistica da spogliatoio: ${w.displayName} si prende il titolo "${funTop.title}".`);
+
+    if (prizeCut && prizeRows.length) {
+      const names = prizeRows.map((r) => r.displayName || "Partecipante").slice(0, 3).join(", ");
+      add({ title: "Zona premio calda", text: `Al momento la zona premio coinvolge ${names}${prizeRows.length > 3 ? " e altri" : ""}. Dietro si prepara l'assalto.`, tone: "amber", icon: "💰", badge: "Premi" });
     }
-    if (!lines.length) lines.push("La lega si sta scaldando: appena arrivano risultati e pronostici, il TG avrà molto da raccontare.");
-    return lines;
-  }, [leader, user?.id, displayName, myPosition, finishedMatchesCount, remainingMatchesCount, leagueStats]);
+
+    if (recentFinishedMatches[0]) {
+      const m: any = recentFinishedMatches[0];
+      add({ title: "Ultimo match aggiornato", text: `${m.homeTeam} ${m.homeScore}-${m.awayScore} ${m.awayTeam}: nuova benzina per la classifica.`, tone: "cyan", icon: "⚽", badge: "Risultato" });
+    }
+
+    const hot = profiles.slice().sort((a: any, b: any) => Number(b?.attributes?.precision || b?.totalPoints || 0) - Number(a?.attributes?.precision || a?.totalPoints || 0))[0];
+    if (hot?.displayName) add({ title: "Uomo in forma", text: `${hot.displayName} è il nome caldo del momento: precisione e punti stanno facendo rumore.`, tone: "emerald", icon: "📈", badge: "Forma" });
+
+    if (last && leader.length > 1) add({ title: "Zona crisi", text: `${last.displayName || "L'ultimo"} deve cambiare marcia: il torneo concede ancora occasioni per risalire.`, tone: "slate", icon: "🧊", badge: "Flop" });
+
+    const rivalry = rivalries[0];
+    if (rivalry) {
+      const a = rivalry.a?.displayName || rivalry.home?.displayName || rivalry.userA?.displayName;
+      const b = rivalry.b?.displayName || rivalry.away?.displayName || rivalry.userB?.displayName;
+      if (a && b) add({ title: "Duello acceso", text: `${a} contro ${b}: rivalità da seguire fino all'ultimo risultato.`, tone: "rose", icon: "🥊", badge: "Derby" });
+    }
+
+    const fun = funStats[0];
+    const funWinner = fun?.winner || fun?.winners?.[0];
+    if (fun?.title && funWinner?.displayName) add({ title: "Statistica curiosa", text: `${funWinner.displayName} si prende il titolo "${fun.title}". Spogliatoio in fermento.`, tone: "cyan", icon: "🧠", badge: "Curiosità" });
+
+    if (remainingMatchesCount > 0 && remainingMatchesCount <= 5) {
+      add({ title: "Rush finale", text: `Mancano solo ${remainingMatchesCount} match: vietato sbagliare, ogni pallino può valere una stagione.`, tone: "rose", icon: "⏱️", badge: "Final rush" });
+    } else if (finishedMatchesCount > 0) {
+      add({ title: "Bilancio torneo", text: `${finishedMatchesCount} match giocati, ${remainingMatchesCount} ancora da vivere: la classifica è tutt'altro che scritta.`, tone: "slate", icon: "📅", badge: "Report" });
+    }
+
+    if (!news.length) add({ title: "Lega in riscaldamento", text: "Appena arrivano risultati e pronostici, il TG avrà molto da raccontare.", tone: "slate", icon: "🎙️", badge: "Stand-by" });
+    return news.slice(0, 6);
+  }, [leader, user?.id, displayName, myPosition, finishedMatchesCount, remainingMatchesCount, leagueStats, recentFinishedMatches, finalResult, maxPrizePosition, prizes.length]);
 
   const finalDocumentary = useMemo(() => {
     if (!finalResult?.finalized) return null;
@@ -880,9 +938,26 @@ const tournamentMeta = useMemo(() => {
             <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-rose-200/25 bg-rose-500/10 px-3 py-1 text-[11px] font-black uppercase tracking-wide text-rose-100">
               <Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> Edizione flash
             </div>
-            <div className="space-y-2 text-sm font-medium leading-relaxed text-cyan-50/85">
-              {tgLeague.map((line, idx) => (
-                <p key={idx}>{line}</p>
+            <div className="grid gap-2 md:grid-cols-2">
+              {tgLeague.map((item, idx) => (
+                <div key={idx} className={`rounded-2xl border p-3 ${
+                  item.tone === "rose" ? "border-rose-200/25 bg-rose-500/10" :
+                  item.tone === "emerald" ? "border-emerald-200/25 bg-emerald-500/10" :
+                  item.tone === "amber" ? "border-amber-200/25 bg-amber-500/10" :
+                  item.tone === "cyan" ? "border-cyan-200/25 bg-cyan-500/10" :
+                  "border-cyan-100/15 bg-cyan-100/5"
+                }`}>
+                  <div className="flex items-start gap-3">
+                    <div className="grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-black/25 text-lg" aria-hidden="true">{item.icon || "🎙️"}</div>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="text-sm font-black text-white">{item.title}</div>
+                        {item.badge ? <span className="rounded-full border border-white/10 bg-white/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-cyan-50/80">{item.badge}</span> : null}
+                      </div>
+                      <p className="mt-1 text-sm font-medium leading-relaxed text-cyan-50/78">{item.text}</p>
+                    </div>
+                  </div>
+                </div>
               ))}
             </div>
           </div>

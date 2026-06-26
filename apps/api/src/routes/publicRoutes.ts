@@ -4,7 +4,7 @@ import { verifyToken } from "../lib/auth.js";
 import { getMonetizationConfig } from "../lib/monetization.js";
 import { getLockInfo } from "../lib/lock.js";
 import { ensureLeagueConfig } from "../services/ensureLeagueConfig.js";
-import { filterPredictableMatches } from "../lib/predictableMatches.js";
+import { filterPredictableMatches, isPlaceholderMatch } from "../lib/predictableMatches.js";
 
 export const publicRouter = Router();
 
@@ -373,6 +373,67 @@ publicRouter.get("/leaderboard", async (req, res) => {
     include: { user: true },
   });
 
+
+  const recentBaseMatches = await prisma.match.findMany({
+    where: { status: { in: ["FINISHED" as any, "IN_PROGRESS" as any] } },
+    orderBy: { kickoffAt: "desc" },
+    take: 30,
+  });
+  const recentMatches = recentBaseMatches.filter((m) => !isPlaceholderMatch(m as any)).slice(0, 5);
+  const recentMatchIds = recentMatches.map((m) => m.id);
+  const memberIds = members.map((m) => m.user.id);
+  const recentPredictions = recentMatchIds.length
+    ? await prisma.prediction.findMany({
+        where: { leagueId: league.id, matchId: { in: recentMatchIds }, userId: { in: memberIds } },
+        select: {
+          userId: true,
+          matchId: true,
+          homeGoals: true,
+          awayGoals: true,
+          pointsExact: true,
+          pointsOutcome: true,
+          pointsSumGoals: true,
+          pointsUnderOver: true,
+          totalPoints: true,
+        },
+      })
+    : [];
+  const recentPredByUserMatch = new Map<string, any>();
+  for (const p of recentPredictions) recentPredByUserMatch.set(`${p.userId}:${p.matchId}`, p);
+
+  function recentTone(match: any, pred: any): "green" | "yellow" | "orange" | "cyan" | "red" | "blue" | "grey" {
+    if (match.status === "IN_PROGRESS") return "blue";
+    if (!pred) return "grey";
+    if (Number(pred.pointsExact ?? 0) > 0) return "green";
+    if (Number(pred.pointsOutcome ?? 0) > 0) return "yellow";
+    if (Number(pred.pointsSumGoals ?? 0) > 0) return "orange";
+    if (rules.enableUnderOver25 && Number(pred.pointsUnderOver ?? 0) > 0) return "cyan";
+    return "red";
+  }
+
+  function recentMatchesForUser(userId: string) {
+    return recentMatches.map((m) => {
+      const pred = recentPredByUserMatch.get(`${userId}:${m.id}`);
+      return {
+        matchId: m.id,
+        homeTeam: m.homeTeam,
+        awayTeam: m.awayTeam,
+        kickoffAt: m.kickoffAt.toISOString(),
+        status: m.status,
+        prediction: pred ? { homeGoals: pred.homeGoals, awayGoals: pred.awayGoals } : null,
+        real: typeof m.homeScore === "number" && typeof m.awayScore === "number" ? { home: m.homeScore, away: m.awayScore } : null,
+        points: {
+          exact: decimalNumber(pred?.pointsExact),
+          outcome: decimalNumber(pred?.pointsOutcome),
+          sumGoals: decimalNumber(pred?.pointsSumGoals),
+          underOver: decimalNumber(pred?.pointsUnderOver),
+          total: decimalNumber(pred?.totalPoints),
+        },
+        tone: recentTone(m, pred),
+      };
+    });
+  }
+
   let rows = members.map((m) => ({
     userId: m.user.id,
     displayName: m.user.displayName,
@@ -389,6 +450,7 @@ publicRouter.get("/leaderboard", async (req, res) => {
     matchdayWins: rules.enableMatchdayAwards
       ? (awardByUser.get(m.user.id) ?? 0)
       : 0,
+    recentMatches: recentMatchesForUser(m.user.id),
   }));
 
   // Sorting

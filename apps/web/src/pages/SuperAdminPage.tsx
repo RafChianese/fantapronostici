@@ -197,8 +197,7 @@ export default function SuperAdminPage() {
   const [compOutcome, setCompOutcome] = useState<any | null>(null);
   const [compSaving, setCompSaving] = useState(false);
   const [winnerId, setWinnerId] = useState<string>("");
-  const [scorer1Id, setScorer1Id] = useState<string>("");
-  const [scorer2Id, setScorer2Id] = useState<string>("");
+  const [topScorerIds, setTopScorerIds] = useState<string[]>([]);
   const [quarterTeamIds, setQuarterTeamIds] = useState<string[]>([]);
   const [semiTeamIds, setSemiTeamIds] = useState<string[]>([]);
   const [finalistTeamIds, setFinalistTeamIds] = useState<string[]>([]);
@@ -219,8 +218,7 @@ export default function SuperAdminPage() {
       const co = await api.superCompetitionOutcome();
       setCompOutcome(co);
       setWinnerId(co?.outcome?.winner?.teamExternalId ? String(co.outcome.winner.teamExternalId) : "");
-      setScorer1Id(co?.outcome?.topScorer?.playerExternalId ? String(co.outcome.topScorer.playerExternalId) : "");
-      setScorer2Id(co?.outcome?.secondTopScorer?.playerExternalId ? String(co.outcome.secondTopScorer.playerExternalId) : "");
+      setTopScorerIds(Array.isArray(co?.outcome?.topScorers) ? co.outcome.topScorers.map((p: any) => String(p.playerExternalId ?? p.id)).filter(Boolean) : [co?.outcome?.topScorer?.playerExternalId, co?.outcome?.secondTopScorer?.playerExternalId].filter(Boolean).map(String));
       setQuarterTeamIds(Array.isArray(co?.outcome?.quarterFinalists) ? co.outcome.quarterFinalists.map((t: any) => String(t.id ?? t.teamExternalId)).filter(Boolean) : []);
       setSemiTeamIds(Array.isArray(co?.outcome?.semiFinalists) ? co.outcome.semiFinalists.map((t: any) => String(t.id ?? t.teamExternalId)).filter(Boolean) : []);
       setFinalistTeamIds(Array.isArray(co?.outcome?.finalists) ? co.outcome.finalists.map((t: any) => String(t.id ?? t.teamExternalId)).filter(Boolean) : []);
@@ -344,35 +342,34 @@ export default function SuperAdminPage() {
                       .sort((a: any, b: any) => a.label.localeCompare(b.label, "it"))}
                   />
                 </div>
-                <div className="space-y-2">
-                  <div className="text-sm font-semibold text-white">Capocannoniere #1 (globale)</div>
-                  <SearchableSelect
-                    value={scorer1Id}
-                    onChange={setScorer1Id}
-                    placeholder="Seleziona giocatore…"
-                    options={(compOutcome.options?.scorers || [])
-                      .map((p: any) => ({ value: String(p.id), label: `${p.name}${p.teamName ? ` (${p.teamName})` : ""}` }))
-                      .sort((a: any, b: any) => a.label.localeCompare(b.label, "it"))}
-                  />
-                </div>
                 <div className="space-y-2 md:col-span-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-sm font-semibold text-white">Capocannoniere #2 (opzionale)</div>
-                      <div className="text-xs text-cyan-100/60">Usalo solo se vuoi considerare un 2° top scorer (pari merito).</div>
-                    </div>
-                    {scorer2Id ? (
-                      <Button variant="secondary" onClick={() => setScorer2Id("")}>Rimuovi</Button>
-                    ) : null}
+                  <div>
+                    <div className="text-sm font-semibold text-white">Capocannonieri (globale)</div>
+                    <div className="text-xs text-cyan-100/60">Seleziona uno o più giocatori a pari merito. Ogni utente continua ad avere un solo pronostico capocannoniere.</div>
                   </div>
                   <SearchableSelect
-                    value={scorer2Id}
-                    onChange={setScorer2Id}
-                    placeholder="Seleziona giocatore…"
+                    value=""
+                    onChange={(value) => {
+                      if (!value) return;
+                      setTopScorerIds((prev) => prev.includes(value) ? prev : [...prev, value]);
+                    }}
+                    placeholder="Aggiungi capocannoniere…"
                     options={(compOutcome.options?.scorers || [])
+                      .filter((p: any) => !topScorerIds.includes(String(p.id)))
                       .map((p: any) => ({ value: String(p.id), label: `${p.name}${p.teamName ? ` (${p.teamName})` : ""}` }))
                       .sort((a: any, b: any) => a.label.localeCompare(b.label, "it"))}
                   />
+                  <div className="flex flex-wrap gap-2">
+                    {topScorerIds.length ? topScorerIds.map((id) => {
+                      const player = (compOutcome.options?.scorers || []).find((p: any) => String(p.id) === id);
+                      return (
+                        <span key={id} className="inline-flex items-center gap-2 rounded-full border border-cyan-100/15 bg-cyan-100/10 px-3 py-1 text-xs text-white">
+                          {player?.name || `Giocatore ${id}`}{player?.teamName ? ` (${player.teamName})` : ""}
+                          <button type="button" className="text-cyan-100/70 hover:text-white" onClick={() => setTopScorerIds((prev) => prev.filter((x) => x !== id))}>✕</button>
+                        </span>
+                      );
+                    }) : <span className="text-xs text-cyan-100/60">Nessun capocannoniere impostato.</span>}
+                  </div>
                 </div>
 
                 {external?.competitionType === "KNOCKOUT_CUP" ? (
@@ -411,16 +408,15 @@ export default function SuperAdminPage() {
                       setErr("");
                       setCompSaving(true);
                       const team = (compOutcome.options?.teams || []).find((t: any) => String(t.id) === winnerId);
-                      const s1 = (compOutcome.options?.scorers || []).find((p: any) => String(p.id) === scorer1Id);
-                      const s2 = (compOutcome.options?.scorers || []).find((p: any) => String(p.id) === scorer2Id);
+                      const topScorers = topScorerIds
+                        .map((id) => (compOutcome.options?.scorers || []).find((p: any) => String(p.id) === id))
+                        .filter(Boolean)
+                        .map((p: any) => ({ id: Number(p.id), name: String(p.name) }));
 
                       await api.superSaveCompetitionOutcome({
                         winnerTeamId: winnerId ? Number(winnerId) : null,
                         winnerTeamName: team?.name ?? null,
-                        topScorerPlayerId: scorer1Id ? Number(scorer1Id) : null,
-                        topScorerPlayerName: s1?.name ?? null,
-                        secondTopScorerPlayerId: scorer2Id ? Number(scorer2Id) : null,
-                        secondTopScorerPlayerName: s2?.name ?? null,
+                        topScorers,
                         quarterFinalistTeams: selectedTeamsFromIds(compOutcome.options?.teams || [], quarterTeamIds),
                         semiFinalistTeams: selectedTeamsFromIds(compOutcome.options?.teams || [], semiTeamIds),
                         finalistTeams: selectedTeamsFromIds(compOutcome.options?.teams || [], finalistTeamIds),
@@ -429,8 +425,7 @@ export default function SuperAdminPage() {
                       const refreshed = await api.superCompetitionOutcome();
                       setCompOutcome(refreshed);
                       setWinnerId(refreshed?.outcome?.winner?.teamExternalId ? String(refreshed.outcome.winner.teamExternalId) : "");
-                      setScorer1Id(refreshed?.outcome?.topScorer?.playerExternalId ? String(refreshed.outcome.topScorer.playerExternalId) : "");
-                      setScorer2Id(refreshed?.outcome?.secondTopScorer?.playerExternalId ? String(refreshed.outcome.secondTopScorer.playerExternalId) : "");
+                      setTopScorerIds(Array.isArray(refreshed?.outcome?.topScorers) ? refreshed.outcome.topScorers.map((p: any) => String(p.playerExternalId ?? p.id)).filter(Boolean) : [refreshed?.outcome?.topScorer?.playerExternalId, refreshed?.outcome?.secondTopScorer?.playerExternalId].filter(Boolean).map(String));
                       setQuarterTeamIds(Array.isArray(refreshed?.outcome?.quarterFinalists) ? refreshed.outcome.quarterFinalists.map((t: any) => String(t.id ?? t.teamExternalId)).filter(Boolean) : []);
                       setSemiTeamIds(Array.isArray(refreshed?.outcome?.semiFinalists) ? refreshed.outcome.semiFinalists.map((t: any) => String(t.id ?? t.teamExternalId)).filter(Boolean) : []);
                       setFinalistTeamIds(Array.isArray(refreshed?.outcome?.finalists) ? refreshed.outcome.finalists.map((t: any) => String(t.id ?? t.teamExternalId)).filter(Boolean) : []);

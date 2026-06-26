@@ -27,6 +27,18 @@ import { UserAvatar } from "../components/Avatar";
 import { AnimatedNumber } from "../components/AnimatedNumber";
 import { FinalCelebrationModal } from "../components/FinalCelebrationModal";
 
+type RecentMatch = {
+  matchId: string;
+  homeTeam: string;
+  awayTeam: string;
+  kickoffAt: string;
+  status: "FINISHED" | "IN_PROGRESS" | "NOT_STARTED";
+  prediction: { homeGoals: number; awayGoals: number } | null;
+  real: { home: number; away: number } | null;
+  points: { exact: number; outcome: number; sumGoals: number; underOver: number; total: number };
+  tone: "green" | "yellow" | "orange" | "cyan" | "red" | "blue" | "grey";
+};
+
 type Row = {
   userId: string;
   displayName: string;
@@ -39,7 +51,33 @@ type Row = {
   underOverHits?: number;
   matchdayWins?: number;
   competitionPoints?: number;
+  recentMatches?: RecentMatch[];
 };
+
+function RecentMatchDots({ matches }: { matches?: RecentMatch[] }) {
+  const list = matches?.length ? matches : Array.from({ length: 5 }).map((_, i) => ({ matchId: `empty-${i}`, tone: "grey" as const } as RecentMatch));
+  const cls = (tone: RecentMatch["tone"]) =>
+    tone === "green" ? "bg-emerald-400 shadow-[0_0_14px_rgba(52,211,153,0.55)]" :
+    tone === "yellow" ? "bg-yellow-300 shadow-[0_0_14px_rgba(253,224,71,0.45)]" :
+    tone === "orange" ? "bg-orange-400 shadow-[0_0_14px_rgba(251,146,60,0.45)]" :
+    tone === "cyan" ? "bg-cyan-300 shadow-[0_0_14px_rgba(103,232,249,0.45)]" :
+    tone === "red" ? "bg-rose-500 shadow-[0_0_14px_rgba(244,63,94,0.45)]" :
+    tone === "blue" ? "bg-blue-400 shadow-[0_0_14px_rgba(96,165,250,0.45)] animate-pulse" :
+    "bg-slate-500/60";
+  const title = (m: RecentMatch) => {
+    if (!m.homeTeam) return "Non disponibile";
+    const pred = m.prediction ? `Pronostico ${m.prediction.homeGoals}-${m.prediction.awayGoals}` : "Non pronosticato";
+    const real = m.real ? `Risultato ${m.real.home}-${m.real.away}` : m.status === "IN_PROGRESS" ? "Live" : "Risultato non disponibile";
+    return `${m.homeTeam} - ${m.awayTeam} · ${pred} · ${real} · ${m.points?.total ?? 0} pt`;
+  };
+  return (
+    <div className="flex items-center gap-1.5" aria-label="Ultimi 5 match">
+      {list.slice(0, 5).map((m, idx) => (
+        <span key={`${m.matchId}-${idx}`} title={title(m)} className={`inline-block h-3 w-3 rounded-full ring-1 ring-white/20 ${cls(m.tone)}`} />
+      ))}
+    </div>
+  );
+}
 
 type SortValue = {
   key: "points" | "exact" | "outcome" | "sumgoals";
@@ -463,9 +501,10 @@ export default function LeaderboardPage() {
             <div className="space-y-2">
               {/* Desktop header */}
               <div className="hidden sm:grid sm:grid-cols-12 sm:gap-3 sm:pb-2 sm:text-[11px] sm:font-semibold sm:uppercase sm:tracking-wide sm:text-cyan-50/70">
-                <div className="sm:col-span-6">Giocatore</div>
+                <div className="sm:col-span-5">Giocatore</div>
+                <div className="sm:col-span-2 sm:text-right">Ultimi 5</div>
                 <div className="sm:col-span-2 sm:text-right">Punti</div>
-                <div className="sm:col-span-4 sm:text-right">Metriche</div>
+                <div className="sm:col-span-3 sm:text-right">Metriche</div>
               </div>
 
               {rows.map((r, idx) => {
@@ -508,7 +547,7 @@ export default function LeaderboardPage() {
                     >
                       {/* Mobile: 2 righe senza scroll orizzontale. Desktop: layout a colonne */}
                       <div className="flex flex-col gap-2 sm:grid sm:grid-cols-12 sm:items-center sm:gap-3">
-                        <div className="flex items-center justify-between sm:col-span-6 sm:justify-start sm:gap-3">
+                        <div className="flex items-center justify-between sm:col-span-5 sm:justify-start sm:gap-3">
                           <div className="flex items-center gap-3">
                             <div className="flex items-center gap-2">
                               <span
@@ -568,6 +607,10 @@ export default function LeaderboardPage() {
                           </div>
                         </div>
 
+                        <div className="hidden sm:col-span-2 sm:flex sm:justify-end">
+                          <RecentMatchDots matches={r.recentMatches} />
+                        </div>
+
                         <div className="hidden sm:col-span-2 sm:block sm:text-right sm:text-sm sm:font-extrabold">
                           <div className="flex flex-col items-end gap-1">
                             <div>
@@ -590,7 +633,12 @@ export default function LeaderboardPage() {
                           </div>
                         </div>
 
-                        <div className="flex flex-wrap items-center justify-start gap-x-4 gap-y-1 text-xs text-cyan-50/85 sm:col-span-4 sm:justify-end sm:flex-nowrap sm:gap-x-4">
+                        <div className="flex items-center justify-between gap-3 sm:hidden">
+                          <div className="text-[11px] font-semibold text-cyan-100/60">Ultimi 5 match</div>
+                          <RecentMatchDots matches={r.recentMatches} />
+                        </div>
+
+                        <div className="flex flex-wrap items-center justify-start gap-x-4 gap-y-1 text-xs text-cyan-50/85 sm:col-span-3 sm:justify-end sm:flex-nowrap sm:gap-x-4">
                           {/* Mobile "stack": label+value; Desktop: icon+value */}
                           <span
                             className="inline-flex items-center gap-1 whitespace-nowrap"
