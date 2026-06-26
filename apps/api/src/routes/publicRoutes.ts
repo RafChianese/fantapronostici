@@ -288,6 +288,7 @@ publicRouter.get("/leaderboard", async (req, res) => {
   ]);
   if (!rules)
     return res.status(500).json({ message: "Missing rules for league" });
+  const enableUnderOver25 = !!rules.enableUnderOver25;
 
   // Points breakdown is normalized in DB (non-counting categories are zeroed).
   // Therefore hit counters can be computed directly from positive per-category points.
@@ -330,7 +331,7 @@ publicRouter.get("/leaderboard", async (req, res) => {
     if (Number(p.pointsExact ?? 0) > 0) a.exactHits += 1;
     if (Number(p.pointsOutcome ?? 0) > 0) a.outcomeHits += 1;
     if (Number(p.pointsSumGoals ?? 0) > 0) a.sumGoalsHits += 1;
-    if (rules.enableUnderOver25 && Number(p.pointsUnderOver ?? 0) > 0)
+    if (enableUnderOver25 && Number(p.pointsUnderOver ?? 0) > 0)
       a.underOverHits += 1;
     agg.set(p.userId, a);
   }
@@ -407,7 +408,7 @@ publicRouter.get("/leaderboard", async (req, res) => {
     if (Number(pred.pointsExact ?? 0) > 0) return "green";
     if (Number(pred.pointsOutcome ?? 0) > 0) return "yellow";
     if (Number(pred.pointsSumGoals ?? 0) > 0) return "orange";
-    if (rules.enableUnderOver25 && Number(pred.pointsUnderOver ?? 0) > 0) return "cyan";
+    if (enableUnderOver25 && Number(pred.pointsUnderOver ?? 0) > 0) return "cyan";
     return "red";
   }
 
