@@ -11,6 +11,38 @@ import { Badge, Button, Card, CardContent, CardHeader, Skeleton, Spinner } from 
 
 type LeaderRow = { userId: string; totalPoints: number; displayName?: string | null };
 type PrizeInfo = { position: number; amountCents?: number | null };
+type HomeStatCategory =
+  | "COMPETITION_WINNER"
+  | "EXACT_RESULTS"
+  | "BEST_MATCHDAY"
+  | "CONSISTENCY"
+  | "PREDICTIONS_COUNT"
+  | "SPECIAL_PREDICTIONS"
+  | "OTHER";
+
+function homeStatCategory(stat: any): HomeStatCategory {
+  const value = `${stat?.category || ""} ${stat?.key || ""} ${stat?.title || ""}`.toLowerCase();
+  if (/winner|vincitore|primo classificato|migliore.*competizione|più punti|total points/.test(value)) return "COMPETITION_WINNER";
+  if (/exact|esatt|veggente/.test(value)) return "EXACT_RESULTS";
+  if (/matchday|giornata/.test(value)) return "BEST_MATCHDAY";
+  if (/consistent|costan/.test(value)) return "CONSISTENCY";
+  if (/prediction|pronostic/.test(value)) return "PREDICTIONS_COUNT";
+  if (/special|golead|paregg|under|over|gol|scorer|marcat/.test(value)) return "SPECIAL_PREDICTIONS";
+  return "OTHER";
+}
+
+function uniqueHomeStats(stats: any[], limit: number) {
+  const categories = new Set<HomeStatCategory>();
+  const identities = new Set<string>();
+  return stats.filter((stat) => {
+    const category = homeStatCategory(stat);
+    const identity = `${stat?.key || ""}|${stat?.title || ""}|${stat?.userId || stat?.displayName || ""}`.toLowerCase();
+    if (categories.has(category) || identities.has(identity) || categories.size >= limit) return false;
+    categories.add(category);
+    identities.add(identity);
+    return true;
+  });
+}
 
 function useCountdown(targetIso?: string) {
   const [now, setNow] = useState(Date.now());
